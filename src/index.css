@@ -29,6 +29,22 @@ body {
     var(--bg);
 }
 
+body:has(.login-scene) {
+  background: #02060c;
+  overflow: hidden;
+}
+
+.app-shell:has(.login-scene) {
+  display: block;
+  padding: 0;
+  min-height: 100vh;
+}
+
+body:has(.admin-shell) {
+  background: #eef3f8;
+  overflow: auto;
+}
+
 .app-shell {
   min-height: 100vh;
   display: grid;

@@ -18,6 +18,7 @@ type AuthContextValue = {
   token: string | null
   loading: boolean
   requiresContext: boolean
+  can: (permission: string) => boolean
   login: (email: string, password: string) => Promise<AuthUser>
   logout: () => Promise<void>
   applyUser: (user: AuthUser) => void
@@ -103,17 +104,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSession()
   }, [clearSession])
 
+  const can = useCallback(
+    (permission: string) => {
+      if (!user) return false
+      const platformMode =
+        Boolean(user.is_super || user.roles?.includes('super_admin')) && !user.contexto?.organizacion_id
+      if (platformMode && !user.requires_context) return true
+      return (user.permissions ?? []).includes(permission)
+    },
+    [user],
+  )
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       token,
       loading,
       requiresContext: Boolean(user?.requires_context && !user.contexto),
+      can,
       login,
       logout,
       applyUser,
     }),
-    [applyUser, loading, login, logout, token, user],
+    [applyUser, can, loading, login, logout, token, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

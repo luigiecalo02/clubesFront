@@ -1,0 +1,1188 @@
+.login-scene {
+  --px: 0;
+  --py: 0;
+  --gold: #f0c14b;
+  --gold-deep: #c4921a;
+  --ink-soft: #d7e0ef;
+  --scene-sky-top: #071427;
+  --scene-sky-mid: #06101c;
+  --scene-sky-bottom: #02060c;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: #f6f3ea;
+  background: #02060c;
+  color-scheme: dark;
+  isolation: isolate;
+  font-family: Outfit, Inter, Segoe UI, system-ui, sans-serif;
+}
+
+.login-scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: radial-gradient(circle at 1px 1px, #fff 0.6px, transparent 0.8px);
+  background-size: 3px 3px;
+}
+
+.login-scene--booting {
+  display: grid;
+  place-items: center;
+}
+
+.login-scene__status {
+  position: relative;
+  z-index: 20;
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.login-scene__ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28%;
+  z-index: 6;
+  background:
+    radial-gradient(ellipse 42% 70% at 28% 100%, rgb(255 140 40 / 0.16), transparent 58%),
+    linear-gradient(180deg, transparent, #05080e 42%, #04070c);
+  pointer-events: none;
+}
+
+.login-scene__copy {
+  position: absolute;
+  left: clamp(1.5rem, 6vw, 5rem);
+  top: 30%;
+  z-index: 16;
+  max-width: 22rem;
+  opacity: 0;
+  animation: sceneFade 1s ease 1.15s forwards;
+}
+
+.login-scene__copy p {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgb(240 193 75 / 0.82);
+}
+
+.login-scene__copy h2 {
+  margin: 0;
+  font-family: Cinzel, Georgia, serif;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1.15;
+  color: #f7f1df;
+}
+
+.login-scene__content {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 100%;
+  padding: 1.5rem clamp(1rem, 5vw, 5.5rem);
+}
+
+/* ---------- Cielo ---------- */
+
+.login-sky,
+.login-stars,
+.login-moon,
+.login-mountains,
+.login-forest,
+.login-fog,
+.login-flags,
+.login-explorer,
+.login-campfire,
+.login-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.login-sky {
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -10%, #16315a 0%, transparent 55%),
+    linear-gradient(180deg, var(--scene-sky-top) 0%, var(--scene-sky-mid) 46%, var(--scene-sky-bottom) 100%);
+  animation: sceneFade 0.9s ease both;
+}
+
+.login-sky__wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 78% 14%, rgb(255 236 190 / 0.16), transparent 18%),
+    radial-gradient(circle at 18% 8%, rgb(90 140 210 / 0.12), transparent 22%);
+}
+
+.login-sky__aurora {
+  position: absolute;
+  inset: 8% 10% auto;
+  height: 28%;
+  background: linear-gradient(90deg, transparent, rgb(70 130 180 / 0.08), rgb(240 193 75 / 0.05), transparent);
+  filter: blur(30px);
+  transform: translate3d(calc(var(--px) * 10px), calc(var(--py) * 6px), 0);
+}
+
+.login-sky__horizon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 26%;
+  height: 18%;
+  background: linear-gradient(180deg, transparent, rgb(18 32 54 / 0.45));
+}
+
+/* ---------- Estrellas ---------- */
+
+.login-stars {
+  z-index: 1;
+  transform: translate3d(calc(var(--px) * 8px), calc(var(--py) * 5px), 0);
+}
+
+.login-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff8e7;
+  box-shadow: 0 0 6px 1px rgb(255 248 220 / 0.55);
+  opacity: 0.72;
+}
+
+.login-star--twinkle {
+  animation-name: starTwinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.login-stars__shoot {
+  position: absolute;
+  top: 14%;
+  left: -10%;
+  width: 92px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgb(255 255 255 / 0), #fff, transparent);
+  transform: rotate(-18deg);
+  animation: shootingStar 12s ease-in infinite 3.5s;
+}
+
+/* ---------- Luna ---------- */
+
+.login-moon {
+  z-index: 2;
+  width: 92px;
+  height: 92px;
+  inset: 8% auto auto 16%;
+  transform: translate3d(calc(var(--px) * 6px), calc(var(--py) * 4px), 0);
+  animation: sceneFade 1.1s ease 0.15s both;
+}
+
+.login-moon__halo,
+.login-moon__glow,
+.login-moon__body {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.login-moon__halo {
+  inset: -42px;
+  background: radial-gradient(circle, rgb(255 236 190 / 0.28), rgb(255 220 140 / 0.08) 42%, transparent 70%);
+  animation: moonPulse 6s ease-in-out infinite;
+}
+
+.login-moon__glow {
+  inset: -14px;
+  background: radial-gradient(circle, rgb(255 248 220 / 0.55), transparent 68%);
+}
+
+.login-moon__body {
+  background:
+    radial-gradient(circle at 32% 30%, #fffaf0, #f0e2b8 48%, #d8c48a 100%);
+  box-shadow:
+    inset -10px -8px 16px rgb(150 120 60 / 0.18),
+    0 0 24px rgb(255 230 170 / 0.35);
+}
+
+.login-moon__crater {
+  position: absolute;
+  border-radius: 50%;
+  background: rgb(196 176 120 / 0.28);
+}
+
+.login-moon__crater--a {
+  width: 16px;
+  height: 16px;
+  top: 28%;
+  left: 22%;
+}
+
+.login-moon__crater--b {
+  width: 10px;
+  height: 10px;
+  top: 52%;
+  left: 58%;
+}
+
+.login-moon__crater--c {
+  width: 7px;
+  height: 7px;
+  top: 38%;
+  left: 68%;
+}
+
+/* ---------- Montañas ---------- */
+
+.login-mountains {
+  z-index: 3;
+  top: auto;
+  height: 58%;
+  animation: sceneRise 1.2s ease 0.35s both;
+}
+
+.login-mountains__layer {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  bottom: 0;
+  height: 100%;
+}
+
+.login-mountains__svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.login-mountains__layer--far {
+  height: 86%;
+  transform: translate3d(calc(var(--px) * 14px), calc(var(--py) * 5px), 0);
+}
+
+.login-mountains__layer--far .login-mountains__svg {
+  animation: mountainDrift 48s ease-in-out infinite;
+}
+
+.login-mountains__layer--mid {
+  height: 78%;
+  transform: translate3d(calc(var(--px) * 20px), calc(var(--py) * 7px), 0);
+}
+
+.login-mountains__layer--mid .login-mountains__svg {
+  animation: mountainDrift 36s ease-in-out infinite reverse;
+}
+
+.login-mountains__layer--near {
+  height: 58%;
+  transform: translate3d(calc(var(--px) * 28px), calc(var(--py) * 9px), 0);
+}
+
+.login-mountains__layer--near .login-mountains__svg {
+  animation: mountainDrift 28s ease-in-out infinite;
+}
+
+/* ---------- Bosque ---------- */
+
+.login-forest {
+  z-index: 7;
+  top: auto;
+  height: 42%;
+  transform: translate3d(calc(var(--px) * 22px), calc(var(--py) * 6px), 0);
+  animation: sceneFade 1.15s ease 0.7s both;
+}
+
+.login-forest__svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  fill: #05070c;
+}
+
+.login-forest__tree {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation-name: treeSway;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+/* ---------- Niebla ---------- */
+
+.login-fog {
+  z-index: 8;
+  animation: sceneFade 1.4s ease 1s both;
+}
+
+.login-fog__layer {
+  position: absolute;
+  left: -30%;
+  width: 160%;
+  height: 34%;
+  filter: blur(18px);
+  opacity: 0.42;
+}
+
+.login-fog__layer--far {
+  bottom: 24%;
+  background: radial-gradient(ellipse at center, rgb(190 210 230 / 0.22), transparent 68%);
+  animation: fogDrift 42s linear infinite;
+}
+
+.login-fog__layer--mid {
+  bottom: 12%;
+  height: 28%;
+  opacity: 0.32;
+  background: radial-gradient(ellipse at 40% 50%, rgb(210 220 230 / 0.28), transparent 70%);
+  animation: fogDrift 34s linear infinite reverse;
+}
+
+.login-fog__layer--near {
+  bottom: 0;
+  height: 22%;
+  opacity: 0.26;
+  filter: blur(24px);
+  background: linear-gradient(90deg, transparent, rgb(220 228 236 / 0.22), transparent);
+  animation: fogDrift 26s linear infinite;
+}
+
+/* ---------- Banderas ---------- */
+
+.login-flags {
+  z-index: 9;
+  animation: sceneFade 1s ease 1.1s both;
+}
+
+.login-flag {
+  position: absolute;
+  bottom: 22%;
+  width: 78px;
+  height: 150px;
+}
+
+.login-flag--left {
+  left: 7%;
+  transform: translate3d(calc(var(--px) * 18px), calc(var(--py) * 4px), 0);
+}
+
+.login-flag--mid {
+  left: 36%;
+  bottom: 30%;
+  transform: scale(0.78) translate3d(calc(var(--px) * 24px), calc(var(--py) * 6px), 0);
+  transform-origin: bottom left;
+}
+
+.login-flag__pole {
+  position: absolute;
+  left: 6px;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #d8c48a, #6b4b24);
+}
+
+.login-flag__finial {
+  position: absolute;
+  left: 2px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgb(240 193 75 / 0.5);
+}
+
+.login-flag__cloth {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 64px;
+  height: 40px;
+  transform-origin: left center;
+  background:
+    linear-gradient(180deg, #ffe566, #f0c14b 55%, #d4a017);
+  border: 2px solid #c8102e;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.28);
+  animation: flagWind 3.4s ease-in-out infinite;
+}
+
+.login-flag--mid .login-flag__cloth {
+  animation-duration: 2.8s;
+  animation-delay: 0.4s;
+}
+
+.login-flag__emblem {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ---------- Explorador ---------- */
+
+.login-explorer {
+  z-index: 11;
+  inset: auto auto 4% 3%;
+  width: min(220px, 28vw);
+  height: auto;
+  transform: translate3d(calc(var(--px) * 16px), calc(var(--py) * 3px), 0);
+  animation: sceneFade 1.1s ease 1.25s both;
+}
+
+.login-explorer__svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(8px 0 12px rgb(255 140 40 / 0.18));
+}
+
+.login-explorer__body {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: explorerBreath 5.5s ease-in-out infinite;
+}
+
+.login-explorer__scarf {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: scarfWind 4.2s ease-in-out infinite;
+}
+
+/* ---------- Fogata ---------- */
+
+.login-campfire {
+  z-index: 12;
+  inset: auto auto 7% 24%;
+  width: 140px;
+  height: 150px;
+  animation: campfireWake 1.2s ease 1.35s both;
+}
+
+.login-campfire__ambient {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 280px;
+  height: 210px;
+  translate: -50% 0;
+  background: radial-gradient(ellipse at center bottom, rgb(255 130 30 / 0.42), rgb(255 180 50 / 0.12) 42%, transparent 72%);
+  filter: blur(6px);
+  animation: fireAmbient 1.7s ease-in-out infinite;
+}
+
+.login-campfire__sparks,
+.login-campfire__flames,
+.login-campfire__logs {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.login-campfire__flames {
+  bottom: 28px;
+  height: 78px;
+}
+
+.login-campfire__flame {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  border-radius: 50% 50% 40% 40%;
+  translate: -50% 0;
+  filter: blur(0.4px);
+}
+
+.login-campfire__flame--back {
+  width: 34px;
+  height: 62px;
+  background: #c2410c;
+  animation: flameDance 1.1s ease-in-out infinite;
+}
+
+.login-campfire__flame--mid {
+  width: 24px;
+  height: 52px;
+  background: #f59e0b;
+  animation: flameDance 0.85s ease-in-out infinite 0.12s;
+}
+
+.login-campfire__flame--core {
+  width: 14px;
+  height: 34px;
+  background: #fff3c4;
+  animation: flameDance 0.7s ease-in-out infinite 0.2s;
+}
+
+.login-campfire__logs {
+  bottom: 10px;
+  height: 24px;
+}
+
+.login-campfire__log {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 72px;
+  height: 12px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #3b2414, #7a4a22 45%, #2b180e);
+}
+
+.login-campfire__log--a {
+  translate: -50% 0;
+  rotate: 18deg;
+}
+
+.login-campfire__log--b {
+  translate: -50% 0;
+  rotate: -16deg;
+}
+
+.login-campfire__spark {
+  position: absolute;
+  bottom: 40px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffd27a;
+  box-shadow: 0 0 6px #ffb020;
+  animation-name: sparkRise;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+}
+
+/* ---------- Luciérnagas ---------- */
+
+.login-particles {
+  z-index: 13;
+  animation: sceneFade 1s ease 1.6s both;
+}
+
+.login-firefly {
+  position: absolute;
+  border-radius: 50%;
+  background: #d9f99d;
+  box-shadow: 0 0 10px 3px rgb(190 242 100 / 0.55);
+  opacity: 0.15;
+}
+
+.login-firefly--a {
+  animation-name: fireflyA;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.login-firefly--b {
+  animation-name: fireflyB;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.login-firefly--c {
+  animation-name: fireflyC;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+/* ---------- Tarjeta ---------- */
+
+.login-card {
+  position: relative;
+  width: min(26.5rem, 100%);
+  padding: 2rem 1.7rem 1.45rem;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 1.4rem;
+  background: rgb(8 14 24 / 0.48);
+  box-shadow:
+    0 24px 60px rgb(0 0 0 / 0.38),
+    inset 0 1px 0 rgb(255 255 255 / 0.16);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  animation: cardEnter 0.9s cubic-bezier(0.22, 1, 0.36, 1) 1.9s both;
+}
+
+.login-card__shine {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 42%;
+  border-radius: 1.4rem 1.4rem 40% 40%;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.08), transparent);
+  pointer-events: none;
+}
+
+.login-card__emblem {
+  display: block;
+  width: 4.4rem;
+  height: 4.4rem;
+  margin: 0 auto 0.7rem;
+  filter: drop-shadow(0 8px 16px rgb(0 0 0 / 0.35));
+}
+
+.login-card__kicker {
+  margin: 0;
+  text-align: center;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(240 193 75 / 0.78);
+}
+
+.login-card h1 {
+  margin: 0.2rem 0 0.25rem;
+  text-align: center;
+  font-family: Cinzel, Georgia, serif;
+  font-size: clamp(1.55rem, 3vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fff8e7;
+}
+
+.login-card__subtitle {
+  margin: 0 0 1.15rem;
+  text-align: center;
+  color: #b7c3d6;
+  font-size: 0.95rem;
+}
+
+.login-card__alert,
+.login-card__hint {
+  margin: 0 0 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.7rem;
+  font-size: 0.9rem;
+}
+
+.login-card__alert {
+  background: rgb(180 35 24 / 0.18);
+  color: #fecaca;
+  border: 1px solid rgb(248 113 113 / 0.28);
+}
+
+.login-card__hint {
+  background: rgb(240 193 75 / 0.1);
+  color: #f6e7b2;
+  border: 1px solid rgb(240 193 75 / 0.22);
+}
+
+.login-card form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.login-card label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #e8eef8;
+}
+
+.login-card__field {
+  position: relative;
+  display: block;
+}
+
+.login-card__field svg {
+  position: absolute;
+  top: 50%;
+  left: 0.8rem;
+  width: 1rem;
+  height: 1rem;
+  color: #93a4be;
+  translate: 0 -50%;
+  pointer-events: none;
+}
+
+.login-card input {
+  width: 100%;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 0.8rem;
+  padding: 0.78rem 0.8rem 0.78rem 2.3rem;
+  background: rgb(6 10 18 / 0.45);
+  color: #f8fafc;
+  font: inherit;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.login-card input::placeholder {
+  color: #7f8da3;
+}
+
+.login-card input:focus {
+  outline: none;
+  border-color: rgb(240 193 75 / 0.7);
+  background: rgb(8 14 24 / 0.7);
+  box-shadow: 0 0 0 4px rgb(240 193 75 / 0.16);
+  transform: translateY(-1px);
+}
+
+.login-card__reveal {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  translate: 0 -50%;
+  border: 0;
+  background: transparent;
+  color: #c9d4e6;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.4rem;
+  cursor: pointer;
+}
+
+.login-card__submit,
+.login-card__google {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.85rem;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease,
+    background 0.2s ease;
+}
+
+.login-card__submit {
+  margin-top: 0.25rem;
+  border: 0;
+  background: linear-gradient(180deg, #ffd56a, var(--gold) 46%, var(--gold-deep));
+  color: #1a1408;
+  box-shadow: 0 10px 24px rgb(240 193 75 / 0.22);
+}
+
+.login-card__submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow:
+    0 0 0 4px rgb(240 193 75 / 0.16),
+    0 14px 28px rgb(240 193 75 / 0.3);
+}
+
+.login-card__submit:disabled {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+.login-card__arrow {
+  font-weight: 500;
+}
+
+.login-card__spinner {
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 2px solid rgb(26 20 8 / 0.2);
+  border-top-color: #1a1408;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.login-card__divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0 0.85rem;
+  color: #8b9bb3;
+  font-size: 0.78rem;
+}
+
+.login-card__divider::before,
+.login-card__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgb(255 255 255 / 0.12);
+}
+
+.login-card__google {
+  border: 1px solid rgb(255 255 255 / 0.16);
+  background: rgb(255 255 255 / 0.06);
+  color: #f3f6fb;
+  letter-spacing: 0;
+  font-weight: 700;
+}
+
+.login-card__google:hover {
+  transform: translateY(-1px);
+  background: rgb(255 255 255 / 0.1);
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 0.06);
+}
+
+.login-card__google-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.login-card__links {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.login-card__link {
+  border: 0;
+  background: transparent;
+  color: #b7c3d6;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0;
+  cursor: pointer;
+}
+
+.login-card__link:hover,
+.login-card__reveal:hover {
+  color: #fff;
+}
+
+.login-card__link--accent {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.login-card__install {
+  display: block;
+  width: 100%;
+  margin-top: 0.85rem;
+  text-align: center;
+  color: #ffe9a8;
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes sceneFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sceneRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes starTwinkle {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes shootingStar {
+  0%,
+  84% {
+    opacity: 0;
+    transform: rotate(-18deg) translate3d(0, 0, 0);
+  }
+  86% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(-18deg) translate3d(110vw, 28vh, 0);
+  }
+}
+
+@keyframes moonPulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes mountainDrift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-22px, 0, 0);
+  }
+}
+
+@keyframes treeSway {
+  0%,
+  100% {
+    transform: rotate(-0.7deg);
+  }
+  50% {
+    transform: rotate(0.9deg);
+  }
+}
+
+@keyframes fogDrift {
+  0% {
+    transform: translate3d(-8%, 0, 0);
+  }
+  100% {
+    transform: translate3d(8%, 0, 0);
+  }
+}
+
+@keyframes flagWind {
+  0%,
+  100% {
+    transform: perspective(280px) rotateY(-8deg) skewY(-2deg);
+  }
+  50% {
+    transform: perspective(280px) rotateY(10deg) skewY(3deg);
+  }
+}
+
+@keyframes explorerBreath {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes scarfWind {
+  0%,
+  100% {
+    transform: skewX(0deg);
+  }
+  50% {
+    transform: skewX(5deg);
+  }
+}
+
+@keyframes campfireWake {
+  from {
+    opacity: 0;
+    filter: brightness(0.2);
+  }
+  to {
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+
+@keyframes flameDance {
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1);
+  }
+  40% {
+    transform: translateX(2px) scaleY(1.12) scaleX(0.92);
+  }
+  70% {
+    transform: translateX(-2px) scaleY(0.9) scaleX(1.08);
+  }
+}
+
+@keyframes fireAmbient {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes sparkRise {
+  0% {
+    opacity: 0.9;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(8px, -78px, 0) scale(0.4);
+  }
+}
+
+@keyframes fireflyA {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: translate3d(0, 0, 0);
+  }
+  35% {
+    opacity: 0.9;
+    transform: translate3d(22px, -18px, 0);
+  }
+  70% {
+    opacity: 0.25;
+    transform: translate3d(-12px, -8px, 0);
+  }
+}
+
+@keyframes fireflyB {
+  0%,
+  100% {
+    opacity: 0.1;
+    transform: translate3d(0, 0, 0);
+  }
+  40% {
+    opacity: 0.85;
+    transform: translate3d(-18px, -24px, 0);
+  }
+  75% {
+    opacity: 0.2;
+    transform: translate3d(16px, -6px, 0);
+  }
+}
+
+@keyframes fireflyC {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: translate3d(0, 0, 0);
+  }
+  30% {
+    opacity: 0.8;
+    transform: translate3d(10px, 14px, 0);
+  }
+  65% {
+    opacity: 0.3;
+    transform: translate3d(-20px, -16px, 0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1024px) {
+  .login-scene__content {
+    justify-content: center;
+    padding: 1.25rem;
+  }
+
+  .login-scene__copy,
+  .login-explorer,
+  .login-flags,
+  .login-forest,
+  .login-mountains__layer--far {
+    display: none;
+  }
+
+  .login-campfire {
+    left: 8%;
+    bottom: 8%;
+    transform: scale(0.85);
+  }
+}
+
+@media (max-width: 720px) {
+  .login-scene__content {
+    align-items: flex-end;
+    padding: 0.9rem 0.9rem 1.1rem;
+  }
+
+  .login-mountains,
+  .login-flags,
+  .login-particles,
+  .login-fog__layer--far,
+  .login-fog__layer--mid {
+    display: none;
+  }
+
+  .login-card {
+    width: 100%;
+    padding: 1.45rem 1.15rem 1.15rem;
+    animation-delay: 0.35s;
+  }
+
+  .login-campfire {
+    left: 50%;
+    bottom: auto;
+    top: 9%;
+    translate: -50% 0;
+    transform: scale(0.62);
+    opacity: 0.85;
+  }
+
+  .login-moon {
+    inset: 5% auto auto 8%;
+    width: 58px;
+    height: 58px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-scene *,
+  .login-scene *::before,
+  .login-scene *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .login-card,
+  .login-sky,
+  .login-mountains,
+  .login-forest,
+  .login-fog,
+  .login-campfire,
+  .login-particles,
+  .login-explorer,
+  .login-flags,
+  .login-moon,
+  .login-scene__copy {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

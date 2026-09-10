@@ -2,6 +2,15 @@
 
 Front React que consume el API de ProjectJA (`/api/v1`). Esta primera versión incluye solo el login.
 
+## Requisitos
+
+Node `^20.19` o `>=22.12` (Vite 8). En esta carpeta hay un `.nvmrc` con `22`.
+
+```bash
+nvm install 22
+nvm use 22
+```
+
 ## Desarrollo
 
 1. El back de ProjectJA debe estar en `http://127.0.0.1:8000`.
@@ -14,6 +23,12 @@ npm run dev
 ```
 
 Abre `http://localhost:5173`, inicia sesión y, si el usuario tiene varios roles, elige el contexto.
+
+## PWA
+
+La app se puede instalar en el teléfono o el escritorio. El service worker se genera en el build (`npm run build` + `npm run preview` o Docker). En desarrollo (`npm run dev`) no se registra, para no interferir con Vite.
+
+En Chrome o Edge, usa **Instalar aplicación** cuando el navegador lo ofrezca, o el icono de instalar en la barra de direcciones. En iPhone: Compartir → Añadir a pantalla de inicio.
 
 ## Docker
 
