@@ -12,4 +12,6 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/40-clubes-api-url.sh /docker-entrypoint.d/40-clubes-api-url.sh
+RUN chmod +x /docker-entrypoint.d/40-clubes-api-url.sh
 COPY --from=frontend /app/dist /usr/share/nginx/html

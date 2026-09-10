@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { resolveApiBaseUrl } from '../api/baseUrl'
 import { authApi } from '../api/auth'
 import { useAuth } from '../auth/AuthProvider'
 import { usePwaInstall } from '../pwa/usePwaInstall'
@@ -10,7 +11,7 @@ import './admin.css'
 function resolveFileUrl(value: string | null | undefined): string | null {
   if (!value) return null
   if (/^https?:\/\//i.test(value)) return value
-  const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
+  const base = resolveApiBaseUrl()
   return `${base}${value.startsWith('/') ? value : `/${value}`}`
 }
 

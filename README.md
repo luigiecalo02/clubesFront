@@ -24,19 +24,13 @@ npm run dev
 
 Abre `http://localhost:5173`, inicia sesión y, si el usuario tiene varios roles, elige el contexto.
 
-## PWA
-
-La app se puede instalar en el teléfono o el escritorio. El service worker se genera en el build (`npm run build` + `npm run preview` o Docker). En desarrollo (`npm run dev`) no se registra, para no interferir con Vite.
-
-En Chrome o Edge, usa **Instalar aplicación** cuando el navegador lo ofrezca, o el icono de instalar en la barra de direcciones. En iPhone: Compartir → Añadir a pantalla de inicio.
-
 ## Docker
 
 ```bash
 docker compose up --build
 ```
 
-Queda en `http://localhost:4173`. `VITE_API_URL` se fija en el build.
+Queda en `http://localhost:4173`. En Docker/Dokploy, `VITE_API_URL` se lee al **arrancar** el contenedor (Environment). No hace falta rebuild si solo cambias esa URL.
 
 ## API
 

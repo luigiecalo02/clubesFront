@@ -1,10 +1,11 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import type { ApiEnvelope } from './types'
+import { resolveApiBaseUrl } from './baseUrl'
 
 export const TOKEN_KEY = 'clubes_token'
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000',
+  baseURL: resolveApiBaseUrl(),
   timeout: 30000,
   headers: {
     Accept: 'application/json',
