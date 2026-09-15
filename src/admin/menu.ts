@@ -17,9 +17,11 @@ export type AdminIconName =
   | 'idCard'
   | 'group'
   | 'calendar'
+  | 'check'
   | 'tags'
   | 'box'
   | 'map'
+  | 'grid'
 
 export const ADMIN_MENU: AdminMenuItem[] = [
   {
@@ -48,7 +50,7 @@ export const ADMIN_MENU: AdminMenuItem[] = [
     label: 'Configuración',
     permission: 'settings.view',
     icon: 'cog',
-    description: 'Correo de la plataforma y apariencia del inicio de sesión.',
+    description: 'Apariencia y textos del club en este front. Cada organización tiene la suya.',
   },
   {
     path: '/clubes',
@@ -93,6 +95,20 @@ export const ADMIN_MENU: AdminMenuItem[] = [
     description: 'Gestión de eventos del club.',
   },
   {
+    path: '/cronograma',
+    label: 'Cronograma',
+    permission: 'events.view',
+    icon: 'grid',
+    description: 'Calendario mensual de los eventos a tu alcance, con resumen e imágenes.',
+  },
+  {
+    path: '/asistencia',
+    label: 'Asistencia',
+    permission: 'asistencia.view',
+    icon: 'check',
+    description: 'Relaciona la asistencia de un evento con los integrantes del club.',
+  },
+  {
     path: '/eventos/catalogos',
     label: 'Categorías y criterios',
     permission: 'events.update',
@@ -122,8 +138,48 @@ export const ADMIN_MENU: AdminMenuItem[] = [
   },
 ]
 
-export function visibleMenu(can: (permission: string) => boolean): AdminMenuItem[] {
-  return ADMIN_MENU.filter((item) => can(item.permission))
+export function isClubDirectorRole(rolName: string | null | undefined): boolean {
+  return rolName === 'director'
+}
+
+export function canAccessClubSettings(options?: {
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  return isClubDirectorRole(options?.rolName) && Boolean(options?.organizacionId)
+}
+
+export function canAccessClubAttendance(options?: {
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  return Boolean(options?.organizacionId) && ['director', 'subdirector', 'secretario'].includes(options?.rolName ?? '')
+}
+
+export function canCreateClubEvent(options?: {
+  can?: (permission: string) => boolean
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  if (options?.can?.('events.create') || options?.can?.('events.view')) return true
+  return Boolean(options?.organizacionId) && ['director', 'subdirector', 'secretario', 'tesorero'].includes(
+    options?.rolName ?? '',
+  )
+}
+
+export function visibleMenu(
+  can: (permission: string) => boolean,
+  options?: { rolName?: string | null; organizacionId?: number | null },
+): AdminMenuItem[] {
+  return ADMIN_MENU.filter((item) => {
+    if (item.path === '/configuracion') {
+      return canAccessClubSettings(options)
+    }
+    if (item.path === '/asistencia') {
+      return canAccessClubAttendance(options) || can(item.permission)
+    }
+    return can(item.permission)
+  })
 }
 
 export function findMenuItem(pathname: string): AdminMenuItem | undefined {

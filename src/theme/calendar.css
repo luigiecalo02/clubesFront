@@ -1,0 +1,329 @@
+.admin-page--calendar {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.admin-calendar {
+  --panel-padding: 1.1rem 1.1rem 1.2rem;
+}
+
+.admin-calendar__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 0.85rem;
+}
+
+.admin-calendar__toolbar h2 {
+  margin: 0;
+  text-align: left;
+  font-size: 1.25rem;
+}
+
+.admin-calendar__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.admin-calendar__nav button {
+  width: auto;
+  min-height: 2.3rem;
+  padding: 0 0.9rem;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.admin-calendar__summary {
+  margin: 0 0 0.75rem;
+  color: var(--panel-muted);
+  font-size: 0.82rem;
+}
+
+.admin-calendar__week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 1px;
+}
+
+.admin-calendar__week span {
+  padding: 0.35rem 0.4rem;
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--panel-divider);
+  border: 1px solid var(--panel-divider);
+  border-radius: 0.8rem;
+  overflow: hidden;
+}
+
+.admin-calendar__day {
+  position: relative;
+  min-height: 7.8rem;
+  display: grid;
+  align-content: start;
+  gap: 0.28rem;
+  padding: 0.35rem;
+  border: 0;
+  background: var(--panel-input-bg);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-calendar__day.is-full,
+.admin-calendar__day.is-split {
+  overflow: hidden;
+}
+
+.admin-calendar__day.is-full {
+  padding: 0;
+}
+
+.admin-calendar__day.is-split {
+  align-content: stretch;
+  grid-template-rows: auto minmax(2.4rem, 1fr) minmax(2.4rem, 1fr) auto;
+  gap: 0.2rem;
+  padding: 0.25rem;
+}
+
+.admin-calendar__day.is-out {
+  opacity: 0.45;
+}
+
+.admin-calendar__day.is-today .admin-calendar__num {
+  background: var(--panel-gold);
+  color: var(--panel-btn-text);
+}
+
+.admin-calendar__day.is-full.is-span-start,
+.admin-calendar__day.is-full.is-span-mid {
+  z-index: 1;
+  margin-right: -1px;
+}
+
+.admin-calendar__day.is-on {
+  z-index: 3;
+  box-shadow: inset 0 0 0 2px var(--panel-gold);
+}
+
+.admin-calendar__num {
+  width: 1.45rem;
+  height: 1.45rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--panel-title);
+  font-size: 0.75rem;
+}
+
+.admin-calendar__day.is-full .admin-calendar__num,
+.admin-calendar__day.is-split .admin-calendar__num {
+  z-index: 3;
+  background: rgb(8 14 24 / 0.62);
+  color: #fff;
+}
+
+.admin-calendar__day.is-full .admin-calendar__num {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+}
+
+.admin-calendar__chip {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  align-content: end;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-left: 3px solid var(--chip, var(--panel-gold));
+  border-radius: 0.28rem;
+  background: color-mix(in srgb, var(--chip, var(--panel-gold)) 22%, var(--panel-input-bg));
+  color: #fff;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.admin-calendar__chip-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-calendar__chip.is-span .admin-calendar__chip-cover,
+.admin-calendar__chip.is-span em {
+  inset: unset;
+  left: calc(var(--span-i) * -100% - var(--span-i) * 1px);
+  width: calc(var(--span-len) * 100% + (var(--span-len) - 1) * 1px);
+}
+
+.admin-calendar__chip.is-span .admin-calendar__chip-cover {
+  top: 0;
+  height: 100%;
+}
+
+.admin-calendar__chip.is-span em {
+  position: absolute;
+  bottom: 0;
+  z-index: 1;
+  display: block;
+  padding: 1.2rem 0.5rem 0.35rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+.admin-calendar__chip.is-span-mid,
+.admin-calendar__chip.is-span-end {
+  border-left-color: transparent;
+}
+
+.admin-calendar__chip-logo {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  z-index: 2;
+  width: 1.55rem;
+  height: 1.55rem;
+  object-fit: contain;
+  border-radius: 0.35rem;
+  background: rgb(255 255 255 / 0.92);
+  border: 1px solid rgb(255 255 255 / 0.7);
+}
+
+.admin-calendar__chip em {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 1.1rem 0.35rem 0.3rem;
+  font-style: normal;
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.75);
+  background: linear-gradient(transparent, rgb(8 14 24 / 0.82));
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.admin-calendar__chip:not(.is-cover) {
+  color: var(--panel-title);
+}
+
+.admin-calendar__chip:not(.is-cover) em {
+  color: var(--panel-title);
+  text-shadow: none;
+  background: transparent;
+  padding: 0.25rem 0.35rem;
+}
+
+.admin-calendar__chip.is-full {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.admin-calendar__chip.is-full .admin-calendar__chip-logo {
+  top: 0.3rem;
+  right: 0.3rem;
+  width: 1.85rem;
+  height: 1.85rem;
+}
+
+.admin-calendar__chip.is-split {
+  min-height: 2.4rem;
+  height: 100%;
+}
+
+.admin-calendar__chip.is-split .admin-calendar__chip-logo {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.admin-calendar__more {
+  margin: 0;
+  color: var(--panel-muted);
+  font-size: 0.68rem;
+}
+
+.admin-calendar-detail .app-panel__title {
+  font-size: 1.15rem;
+}
+
+.admin-calendar-detail__banner {
+  display: block;
+  width: calc(100% + 3.4rem);
+  max-height: 8.5rem;
+  margin: -2rem -1.7rem 0.8rem;
+  object-fit: cover;
+  border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+}
+
+.admin-calendar-detail__logo {
+  display: block;
+  width: 4rem;
+  height: 4rem;
+  margin: 0 0 0.55rem;
+  object-fit: contain;
+  border-radius: 0.8rem;
+  background: var(--panel-input-bg);
+  border: 1px solid var(--panel-input-border);
+}
+
+.admin-calendar-detail__meta {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 0.8rem;
+}
+
+.admin-calendar-detail__meta p {
+  display: grid;
+  grid-template-columns: 1rem 1fr;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--panel-muted);
+  font-size: 0.82rem;
+}
+
+.admin-calendar-detail__meta .admin-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--panel-icon);
+}
+
+@media (min-width: 980px) {
+  .admin-page--calendar {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+    align-items: start;
+  }
+}
+
+@media (max-width: 820px) {
+  .admin-calendar__scroller {
+    overflow-x: auto;
+  }
+
+  .admin-calendar__week,
+  .admin-calendar__grid {
+    min-width: 38rem;
+  }
+}

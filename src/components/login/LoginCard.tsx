@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { usePwaInstall } from '../../pwa/usePwaInstall'
+import { AppPanel } from '../../theme/AppPanel'
 
 type LoginCardProps = {
   email: string
@@ -7,6 +8,11 @@ type LoginCardProps = {
   error: string
   hint: string
   submitting: boolean
+  kicker: string
+  title: string
+  subtitle: string
+  organizationName?: string | null
+  logoUrl?: string | null
   onEmailChange: (value: string) => void
   onPasswordChange: (value: string) => void
   onSubmit: (event: FormEvent) => void
@@ -15,7 +21,17 @@ type LoginCardProps = {
   onCreateAccount: () => void
 }
 
-function Emblem() {
+function Emblem({ logoUrl }: { logoUrl?: string | null }) {
+  if (logoUrl) {
+    return (
+      <img
+        className="login-card__emblem login-card__emblem--photo"
+        src={logoUrl}
+        alt=""
+      />
+    )
+  }
+
   return (
     <svg className="login-card__emblem" viewBox="0 0 88 88" aria-hidden="true">
       <circle cx="44" cy="44" r="42" fill="#111827" stroke="#f0c14b" strokeWidth="2.2" />
@@ -64,6 +80,11 @@ export function LoginCard({
   error,
   hint,
   submitting,
+  kicker,
+  title,
+  subtitle,
+  organizationName,
+  logoUrl,
   onEmailChange,
   onPasswordChange,
   onSubmit,
@@ -75,12 +96,14 @@ export function LoginCard({
   const pwa = usePwaInstall()
 
   return (
-    <section className="login-card">
-      <div className="login-card__shine" aria-hidden="true" />
-      <Emblem />
-      <p className="login-card__kicker">Club de Conquistadores</p>
-      <h1>CONQUISTADORES</h1>
-      <p className="login-card__subtitle">Conectados con la misión</p>
+    <AppPanel className="login-card" narrow>
+      <Emblem logoUrl={logoUrl} />
+      <p className="login-card__kicker">{kicker}</p>
+      <h1>{title}</h1>
+      <p className="login-card__subtitle">{subtitle}</p>
+      {organizationName ? (
+        <p className="login-card__org">{organizationName}</p>
+      ) : null}
 
       {error ? (
         <p className="login-card__alert" role="alert">
@@ -96,7 +119,7 @@ export function LoginCard({
       <form onSubmit={onSubmit} aria-busy={submitting}>
         <label>
           Correo electrónico
-          <span className="login-card__field">
+          <span className="app-panel__field login-card__field">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fill="currentColor"
@@ -116,7 +139,7 @@ export function LoginCard({
 
         <label>
           Contraseña
-          <span className="login-card__field">
+          <span className="app-panel__field login-card__field">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fill="currentColor"
@@ -181,6 +204,6 @@ export function LoginCard({
           Instalar aplicación
         </button>
       ) : null}
-    </section>
+    </AppPanel>
   )
 }

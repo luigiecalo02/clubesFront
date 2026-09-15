@@ -18,9 +18,11 @@ const PATHS: Record<AdminIconName, string> = {
     'M8 11a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm8 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6zM3 19c1.2-2.6 3.6-4 6-4s4.8 1.4 6 4M14 15c1.6 0 3.3.8 4.6 2.4',
   calendar:
     'M7 4v2m10-2v2M5 8h14M6 6h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z',
+  check: 'M9 11l3 3 8-8M5 19V5a1 1 0 0 1 1-1h8',
   tags: 'M4 10.5 10.5 4H16v5.5L9.5 16 4 10.5zM14 7.5h.01',
   box: 'M4 8l8-4 8 4v10l-8 4-8-4zM4 8l8 4 8-4M12 12v10',
   map: 'M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11zm0-8.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z',
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
 }
 
 export function AdminIcon({ name }: { name: AdminIconName }) {

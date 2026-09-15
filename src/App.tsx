@@ -6,42 +6,107 @@ import { RequirePermission } from './admin/RequirePermission'
 import { AuthProvider } from './auth/AuthProvider'
 import { ContextPage } from './pages/ContextPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { ActivateAccountPage } from './pages/ActivateAccountPage'
+import { ConfirmAccountPage } from './pages/ConfirmAccountPage'
 import { LoginPage } from './pages/LoginPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { ModulePage } from './pages/ModulePage'
+import { AttendancePage } from './pages/AttendancePage'
+import { CalendarPage } from './pages/CalendarPage'
+import { EventsPage } from './pages/EventsPage'
+import { MyClubPage } from './pages/MyClubPage'
+import { SettingsPage } from './pages/SettingsPage'
+import { ClubesSettingsProvider } from './settings/ClubesSettingsProvider'
 
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/contexto"
-            element={
-              <div className="app-shell">
-                <ContextPage />
-              </div>
-            }
-          />
-          <Route element={<RequireAuth />}>
-            <Route element={<AdminLayout />}>
-              <Route path="/" element={<DashboardPage />} />
-              {ADMIN_MENU.filter((item) => item.path !== '/').map((item) => (
+      <ClubesSettingsProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/login/:orgId" element={<LoginPage />} />
+            <Route path="/restablecer-contrasena" element={<ResetPasswordPage />} />
+            <Route path="/confirmar-cuenta" element={<ConfirmAccountPage />} />
+            <Route path="/activar" element={<ActivateAccountPage />} />
+            <Route
+              path="/contexto"
+              element={
+                <div className="app-shell">
+                  <ContextPage />
+                </div>
+              }
+            />
+            <Route element={<RequireAuth />}>
+              <Route element={<AdminLayout />}>
+                <Route path="/" element={<DashboardPage />} />
                 <Route
-                  key={item.path}
-                  path={item.path}
+                  path="/configuracion"
                   element={
-                    <RequirePermission permission={item.permission}>
-                      <ModulePage item={item} />
+                    <RequirePermission permission="settings.view" requireOrgSettings>
+                      <SettingsPage />
                     </RequirePermission>
                   }
                 />
-              ))}
+                <Route
+                  path="/mi-club"
+                  element={
+                    <RequirePermission permission="mi_club.view">
+                      <MyClubPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="/eventos"
+                  element={
+                    <RequirePermission permission="events.view">
+                      <EventsPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="/cronograma"
+                  element={
+                    <RequirePermission permission="events.view">
+                      <CalendarPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="/asistencia"
+                  element={
+                    <RequirePermission permission="asistencia.view" requireAttendance>
+                      <AttendancePage />
+                    </RequirePermission>
+                  }
+                />
+                {ADMIN_MENU.filter(
+                  (item) =>
+                    item.path !== '/' &&
+                    item.path !== '/configuracion' &&
+                    item.path !== '/mi-club' &&
+                    item.path !== '/eventos' &&
+                    item.path !== '/cronograma' &&
+                    item.path !== '/asistencia',
+                ).map(
+                  (item) => (
+                    <Route
+                      key={item.path}
+                      path={item.path}
+                      element={
+                        <RequirePermission permission={item.permission}>
+                          <ModulePage item={item} />
+                        </RequirePermission>
+                      }
+                    />
+                  ),
+                )}
+              </Route>
             </Route>
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ClubesSettingsProvider>
     </AuthProvider>
   )
 }

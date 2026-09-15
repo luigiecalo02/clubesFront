@@ -44,4 +44,34 @@ export const authApi = {
     const { data } = await api.post<ApiEnvelope<AuthUser>>('/api/v1/auth/context', payload)
     return data.data
   },
+
+  async forgotPassword(email: string, organizacionId?: number | null): Promise<{ email_masked?: string }> {
+    const { data } = await api.post<ApiEnvelope<{ email_masked?: string }>>('/api/v1/auth/password/forgot', {
+      email,
+      ...(organizacionId ? { organizacion_id: organizacionId } : {}),
+    })
+    return data.data ?? {}
+  },
+
+  async verifyEmail(id: number, hash: string): Promise<void> {
+    await api.post('/api/v1/auth/email/verify', { id, hash })
+  },
+
+  async resendVerification(email: string): Promise<void> {
+    await api.post('/api/v1/auth/email/resend', { email })
+  },
+
+  async resetPassword(payload: {
+    email: string
+    token: string
+    password: string
+    password_confirmation: string
+    organizacion_id?: number | null
+  }): Promise<{ token?: string } | null> {
+    const { data } = await api.post<ApiEnvelope<{ token?: string } | null>>(
+      '/api/v1/auth/password/reset',
+      payload,
+    )
+    return data.data
+  },
 }

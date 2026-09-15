@@ -1,0 +1,249 @@
+.attendance-mark__avatar {
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel-gold) 16%, var(--panel-input-bg));
+  color: var(--panel-title);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.attendance-mark {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-height: 0;
+}
+
+.attendance-mark__toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 10rem);
+  gap: 0.55rem;
+  align-items: end;
+}
+
+.attendance-mark__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.attendance-mark__stat {
+  padding: 0.45rem 0.3rem 0.4rem;
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  border: 1.5px solid var(--panel-input-border);
+  text-align: center;
+}
+
+.attendance-mark__stat strong {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--panel-title);
+}
+
+.attendance-mark__stat span {
+  color: var(--panel-muted);
+  font-size: 0.7rem;
+}
+
+.attendance-mark__stat--presente strong {
+  color: var(--panel-ok-text);
+}
+
+.attendance-mark__stat--ausente strong {
+  color: var(--panel-alert-text);
+}
+
+.attendance-mark__stat--justificado strong {
+  color: var(--panel-gold);
+}
+
+.attendance-mark__search {
+  margin: 0;
+}
+
+.attendance-mark__bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.attendance-mark__bulk .app-panel__btn--ghost {
+  width: auto;
+  min-height: 2.2rem;
+  padding: 0 0.85rem;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.attendance-mark__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.2rem, 1fr));
+  gap: 0.5rem;
+  align-content: start;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.1rem;
+}
+
+.attendance-mark__card {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+  padding: 0.65rem 0.45rem 0.55rem;
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  border: 1.5px solid var(--panel-input-border);
+  animation: attendance-in 0.32s ease both;
+}
+
+.attendance-mark__card.is-presente {
+  border-color: color-mix(in srgb, var(--panel-ok-text) 55%, var(--panel-input-border));
+}
+
+.attendance-mark__card.is-justificado {
+  border-color: color-mix(in srgb, var(--panel-gold) 55%, var(--panel-input-border));
+}
+
+.attendance-mark__card p {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--panel-title);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.attendance-mark__icons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.attendance-mark__icon {
+  width: 2.15rem;
+  height: 2.15rem;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--panel-icon);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.attendance-mark__icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.attendance-mark__icon:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.attendance-mark__icon:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--panel-gold) 45%, var(--panel-input-border));
+}
+
+.attendance-mark__icon.is-on {
+  animation: attendance-pop 0.28s ease;
+}
+
+.attendance-mark__icon--presente.is-on {
+  background: color-mix(in srgb, var(--panel-ok-text) 18%, var(--panel-input-bg));
+  border-color: var(--panel-ok-text);
+  color: var(--panel-ok-text);
+}
+
+.attendance-mark__icon--justificado.is-on {
+  background: color-mix(in srgb, var(--panel-gold) 20%, var(--panel-input-bg));
+  border-color: var(--panel-gold);
+  color: var(--panel-gold);
+}
+
+.attendance-events {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 0.1rem 0.1rem 0.35rem;
+  margin: 0 0 0.15rem;
+}
+
+.attendance-events__chip {
+  flex: 0 0 auto;
+  max-width: 11.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  color: var(--panel-title);
+  text-align: left;
+  cursor: pointer;
+}
+
+.attendance-events__chip strong,
+.attendance-events__chip small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendance-events__chip strong {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.attendance-events__chip small {
+  margin-top: 0.15rem;
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+}
+
+.attendance-events__chip.is-on {
+  border-color: var(--panel-gold);
+  box-shadow: 0 0 0 3px var(--panel-focus-ring);
+}
+
+@keyframes attendance-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes attendance-pop {
+  0% {
+    transform: scale(0.9);
+  }
+  55% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  .attendance-mark__toolbar {
+    grid-template-columns: 1fr;
+  }
+}

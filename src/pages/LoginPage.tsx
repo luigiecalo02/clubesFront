@@ -1,33 +1,41 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { resolveClubRootId, resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
+import { settingsApi } from '../api/settings'
+import { DEFAULT_LOGIN_BRANDING, type ClubesPublicBranding } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
+import { AdventureScene } from '../components/login/AdventureScene'
 import { AnimatedSky } from '../components/login/AnimatedSky'
-import { Campfire } from '../components/login/Campfire'
-import { Explorer } from '../components/login/Explorer'
-import { Flags } from '../components/login/Flags'
-import { Fog } from '../components/login/Fog'
-import { Forest } from '../components/login/Forest'
+import { ForgotPasswordCard } from '../components/login/ForgotPasswordCard'
 import { LoginCard } from '../components/login/LoginCard'
-import { Moon } from '../components/login/Moon'
-import { Mountains } from '../components/login/Mountains'
-import { Particles } from '../components/login/Particles'
-import { Stars } from '../components/login/Stars'
-import '../components/login/login-scene.css'
+import { RegisterCard } from '../components/login/RegisterCard'
+import { SceneThemeToggle } from '../theme/SceneThemeToggle'
+import { useSceneTheme } from '../theme/sceneTheme'
 
 const UNAVAILABLE_HINT =
   'Esta opción se habilitará pronto. Por ahora ingresa con tu correo de ProjectJA.'
+
+function parseOrgId(value: string | undefined): number | null {
+  if (!value) return null
+  const parsed = Number.parseInt(value, 10)
+  return Number.isInteger(parsed) && parsed > 0 && String(parsed) === value ? parsed : null
+}
 
 export function LoginPage() {
   const auth = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const sceneRef = useRef<HTMLDivElement>(null)
+  const { orgId: orgIdParam } = useParams()
+  const orgId = parseOrgId(orgIdParam) ?? resolveClubRootId()
+  const { theme, toggleTheme } = useSceneTheme()
+  const [branding, setBranding] = useState<ClubesPublicBranding>(DEFAULT_LOGIN_BRANDING)
   const redirectTo =
     typeof (location.state as { from?: string } | null)?.from === 'string'
       ? (location.state as { from: string }).from
       : '/'
 
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -35,33 +43,23 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    const root = sceneRef.current
-    if (!root) return
-
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce), (hover: none)')
-    if (reduced.matches) return
-
-    let frame = 0
-    const onMove = (event: PointerEvent) => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const x = (event.clientX / window.innerWidth - 0.5) * 2
-        const y = (event.clientY / window.innerHeight - 0.5) * 2
-        root.style.setProperty('--px', x.toFixed(3))
-        root.style.setProperty('--py', y.toFixed(3))
+    let cancelled = false
+    settingsApi
+      .publicBranding(orgId)
+      .then((next) => {
+        if (!cancelled) setBranding(next)
       })
-    }
-
-    window.addEventListener('pointermove', onMove, { passive: true })
+      .catch(() => {
+        if (!cancelled) setBranding(DEFAULT_LOGIN_BRANDING)
+      })
     return () => {
-      cancelAnimationFrame(frame)
-      window.removeEventListener('pointermove', onMove)
+      cancelled = true
     }
-  }, [auth.loading, auth.user])
+  }, [orgId])
 
   if (auth.loading) {
     return (
-      <div className="login-scene login-scene--booting">
+      <div className={`login-scene login-scene--booting${theme === 'day' ? ' login-scene--day' : ''}`}>
         <AnimatedSky />
         <p className="login-scene__status">Cargando sesión…</p>
       </div>
@@ -89,48 +87,74 @@ export function LoginPage() {
   }
 
   return (
-    <div className="login-scene" ref={sceneRef}>
-      <AnimatedSky />
-      <Stars />
-      <Moon />
-      <Mountains />
-      <Forest />
-      <Fog />
-      <Flags />
-      <div className="login-scene__ground" aria-hidden="true" />
-      <Explorer />
-      <Campfire />
-      <Particles />
-
-      <div className="login-scene__copy">
-        <p>Disciplina · Servicio · Amor</p>
-        <h2>Una misión, un propósito</h2>
+    <AdventureScene
+      theme={theme}
+      showCopy
+      copy={{ values: branding.clubes.values, motto: branding.clubes.motto }}
+      backgroundUrl={resolveFileUrl(branding.background_url || branding.clubes.background_url)}
+    >
+      <SceneThemeToggle theme={theme} onToggle={toggleTheme} />
+      <div
+        className={`login-scene__content${
+          mode === 'register' || mode === 'forgot' ? ' login-scene__content--form' : ''
+        }`}
+      >
+        {mode === 'forgot' ? (
+          <ForgotPasswordCard
+            logoUrl={resolveFileUrl(branding.clubes.logo_url || branding.logo_url)}
+            initialEmail={email}
+            onCancel={() => {
+              setMode('login')
+              setError('')
+              setHint('')
+            }}
+          />
+        ) : mode === 'register' ? (
+          <RegisterCard
+            logoUrl={resolveFileUrl(branding.clubes.logo_url || branding.logo_url)}
+            onCancel={() => {
+              setMode('login')
+              setError('')
+              setHint('')
+            }}
+            onRegistered={(nextEmail) => {
+              setEmail(nextEmail)
+              setPassword('')
+              setHint('Confirma tu correo para activar la cuenta. Hasta entonces permanecerá inactiva.')
+            }}
+          />
+        ) : (
+          <LoginCard
+            email={email}
+            password={password}
+            error={error}
+            hint={hint}
+            submitting={submitting}
+            kicker={branding.clubes.kicker}
+            title={branding.clubes.title}
+            subtitle={branding.clubes.subtitle}
+            organizationName={branding.organizacion_nombre}
+            logoUrl={resolveFileUrl(branding.clubes.logo_url || branding.logo_url)}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+            onSubmit={onSubmit}
+            onGoogle={() => {
+              setError('')
+              setHint(UNAVAILABLE_HINT)
+            }}
+            onForgotPassword={() => {
+              setError('')
+              setHint('')
+              setMode('forgot')
+            }}
+            onCreateAccount={() => {
+              setError('')
+              setHint('')
+              setMode('register')
+            }}
+          />
+        )}
       </div>
-
-      <div className="login-scene__content">
-        <LoginCard
-          email={email}
-          password={password}
-          error={error}
-          hint={hint}
-          submitting={submitting}
-          onEmailChange={setEmail}
-          onPasswordChange={setPassword}
-          onSubmit={onSubmit}
-          onGoogle={() => {
-            setError('')
-            setHint(UNAVAILABLE_HINT)
-          }}
-          onForgotPassword={() => {
-            setError('')
-            setHint(UNAVAILABLE_HINT)
-          }}
-          onCreateAccount={() => {
-            setError('')
-            setHint(UNAVAILABLE_HINT)
-          }}
-        />
-      </div>
-    </div>
+    </AdventureScene>
   )
 }

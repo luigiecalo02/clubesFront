@@ -1,26 +1,38 @@
 import { Link } from 'react-router-dom'
+import { resolveFileUrl } from '../api/baseUrl'
 import { AdminIcon } from '../admin/AdminIcon'
 import { visibleMenu } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
+import { useClubesSettings } from '../settings/ClubesSettingsProvider'
 
 export function DashboardPage() {
   const auth = useAuth()
+  const { settings } = useClubesSettings()
   const user = auth.user
   const ctx = user?.contexto
-  const modules = visibleMenu(auth.can).filter((item) => item.path !== '/')
+  const copy = settings?.clubes
+  const modules = visibleMenu(auth.can, {
+    rolName: ctx?.rol_name,
+    organizacionId: ctx?.organizacion_id,
+  }).filter((item) => item.path !== '/')
+
+  const banner = resolveFileUrl(copy?.banner_url)
 
   if (!user) return null
 
   return (
     <section className="admin-page">
+      {banner ? <img src={banner} alt="" className="admin-banner" /> : null}
       <header className="admin-page__intro">
-        <p className="admin-kicker">Bienvenido</p>
+        <p className="admin-kicker">{copy?.kicker || 'Bienvenido'}</p>
         <h2>Hola, {user.name}</h2>
         <p>
+          {copy?.motto ? <strong>{copy.motto}. </strong> : null}
           Estás trabajando como <strong>{ctx?.rol_display_name || user.roles[0] || 'usuario'}</strong>
           {ctx?.organizacion_nombre ? ` en ${ctx.organizacion_nombre}` : ''}. El menú muestra solo lo que tu rol
           puede ver.
         </p>
+        {copy?.values ? <p>{copy.values}</p> : null}
       </header>
 
       <div className="admin-stats">

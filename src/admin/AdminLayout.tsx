@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { resolveApiBaseUrl } from '../api/baseUrl'
+import { resolveFileUrl } from '../api/baseUrl'
 import { authApi } from '../api/auth'
 import { useAuth } from '../auth/AuthProvider'
+import { useClubesSettings } from '../settings/ClubesSettingsProvider'
+import { AdventureScene } from '../components/login/AdventureScene'
 import { usePwaInstall } from '../pwa/usePwaInstall'
+import { SceneThemeToggle } from '../theme/SceneThemeToggle'
+import { clubBrandStyle } from '../theme/clubBrand'
+import { useSceneTheme } from '../theme/sceneTheme'
 import { AdminIcon } from './AdminIcon'
 import { findMenuItem, visibleMenu } from './menu'
 import './admin.css'
-
-function resolveFileUrl(value: string | null | undefined): string | null {
-  if (!value) return null
-  if (/^https?:\/\//i.test(value)) return value
-  const base = resolveApiBaseUrl()
-  return `${base}${value.startsWith('/') ? value : `/${value}`}`
-}
 
 export function AdminLayout() {
   const auth = useAuth()
@@ -24,12 +22,18 @@ export function AdminLayout() {
     (auth.user?.context_options?.length ?? 0) > 1,
   )
   const pwa = usePwaInstall()
+  const { theme, toggleTheme } = useSceneTheme()
+  const { settings } = useClubesSettings()
 
   const user = auth.user
   const ctx = user?.contexto
-  const items = visibleMenu(auth.can)
+  const kicker = settings?.clubes.kicker || ctx?.tipo_nombre || 'Club de Conquistadores'
+  const items = visibleMenu(auth.can, {
+    rolName: ctx?.rol_name,
+    organizacionId: ctx?.organizacion_id,
+  })
   const current = findMenuItem(location.pathname) ?? items[0]
-  const brand = resolveFileUrl(ctx?.is_club ? ctx.club_logo_url : null)
+  const brand = resolveFileUrl(settings?.clubes.logo_url || (ctx?.is_club ? ctx.club_logo_url : null))
 
   useEffect(() => {
     if (!user?.id) return
@@ -50,7 +54,11 @@ export function AdminLayout() {
   if (!user) return null
 
   return (
-    <div className={`admin-shell${open ? ' is-open' : ''}`}>
+    <div
+      className={`admin-shell${open ? ' is-open' : ''}${theme === 'day' ? ' admin-shell--day' : ''}`}
+      style={clubBrandStyle(settings?.clubes.color_principal || ctx?.color_principal)}
+    >
+      <AdventureScene theme={theme} variant="backdrop" />
       <div
         className="admin-backdrop"
         hidden={!open}
@@ -104,7 +112,7 @@ export function AdminLayout() {
           <div className="admin-topbar__title">
             {current ? <AdminIcon name={current.icon} /> : null}
             <div>
-              <p>{ctx?.tipo_nombre || 'Club de Conquistadores'}</p>
+              <p>{kicker}</p>
               <h1>{current?.label || 'Panel'}</h1>
             </div>
           </div>
@@ -114,6 +122,7 @@ export function AdminLayout() {
               <strong>{user.name}</strong>
               <small>{user.email}</small>
             </div>
+            <SceneThemeToggle theme={theme} onToggle={toggleTheme} compact />
             {pwa.canInstall ? (
               <button type="button" className="admin-ghost" onClick={() => void pwa.install()}>
                 Instalar app

@@ -1,3 +1,5 @@
+@import './theme/app-panel.css';
+
 :root {
   --ink: #071e48;
   --muted: #5b6b82;
@@ -29,9 +31,13 @@ body {
     var(--bg);
 }
 
-body:has(.login-scene) {
+body:has(.login-scene):not(:has(.admin-shell)) {
   background: #02060c;
   overflow: hidden;
+}
+
+body:has(.login-scene--day):not(:has(.admin-shell)) {
+  background: #8ec8ef;
 }
 
 .app-shell:has(.login-scene) {
@@ -41,8 +47,12 @@ body:has(.login-scene) {
 }
 
 body:has(.admin-shell) {
-  background: #eef3f8;
+  background: #071018;
   overflow: auto;
+}
+
+body:has(.admin-shell--day) {
+  background: #8ec8ef;
 }
 
 .app-shell {
@@ -102,14 +112,18 @@ label {
   color: var(--ink);
 }
 
-input {
+input,
+select,
+textarea {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 0.55rem;
   padding: 0.7rem 0.75rem;
   background: #fff;
   color: #071e48;
-  font: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 400;
 }
 
 input::placeholder {

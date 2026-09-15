@@ -1,0 +1,38 @@
+---
+description: Todo panel o tarjeta de UI debe usar el sistema app-panel y sus variables CSS.
+globs: src/**/*.{tsx,css}
+alwaysApply: true
+---
+
+# Paneles de la app
+
+Todo panel, tarjeta, modal o bloque de formulario nuevo usa el sistema de `src/theme/app-panel.css`. No inventes otro look.
+
+## Cómo crear un panel
+
+```tsx
+import { AppPanel } from '../theme/AppPanel'
+
+<AppPanel>
+  <p className="app-panel__kicker">Módulo</p>
+  <h2 className="app-panel__title">Título</h2>
+  <p className="app-panel__subtitle">Texto de apoyo</p>
+</AppPanel>
+```
+
+- Clase raíz: `app-panel`. Opcional `app-panel--narrow` o `narrow` en el componente.
+- Textos: `app-panel__kicker`, `app-panel__title`, `app-panel__subtitle`, `app-panel__muted`
+- Estados: `app-panel__alert`, `app-panel__hint`, `app-panel__ok`
+- Campos: `label` + `app-panel__field` (si hay ícono)
+- Botones: `app-panel__btn--primary` o `app-panel__btn--ghost`
+- Enlaces: `app-panel__link` / `app-panel__link--accent`
+
+## Cómo cambiar el estilo de todos los paneles
+
+Edita solo las variables `--panel-*` en `src/theme/app-panel.css`. No copies colores ni radios en componentes nuevos.
+
+## No hacer
+
+- Nuevas clases de tarjeta con fondo, borde o blur propios
+- Formularios blancos o botones azules fuera de `--panel-*`
+- Duplicar el CSS de `.login-card`; esa tarjeta ya consume las mismas variables

@@ -22,6 +22,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<AuthUser>
   logout: () => Promise<void>
   applyUser: (user: AuthUser) => void
+  applySession: (nextToken: string, nextUser?: AuthUser | null) => Promise<AuthUser>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -51,6 +52,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(TOKEN_KEY, nextToken)
       setToken(nextToken)
       applyUser(nextUser)
+    },
+    [applyUser],
+  )
+
+  const applySession = useCallback(
+    async (nextToken: string, nextUser?: AuthUser | null) => {
+      localStorage.setItem(TOKEN_KEY, nextToken)
+      setToken(nextToken)
+      const user = nextUser ?? (await authApi.me())
+      applyUser(user)
+      return user
     },
     [applyUser],
   )
@@ -125,8 +137,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       applyUser,
+      applySession,
     }),
-    [applyUser, can, loading, login, logout, token, user],
+    [applySession, applyUser, can, loading, login, logout, token, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

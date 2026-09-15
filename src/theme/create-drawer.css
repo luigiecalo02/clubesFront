@@ -1,0 +1,91 @@
+.create-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+}
+
+.create-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgb(4 8 14 / 0.48);
+  cursor: pointer;
+}
+
+.create-drawer__panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 90%;
+  --panel-width: 100%;
+  --panel-max-width: none;
+  --panel-radius: 1.4rem 0 0 1.4rem;
+  overflow: auto;
+  animation: create-drawer-in 0.28s ease;
+}
+
+.create-drawer__head {
+  display: grid;
+  gap: 0.15rem;
+  margin-bottom: 0.4rem;
+}
+
+.create-drawer__close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 2;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--panel-btn-bg);
+  color: var(--panel-btn-text);
+  box-shadow: var(--panel-btn-shadow);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.create-drawer__close:hover {
+  filter: brightness(1.06);
+}
+
+.create-drawer__body {
+  display: grid;
+  gap: 0.85rem;
+}
+
+@keyframes create-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 720px) {
+  .create-drawer__panel {
+    top: auto;
+    left: 0;
+    width: 100%;
+    max-height: 92vh;
+    --panel-radius: 1.4rem 1.4rem 0 0;
+    animation-name: create-drawer-up;
+  }
+
+  @keyframes create-drawer-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+}

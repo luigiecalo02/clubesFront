@@ -4,6 +4,7 @@ import { authApi } from '../api/auth'
 import { getApiErrorMessage } from '../api/client'
 import type { AuthContextOption } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
+import { AppPanel } from '../theme/AppPanel'
 
 export function ContextPage() {
   const auth = useAuth()
@@ -64,12 +65,12 @@ export function ContextPage() {
   }
 
   return (
-    <section className="auth-card">
-      <p className="kicker">Clubes</p>
-      <h1>Elige un contexto</h1>
-      <p className="muted">Tu usuario tiene más de un rol u organización.</p>
-      {error ? <p className="alert">{error}</p> : null}
-      {loading ? <p className="muted">Cargando opciones…</p> : null}
+    <AppPanel className="auth-card" narrow>
+      <p className="app-panel__kicker">Clubes</p>
+      <h1 className="app-panel__title">Elige un contexto</h1>
+      <p className="app-panel__subtitle">Tu usuario tiene más de un rol u organización.</p>
+      {error ? <p className="app-panel__alert">{error}</p> : null}
+      {loading ? <p className="app-panel__muted">Cargando opciones…</p> : null}
       <ul className="context-list">
         {options.map((option) => (
           <li key={option.key}>
@@ -85,6 +86,6 @@ export function ContextPage() {
           </li>
         ))}
       </ul>
-    </section>
+    </AppPanel>
   )
 }
