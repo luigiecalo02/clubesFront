@@ -34,6 +34,8 @@ export type AdminIconName =
   | 'star'
   | 'eye'
   | 'wallet'
+  | 'chevronLeft'
+  | 'chevronRight'
 
 export const ADMIN_MENU: AdminMenuItem[] = [
   {

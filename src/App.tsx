@@ -8,6 +8,7 @@ import { ContextPage } from './pages/ContextPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ActivateAccountPage } from './pages/ActivateAccountPage'
 import { ConfirmAccountPage } from './pages/ConfirmAccountPage'
+import { HandoffPage } from './pages/HandoffPage'
 import { LoginPage } from './pages/LoginPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { ModulePage } from './pages/ModulePage'
@@ -18,11 +19,13 @@ import { MyClubPage } from './pages/MyClubPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ClubesSettingsProvider } from './settings/ClubesSettingsProvider'
+import { NoticeProvider } from './theme/NoticeProvider'
 
 export default function App() {
   return (
     <AuthProvider>
       <ClubesSettingsProvider>
+        <NoticeProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -30,6 +33,7 @@ export default function App() {
             <Route path="/restablecer-contrasena" element={<ResetPasswordPage />} />
             <Route path="/confirmar-cuenta" element={<ConfirmAccountPage />} />
             <Route path="/activar" element={<ActivateAccountPage />} />
+            <Route path="/entrar" element={<HandoffPage />} />
             <Route
               path="/contexto"
               element={
@@ -109,6 +113,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
+        </NoticeProvider>
       </ClubesSettingsProvider>
     </AuthProvider>
   )

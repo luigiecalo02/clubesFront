@@ -173,6 +173,7 @@
 .app-panel label,
 .app-panel__label {
   display: grid;
+  align-content: start;
   gap: 0.45rem;
   font-size: 0.9rem;
   font-weight: 400;
@@ -370,13 +371,16 @@
 }
 
 .admin-shell {
-  --panel-bg: rgb(8 14 24 / 0.86);
-  --panel-border: rgb(255 255 255 / 0.2);
-  --panel-input-bg: rgb(6 10 18 / 0.66);
+  --panel-bg: rgb(8 14 24 / 0.34);
+  --panel-border: rgb(255 255 255 / 0.18);
+  --panel-input-bg: rgb(6 10 18 / 0.52);
+  --panel-blur: 22px;
 }
 
 .admin-shell--day,
-.login-scene--day {
+.login-scene--day,
+.image-crop.is-day,
+.app-notice-host.is-day {
   color-scheme: light;
   --panel-bg: rgb(255 255 255 / 0.78);
   --panel-border: rgb(20 50 80 / 0.14);
@@ -406,4 +410,171 @@
   --panel-hint-border: rgb(12 92 168 / 0.18);
   --panel-ok-text: #157347;
   --panel-divider: rgb(20 50 80 / 0.1);
+}
+
+.admin-shell--day {
+  --panel-bg: rgb(255 255 255 / 0.32);
+  --panel-shine: linear-gradient(180deg, rgb(255 255 255 / 0.16), transparent);
+  --panel-input-bg: rgb(255 255 255 / 0.7);
+  --panel-input-bg-focus: rgb(255 255 255 / 0.88);
+  --panel-ghost-bg: rgb(255 255 255 / 0.28);
+}
+
+.app-notice-host {
+  position: fixed;
+  z-index: 90;
+  top: 0.85rem;
+  right: 0.85rem;
+  left: 0.85rem;
+  display: grid;
+  gap: 0.65rem;
+  justify-items: stretch;
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .app-notice-host {
+    left: auto;
+    width: min(24.5rem, calc(100vw - 1.7rem));
+  }
+}
+
+.app-notice {
+  position: relative;
+  overflow: hidden;
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.9rem 0.95rem 1.05rem;
+  border: 1.5px solid var(--notice-border, var(--panel-border));
+  border-radius: var(--panel-input-radius);
+  background: var(--notice-fill, var(--panel-bg));
+  color: var(--notice-text, var(--panel-title));
+  box-shadow: var(--panel-shadow);
+  backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturate));
+  animation: app-notice-in 0.45s cubic-bezier(0.2, 1.15, 0.32, 1);
+}
+
+.app-notice.is-leaving {
+  animation: app-notice-out 0.28s ease forwards;
+}
+
+.app-notice--success {
+  --notice-text: var(--panel-ok-text);
+  --notice-border: color-mix(in srgb, var(--panel-ok-text) 48%, var(--panel-border));
+  --notice-fill: color-mix(in srgb, var(--panel-ok-text) 18%, var(--panel-bg));
+}
+
+.app-notice--warning {
+  --notice-text: var(--panel-hint-text);
+  --notice-border: var(--panel-hint-border);
+  --notice-fill: var(--panel-hint-bg);
+}
+
+.app-notice--error {
+  --notice-text: var(--panel-alert-text);
+  --notice-border: var(--panel-alert-border);
+  --notice-fill: var(--panel-alert-bg);
+}
+
+.app-notice__mark {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--notice-text) 16%, transparent);
+  color: var(--notice-text);
+}
+
+.app-notice__mark svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.app-notice__copy {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.app-notice__copy strong {
+  color: var(--notice-text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-notice__copy p {
+  margin: 0;
+  color: var(--panel-title);
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.app-notice__close {
+  border: 0;
+  background: transparent;
+  color: var(--panel-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.app-notice__close:hover {
+  color: var(--panel-title);
+}
+
+.app-notice__timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--notice-text);
+  opacity: 0.55;
+  transform-origin: left center;
+  animation: app-notice-timer var(--notice-ttl, 4.2s) linear forwards;
+}
+
+@keyframes app-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.85rem) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes app-notice-out {
+  to {
+    opacity: 0;
+    transform: translateY(-0.55rem) scale(0.97);
+  }
+}
+
+@keyframes app-notice-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-notice,
+  .app-notice.is-leaving,
+  .app-notice__timer {
+    animation: none;
+  }
 }

@@ -22,7 +22,7 @@ export function ResetPasswordPage() {
   const [confirmation, setConfirmation] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const { logoUrl, backgroundUrl } = usePublicClubBranding(
+  const { logoUrl, backgroundUrl, backgroundStyle } = usePublicClubBranding(
     Number.isInteger(orgId) && orgId > 0 ? orgId : null,
   )
 
@@ -56,7 +56,7 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <AdventureScene theme={theme} showCopy={false} backgroundUrl={backgroundUrl}>
+    <AdventureScene theme={theme} showCopy={false} backgroundUrl={backgroundUrl} backgroundStyle={backgroundStyle}>
       <SceneThemeToggle theme={theme} onToggle={toggleTheme} />
       <div className="login-scene__content">
         <AppPanel className="login-card" narrow>

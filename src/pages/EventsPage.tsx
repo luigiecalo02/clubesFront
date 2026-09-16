@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { attendanceApi } from '../api/attendance'
 import { resolveFileUrl } from '../api/baseUrl'
@@ -15,10 +15,13 @@ import { EventsViewToggle } from '../components/events/EventsViewToggle'
 import { useNow } from '../components/events/EventCountdown'
 import {
   AttendanceMarkList,
+  attendancePayloadFromDraft,
   emptyAttendanceDraft,
 } from '../components/attendance/AttendanceMarkList'
 import { AppPanel } from '../theme/AppPanel'
+import { useNotice } from '../theme/NoticeProvider'
 import { CreateDrawer } from '../theme/CreateDrawer'
+import { ImageUpload } from '../theme/ImageUpload'
 import { EventsCalendar } from './CalendarPage'
 
 const emptyForm = () => ({
@@ -71,16 +74,6 @@ function formFromEvent(item: EventSummary) {
   }
 }
 
-function useObjectUrl(file: File | null): string | null {
-  const url = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
-  useEffect(() => {
-    return () => {
-      if (url) URL.revokeObjectURL(url)
-    }
-  }, [url])
-  return url
-}
-
 export function EventsPage() {
   const auth = useAuth()
   const ctx = auth.user?.contexto
@@ -101,8 +94,6 @@ export function EventsPage() {
   const [events, setEvents] = useState<EventSummary[]>([])
   const [tipos, setTipos] = useState<EventTipo[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [saved, setSaved] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<EventSummary | null>(null)
   const [attendanceFor, setAttendanceFor] = useState<EventSummary | null>(null)
@@ -113,12 +104,12 @@ export function EventsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [eventTab, setEventTab] = useState<EventWorkspaceTab>('ficha')
+  const notices = useNotice()
   const now = useNow()
-
-  const logoPreview = useObjectUrl(form.logo)
-  const bannerPreview = useObjectUrl(form.banner)
-  const logoSrc = logoPreview || (form.removeLogo ? null : resolveFileUrl(editing?.image_url))
-  const bannerSrc = bannerPreview || (form.removeBanner ? null : resolveFileUrl(editing?.banner_url))
+  const draftRef = useRef(draft)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveSeq = useRef(0)
+  draftRef.current = draft
 
   async function loadEvents() {
     const next = await eventsApi.list()
@@ -135,7 +126,6 @@ export function EventsPage() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError('')
     Promise.all([eventsApi.list(), canCreate ? eventsApi.tipos().catch(() => []) : Promise.resolve([])])
       .then(([nextEvents, nextTipos]) => {
         if (cancelled) return
@@ -143,7 +133,7 @@ export function EventsPage() {
         setTipos(nextTipos)
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'No se pudieron cargar los eventos'))
+        if (!cancelled) notices.error(getApiErrorMessage(err, 'No se pudieron cargar los eventos'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -151,7 +141,7 @@ export function EventsPage() {
     return () => {
       cancelled = true
     }
-  }, [canCreate, ctx?.organizacion_id])
+  }, [canCreate, ctx?.organizacion_id, notices])
 
   function closeForm() {
     setShowForm(false)
@@ -193,16 +183,17 @@ export function EventsPage() {
     if (!attendanceFor) return undefined
     let cancelled = false
     setLoadingRoster(true)
-    setError('')
     attendanceApi
       .roster(attendanceFor.id)
       .then((next) => {
         if (cancelled) return
         setMembers(next.integrantes)
-        setDraft(emptyAttendanceDraft(next.integrantes))
+        const nextDraft = emptyAttendanceDraft(next.integrantes)
+        draftRef.current = nextDraft
+        setDraft(nextDraft)
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'No se pudo cargar la asistencia'))
+        if (!cancelled) notices.error(getApiErrorMessage(err, 'No se pudo cargar la asistencia'))
       })
       .finally(() => {
         if (!cancelled) setLoadingRoster(false)
@@ -210,44 +201,62 @@ export function EventsPage() {
     return () => {
       cancelled = true
     }
-  }, [attendanceFor])
+  }, [attendanceFor, notices])
 
   function setEstado(personaId: number, estado: AttendanceEstado | '') {
-    setDraft((current) => ({ ...current, [personaId]: estado }))
+    const next = { ...draftRef.current, [personaId]: estado }
+    draftRef.current = next
+    setDraft(next)
+    queueSave(next)
   }
 
   function markAll(estado: AttendanceEstado | '') {
-    setDraft(Object.fromEntries(members.map((row) => [row.persona_id, estado])))
+    const next = Object.fromEntries(members.map((row) => [row.persona_id, estado]))
+    draftRef.current = next
+    setDraft(next)
+    queueSave(next)
   }
 
-  async function onSaveAttendance() {
+  function queueSave(nextDraft: Record<number, AttendanceEstado | ''>) {
     if (!attendanceFor || !canTakeAttendance) return
-    setError('')
-    setSaved('')
+    const id = attendanceFor.id
+    setSavingAttendance(true)
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      saveTimer.current = null
+      void persist(id, nextDraft)
+    }, 220)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+    }
+  }, [])
+
+  async function persist(id: number, nextDraft: Record<number, AttendanceEstado | ''>) {
+    if (!canTakeAttendance) return
+    const seq = ++saveSeq.current
     setSavingAttendance(true)
     try {
-      const presentes = members
-        .filter((row) => draft[row.persona_id] === 'presente')
-        .map((row) => row.persona_id)
-      const justificados = members
-        .filter((row) => draft[row.persona_id] === 'justificado')
-        .map((row) => row.persona_id)
-      const next = await attendanceApi.save(attendanceFor.id, presentes, justificados)
+      const { presentes, puntuales, justificados } = attendancePayloadFromDraft(members, nextDraft)
+      const next = await attendanceApi.save(id, presentes, justificados, puntuales)
+      if (seq !== saveSeq.current) return
       setMembers(next.integrantes)
-      setDraft(emptyAttendanceDraft(next.integrantes))
-      setSaved('Asistencia guardada.')
+      const saved = emptyAttendanceDraft(next.integrantes)
+      draftRef.current = saved
+      setDraft(saved)
     } catch (err) {
-      setError(getApiErrorMessage(err, 'No se pudo guardar la asistencia'))
+      if (seq !== saveSeq.current) return
+      notices.error(getApiErrorMessage(err, 'No se pudo guardar la asistencia'))
     } finally {
-      setSavingAttendance(false)
+      if (seq === saveSeq.current) setSavingAttendance(false)
     }
   }
 
   async function onSave(event: FormEvent) {
     event.preventDefault()
     if (!canCreate && !canEditEvents) return
-    setError('')
-    setSaved('')
     setSubmitting(true)
     const payload = {
       name: form.name.trim(),
@@ -264,15 +273,15 @@ export function EventsPage() {
     try {
       if (editing) {
         await eventsApi.update(editing.id, payload)
-        setSaved('Evento actualizado.')
+        notices.success('Evento actualizado.')
       } else {
         await eventsApi.create(payload)
-        setSaved('Evento creado.')
+        notices.success('Evento creado.')
       }
       closeForm()
       await loadEvents()
     } catch (err) {
-      setError(getApiErrorMessage(err, editing ? 'No se pudo actualizar el evento' : 'No se pudo crear el evento'))
+      notices.error(getApiErrorMessage(err, editing ? 'No se pudo actualizar el evento' : 'No se pudo crear el evento'))
     } finally {
       setSubmitting(false)
     }
@@ -290,17 +299,6 @@ export function EventsPage() {
         >
           <span aria-hidden="true">+</span>
         </button>
-      ) : null}
-
-      {error ? (
-        <p className="admin-form__alert" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {saved ? (
-        <p className="admin-form__ok" role="status">
-          {saved}
-        </p>
       ) : null}
 
       <CreateDrawer
@@ -331,58 +329,26 @@ export function EventsPage() {
           </label>
 
           <div className="admin-assets">
-            <div className="admin-asset">
-              <span>Logo</span>
-              <small>Emblema del evento. JPG, PNG o WebP.</small>
-              {logoSrc ? (
-                <img src={logoSrc} alt="" className="admin-asset__preview admin-asset__preview--logo" />
-              ) : (
-                <span className="admin-asset__empty">Sin logo</span>
-              )}
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null
-                  setForm((current) => ({ ...current, logo: file, removeLogo: false }))
-                }}
-              />
-              {logoSrc ? (
-                <button
-                  type="button"
-                  className="app-panel__link--accent"
-                  onClick={() => setForm((current) => ({ ...current, logo: null, removeLogo: true }))}
-                >
-                  Quitar logo
-                </button>
-              ) : null}
-            </div>
-            <div className="admin-asset">
-              <span>Banner</span>
-              <small>Imagen de portada. JPG, PNG o WebP.</small>
-              {bannerSrc ? (
-                <img src={bannerSrc} alt="" className="admin-asset__preview admin-asset__preview--banner" />
-              ) : (
-                <span className="admin-asset__empty">Sin banner</span>
-              )}
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null
-                  setForm((current) => ({ ...current, banner: file, removeBanner: false }))
-                }}
-              />
-              {bannerSrc ? (
-                <button
-                  type="button"
-                  className="app-panel__link--accent"
-                  onClick={() => setForm((current) => ({ ...current, banner: null, removeBanner: true }))}
-                >
-                  Quitar banner
-                </button>
-              ) : null}
-            </div>
+            <ImageUpload
+              label="Logo"
+              hint="Emblema del evento. JPG, PNG o WebP."
+              variant="logo"
+              file={form.logo}
+              previewUrl={form.removeLogo ? null : resolveFileUrl(editing?.image_url)}
+              emptyText="Sin logo"
+              onSelect={(next) => setForm((current) => ({ ...current, logo: next, removeLogo: false }))}
+              onClear={() => setForm((current) => ({ ...current, logo: null, removeLogo: true }))}
+            />
+            <ImageUpload
+              label="Banner"
+              hint="Imagen de portada. JPG, PNG o WebP."
+              variant="banner"
+              file={form.banner}
+              previewUrl={form.removeBanner ? null : resolveFileUrl(editing?.banner_url)}
+              emptyText="Sin banner"
+              onSelect={(next) => setForm((current) => ({ ...current, banner: next, removeBanner: false }))}
+              onClear={() => setForm((current) => ({ ...current, banner: null, removeBanner: true }))}
+            />
           </div>
 
           <label>
@@ -451,18 +417,6 @@ export function EventsPage() {
         open={Boolean(attendanceFor)}
         title={attendanceFor?.name || 'Tomar asistencia'}
         onClose={closeAttendance}
-        footer={
-          canTakeAttendance && members.length ? (
-            <button
-              type="button"
-              className="app-panel__btn--primary"
-              disabled={savingAttendance}
-              onClick={() => void onSaveAttendance()}
-            >
-              {savingAttendance ? 'Guardando…' : 'Guardar asistencia'}
-            </button>
-          ) : null
-        }
       >
         {loadingRoster ? <p className="app-panel__muted">Cargando integrantes…</p> : null}
         {!loadingRoster && members.length === 0 ? (
@@ -474,10 +428,8 @@ export function EventsPage() {
             draft={draft}
             canEdit={canTakeAttendance}
             saving={savingAttendance}
-            showSave={false}
             onEstado={setEstado}
             onMarkAll={markAll}
-            onSave={onSaveAttendance}
           />
         ) : null}
       </CreateDrawer>
@@ -502,7 +454,6 @@ export function EventsPage() {
         <EventsCalendar
           events={events}
           loading={loading}
-          error={error}
           now={now}
           canTakeAttendance={canTakeAttendance}
           canCreate={canEditEvents}

@@ -7,6 +7,8 @@ import type { PersonaIdType } from '../api/types'
 import { usersApi } from '../api/users'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
+import { ImageUpload } from '../theme/ImageUpload'
+import { useNotice } from '../theme/NoticeProvider'
 
 type ProfileForm = {
   tipo_identificacion: PersonaIdType
@@ -57,9 +59,8 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
-  const [error, setError] = useState('')
-  const [saved, setSaved] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const notices = useNotice()
 
   useEffect(() => {
     if (!user?.id) return
@@ -86,7 +87,7 @@ export function ProfilePage() {
         setPhotoPreview(resolveFileUrl(profile.avatar_url))
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'No se pudo cargar tu perfil'))
+        if (!cancelled) notices.error(getApiErrorMessage(err, 'No se pudo cargar tu perfil'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -108,8 +109,6 @@ export function ProfilePage() {
 
   async function onSaveProfile(event: FormEvent) {
     event.preventDefault()
-    setError('')
-    setSaved('')
     setFieldErrors({})
     setSavingProfile(true)
     try {
@@ -131,14 +130,15 @@ export function ProfilePage() {
         },
       })
       if (photoFile) {
-        await usersApi.uploadAvatar(userId, photoFile)
+        const uploaded = await usersApi.uploadAvatar(userId, photoFile)
         setPhotoFile(null)
+        setPhotoPreview(resolveFileUrl(uploaded.avatar_url))
       }
       await refreshSession()
-      setSaved('Tus datos se actualizaron.')
+      notices.success('Tus datos se actualizaron.')
     } catch (err) {
       setFieldErrors(fieldErrorsFromApi(err))
-      setError(getApiErrorMessage(err, 'No se pudieron guardar tus datos'))
+      notices.error(getApiErrorMessage(err, 'No se pudieron guardar tus datos'))
     } finally {
       setSavingProfile(false)
     }
@@ -146,10 +146,8 @@ export function ProfilePage() {
 
   async function onSavePassword(event: FormEvent) {
     event.preventDefault()
-    setError('')
-    setSaved('')
     if (password !== passwordConfirmation) {
-      setError('Las contraseñas no coinciden.')
+      notices.warning('Las contraseñas no coinciden.')
       return
     }
     setSavingPassword(true)
@@ -160,9 +158,9 @@ export function ProfilePage() {
       })
       setPassword('')
       setPasswordConfirmation('')
-      setSaved('Tu contraseña se actualizó.')
+      notices.success('Tu contraseña se actualizó.')
     } catch (err) {
-      setError(getApiErrorMessage(err, 'No se pudo cambiar la contraseña'))
+      notices.error(getApiErrorMessage(err, 'No se pudo cambiar la contraseña'))
     } finally {
       setSavingPassword(false)
     }
@@ -170,41 +168,21 @@ export function ProfilePage() {
 
   return (
     <section className="admin-page admin-profile">
-      {error ? (
-        <p className="admin-form__alert" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {saved ? (
-        <p className="admin-form__ok" role="status">
-          {saved}
-        </p>
-      ) : null}
-
       <AppPanel>
         <p className="app-panel__kicker">Cuenta</p>
         <h2 className="app-panel__title">Mis datos</h2>
         <p className="app-panel__subtitle">Actualiza tu ficha. Estos datos se usan en el club y en tu sesión.</p>
         {loading ? <p className="app-panel__muted">Cargando tu perfil…</p> : null}
         <form className="admin-form admin-profile__fields" onSubmit={(event) => void onSaveProfile(event)}>
-          <div className="admin-member-photo">
-            <span>Foto</span>
-            {photoPreview ? (
-              <img src={photoPreview} alt="" className="admin-member-photo__preview" />
-            ) : (
-              <span className="admin-member-photo__empty">Sin foto</span>
-            )}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null
-                event.target.value = ''
-                setPhotoFile(file)
-                setPhotoPreview(file ? URL.createObjectURL(file) : photoPreview)
-              }}
-            />
-          </div>
+          <ImageUpload
+            label="Foto"
+            hint="Se muestra en tu menú de cuenta. JPG, PNG o WebP."
+            variant="avatar"
+            file={photoFile}
+            previewUrl={photoPreview}
+            emptyText="Sin foto"
+            onSelect={setPhotoFile}
+          />
           <label>
             Tipo de identificación
             <select

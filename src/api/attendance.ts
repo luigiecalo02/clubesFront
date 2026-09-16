@@ -1,4 +1,5 @@
 import { api } from './client'
+import { notifyAttendanceChanged } from './attendanceLive'
 import type { ApiEnvelope, AttendanceEvent, AttendanceRanking, AttendanceRoster } from './types'
 
 export const attendanceApi = {
@@ -27,11 +28,13 @@ export const attendanceApi = {
     eventoId: number,
     personaIds: number[],
     justificados: number[] = [],
+    puntuales: number[] = [],
   ): Promise<AttendanceRoster> {
     const { data } = await api.put<ApiEnvelope<AttendanceRoster>>(
       `/api/v1/settings/clubes/asistencia/${eventoId}`,
-      { persona_ids: personaIds, justificados },
+      { persona_ids: personaIds, justificados, puntuales },
     )
+    notifyAttendanceChanged()
     return data.data
   },
 }

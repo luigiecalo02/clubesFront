@@ -40,7 +40,6 @@ function eventLogo(item: EventSummary): string | null {
 type EventsCalendarProps = {
   events: EventSummary[]
   loading?: boolean
-  error?: string
   now: number
   canTakeAttendance: boolean
   canCreate: boolean
@@ -53,7 +52,6 @@ type EventsCalendarProps = {
 export function EventsCalendar({
   events,
   loading = false,
-  error = '',
   now,
   canTakeAttendance,
   canCreate,
@@ -144,12 +142,6 @@ export function EventsCalendar({
                 types.size ? ` · ${types.size} tipo${types.size === 1 ? '' : 's'}` : ''
               }`}
         </p>
-
-        {error ? (
-          <p className="admin-form__alert" role="alert">
-            {error}
-          </p>
-        ) : null}
 
         <div className="admin-calendar__scroller">
           <div className="admin-calendar__week">

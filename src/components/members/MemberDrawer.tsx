@@ -13,6 +13,8 @@ import {
 } from '../../admin/menu'
 import { useAuth } from '../../auth/AuthProvider'
 import { CreateDrawer } from '../../theme/CreateDrawer'
+import { ImageUpload } from '../../theme/ImageUpload'
+import { useNotice } from '../../theme/NoticeProvider'
 import { memberUserId } from './MemberActions'
 
 export type MemberDrawerMode = 'create' | 'edit' | 'password' | 'impersonate'
@@ -40,6 +42,11 @@ const emptyForm = (): CreatePersonaPayload => ({
   telefono: '',
   correo: '',
 })
+
+function personaInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2)
+  return parts.map((part) => part[0]?.toUpperCase() ?? '').join('') || '?'
+}
 
 function formFromPersona(persona: ClubPerson): CreatePersonaPayload {
   return {
@@ -110,6 +117,7 @@ export function MemberDrawer({
   onNotice,
 }: MemberDrawerProps) {
   const auth = useAuth()
+  const notices = useNotice()
   const navigate = useNavigate()
   const ctx = auth.user?.contexto
   const access = {
@@ -150,7 +158,7 @@ export function MemberDrawer({
   }, [mode, persona])
 
   useEffect(() => {
-    if (mode !== 'edit' || !persona?.id) return
+    if ((mode !== 'edit' && mode !== 'impersonate') || !persona?.id) return
     let cancelled = false
     personasApi
       .show(persona.id)
@@ -206,6 +214,7 @@ export function MemberDrawer({
     const nextErrors = validateMemberIdentity(form)
     setFieldErrors(nextErrors)
     if (Object.keys(nextErrors).length) {
+      notices.warning(Object.values(nextErrors).join(' '))
       onError?.(Object.values(nextErrors).join(' '))
       return
     }
@@ -214,6 +223,7 @@ export function MemberDrawer({
       if (mode === 'edit' && persona) {
         let next = await personasApi.update(persona.id, personaPayload(form))
         next = await applyPhoto(persona.id, next)
+        notices.success('Integrante actualizado.')
         onNotice?.('Integrante actualizado.')
         onUpdated?.(next)
       } else {
@@ -223,18 +233,19 @@ export function MemberDrawer({
           organizacion_ids: access.organizacionId ? [access.organizacionId] : undefined,
         })
         next = await applyPhoto(next.id, next)
+        notices.success('Integrante creado.')
         onNotice?.('Integrante creado.')
         onCreated?.(next)
       }
       closeAndReset()
     } catch (err) {
       setFieldErrors(fieldErrorsFromApi(err))
-      onError?.(
-        getApiErrorMessage(
-          err,
-          mode === 'edit' ? 'No se pudo actualizar el integrante' : 'No se pudo crear el integrante',
-        ),
+      const message = getApiErrorMessage(
+        err,
+        mode === 'edit' ? 'No se pudo actualizar el integrante' : 'No se pudo crear el integrante',
       )
+      notices.error(message)
+      onError?.(message)
     } finally {
       setSubmitting(false)
     }
@@ -244,6 +255,7 @@ export function MemberDrawer({
     event.preventDefault()
     if (!persona || !canUpdate) return
     if (password !== passwordConfirmation) {
+      notices.warning('Las contraseñas no coinciden.')
       onError?.('Las contraseñas no coinciden.')
       return
     }
@@ -253,9 +265,11 @@ export function MemberDrawer({
         password,
         password_confirmation: passwordConfirmation,
       })
+      notices.success(`Contraseña actualizada para ${persona.full_name}.`)
       onNotice?.(`Contraseña actualizada para ${persona.full_name}.`)
       closeAndReset()
     } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo cambiar la contraseña'))
       onError?.(getApiErrorMessage(err, 'No se pudo cambiar la contraseña'))
     } finally {
       setSubmitting(false)
@@ -271,6 +285,7 @@ export function MemberDrawer({
       closeAndReset()
       navigate('/')
     } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo entrar como este usuario'))
       onError?.(getApiErrorMessage(err, 'No se pudo entrar como este usuario'))
       setSubmitting(false)
     }
@@ -303,7 +318,14 @@ export function MemberDrawer({
       }
     >
       {mode === 'impersonate' && persona ? (
-        <div className="admin-form">
+        <div className="admin-form admin-member-impersonate">
+          <span className="admin-member-impersonate__photo" aria-hidden="true">
+            {photoPreview ? (
+              <img src={photoPreview} alt="" />
+            ) : (
+              <span>{personaInitials(persona.full_name)}</span>
+            )}
+          </span>
           <p className="app-panel__subtitle">
             Vas a usar la cuenta de <strong>{persona.full_name}</strong>
             {persona.correo ? ` (${persona.correo})` : ''}. Luego podrás volver a tu usuario desde la
@@ -313,7 +335,7 @@ export function MemberDrawer({
       ) : null}
 
       {mode === 'password' && persona ? (
-        <form id="member-password-form" className="admin-form" onSubmit={onSavePassword}>
+        <form id="member-password-form" className="admin-form admin-form--compact" onSubmit={onSavePassword}>
           <p className="app-panel__subtitle">
             Nueva contraseña para {persona.full_name}. Mínimo 6 caracteres, una mayúscula y un
             símbolo.
@@ -346,38 +368,27 @@ export function MemberDrawer({
       {mode === 'create' || mode === 'edit' ? (
         <form id="member-form" className="admin-form" onSubmit={onSaveMember}>
           {canManagePhotos ? (
-            <div className="admin-member-photo">
-              <span>Foto del usuario</span>
-              {photoPreview ? (
-                <img src={photoPreview} alt="" className="admin-member-photo__preview" />
-              ) : (
-                <span className="admin-member-photo__empty">Sin foto</span>
-              )}
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null
-                  event.target.value = ''
-                  setRemovePhoto(false)
-                  setPhotoFile(file)
-                  setPhotoPreview(file ? URL.createObjectURL(file) : null)
-                }}
-              />
-              {photoPreview || persona?.foto_url ? (
-                <button
-                  type="button"
-                  className="app-panel__btn--ghost"
-                  onClick={() => {
-                    setPhotoFile(null)
-                    setPhotoPreview(null)
-                    setRemovePhoto(true)
-                  }}
-                >
-                  Quitar foto
-                </button>
-              ) : null}
-            </div>
+            <ImageUpload
+              label="Foto del usuario"
+              hint="JPG, PNG o WebP. Se ve en el menú y en el club."
+              variant="avatar"
+              file={photoFile}
+              previewUrl={removePhoto ? null : photoPreview}
+              emptyText="Sin foto"
+              onSelect={(next) => {
+                setRemovePhoto(false)
+                setPhotoFile(next)
+              }}
+              onClear={
+                photoFile || photoPreview || persona?.foto_url
+                  ? () => {
+                      setPhotoFile(null)
+                      setPhotoPreview(null)
+                      setRemovePhoto(true)
+                    }
+                  : undefined
+              }
+            />
           ) : null}
           <label>
             Primer nombre

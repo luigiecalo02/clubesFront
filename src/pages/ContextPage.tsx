@@ -5,14 +5,15 @@ import { getApiErrorMessage } from '../api/client'
 import type { AuthContextOption } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
+import { useNotice } from '../theme/NoticeProvider'
 
 export function ContextPage() {
   const auth = useAuth()
   const navigate = useNavigate()
   const [options, setOptions] = useState<AuthContextOption[]>([])
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+  const notices = useNotice()
 
   const userId = auth.user?.id
 
@@ -29,7 +30,7 @@ export function ContextPage() {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err))
+        if (!cancelled) notices.error(getApiErrorMessage(err))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -48,7 +49,6 @@ export function ContextPage() {
   }
 
   async function choose(option: AuthContextOption) {
-    setError('')
     setSaving(option.key)
     try {
       const user = await authApi.setContext({
@@ -58,7 +58,7 @@ export function ContextPage() {
       auth.applyUser(user)
       navigate('/', { replace: true })
     } catch (err) {
-      setError(getApiErrorMessage(err))
+      notices.error(getApiErrorMessage(err))
     } finally {
       setSaving(null)
     }
@@ -69,7 +69,6 @@ export function ContextPage() {
       <p className="app-panel__kicker">Clubes</p>
       <h1 className="app-panel__title">Elige un contexto</h1>
       <p className="app-panel__subtitle">Cambia de rol u organización sin cerrar sesión.</p>
-      {error ? <p className="app-panel__alert">{error}</p> : null}
       {loading ? <p className="app-panel__muted">Cargando opciones…</p> : null}
       <ul className="context-list">
         {options.map((option) => (

@@ -48,9 +48,13 @@ export function EventBoard({
   const body = (
     <>
       <div className="admin-event-card__head">
-        {banner ? <img src={banner} alt="" className="admin-event-card__banner" /> : null}
+        {banner || logo ? (
+          <div className={`admin-event-card__media${banner ? ' has-banner' : ''}${logo ? ' has-logo' : ''}`}>
+            {banner ? <img src={banner} alt="" className="admin-event-card__banner" /> : null}
+            {logo ? <img src={logo} alt="" className="admin-event-card__logo" /> : null}
+          </div>
+        ) : null}
         <div className={headClass}>
-          {logo ? <img src={logo} alt="" className="admin-event-card__logo" /> : null}
           <EventTabs tab={tab} count={count} onChange={setTab} />
         </div>
       </div>

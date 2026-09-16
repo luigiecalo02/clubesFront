@@ -3,8 +3,13 @@
   min-height: 0;
   display: grid;
   gap: 0.85rem;
-  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
   align-items: stretch;
+}
+
+.admin-page--attendance .admin-event-tabs {
+  margin: 0;
 }
 
 .admin-page--attendance > .admin-form__alert,
@@ -21,6 +26,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.admin-attendance {
+  overflow: visible;
 }
 
 .admin-attendance-rank .attendance-rank,
@@ -46,6 +55,10 @@
   flex-direction: column;
   gap: 0.7rem;
   min-height: 0;
+}
+
+.attendance-rank__search {
+  max-width: 22rem;
 }
 
 .attendance-rank__list {
@@ -77,10 +90,37 @@
   background: color-mix(in srgb, var(--panel-gold) 12%, var(--panel-input-bg));
 }
 
+.attendance-rank__row.is-rise {
+  border-color: color-mix(in srgb, var(--panel-ok-text) 55%, var(--panel-input-border));
+  background: color-mix(in srgb, var(--panel-ok-text) 12%, var(--panel-input-bg));
+}
+
+.attendance-rank__row.is-drop {
+  border-color: color-mix(in srgb, var(--panel-alert-text) 40%, var(--panel-input-border));
+}
+
 .attendance-rank__place {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
   color: var(--panel-muted);
   font-size: 0.75rem;
   text-align: center;
+}
+
+.attendance-rank__place.is-rise {
+  color: var(--panel-ok-text);
+}
+
+.attendance-rank__place.is-drop {
+  color: var(--panel-alert-text);
+}
+
+.attendance-rank__delta {
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .attendance-rank__who {
@@ -135,8 +175,8 @@
 
 @media (min-width: 1100px) {
   .admin-page--attendance {
-    grid-template-columns: minmax(22rem, 1fr) minmax(24rem, 1.1fr);
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
 }
 

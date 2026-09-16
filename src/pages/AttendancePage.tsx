@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { attendanceApi } from '../api/attendance'
+import { isSameRanking, subscribeAttendanceChanged } from '../api/attendanceLive'
 import { getApiErrorMessage } from '../api/client'
 import type {
   AttendanceEstado,
@@ -7,24 +8,26 @@ import type {
   AttendanceMember,
   AttendanceRanking,
 } from '../api/types'
+import { AdminIcon } from '../admin/AdminIcon'
 import { canAccessClubAttendance } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import {
   AttendanceMarkList,
+  attendancePayloadFromDraft,
   emptyAttendanceDraft,
 } from '../components/attendance/AttendanceMarkList'
 import { AttendanceRankList } from '../components/attendance/AttendanceRankList'
+import { AttendanceEventSelect } from '../components/attendance/AttendanceEventSelect'
 import { AppPanel } from '../theme/AppPanel'
+import { useNotice } from '../theme/NoticeProvider'
 import '../theme/attendance-rank.css'
 import '../theme/attendance-mark.css'
 
-function formatChipDate(start?: string | null): string {
-  if (!start) return 'Sin fecha'
-  const from = new Date(start)
-  if (Number.isNaN(from.getTime())) return 'Sin fecha'
-  return new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short' }).format(from)
-}
+type AttendanceTab = 'resultados' | 'tomar'
 
+function hasTakenAttendance(item: AttendanceEvent): boolean {
+  return (item.asistencias_count ?? 0) > 0 || (item.presentes_count ?? 0) > 0
+}
 
 export function AttendancePage() {
   const auth = useAuth()
@@ -35,6 +38,7 @@ export function AttendancePage() {
       organizacionId: ctx?.organizacion_id,
     }) || auth.can('asistencia.update')
 
+  const [tab, setTab] = useState<AttendanceTab>('resultados')
   const [events, setEvents] = useState<AttendanceEvent[]>([])
   const [eventoId, setEventoId] = useState<number | null>(null)
   const [members, setMembers] = useState<AttendanceMember[]>([])
@@ -44,22 +48,30 @@ export function AttendancePage() {
   const [loadingRoster, setLoadingRoster] = useState(false)
   const [loadingRanking, setLoadingRanking] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [saved, setSaved] = useState('')
+  const notices = useNotice()
+  const draftRef = useRef(draft)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveSeq = useRef(0)
+  draftRef.current = draft
+  const pendingEvents = useMemo(() => events.filter((item) => !hasTakenAttendance(item)), [events])
+  const takenEvents = useMemo(() => events.filter(hasTakenAttendance), [events])
 
   useEffect(() => {
     let cancelled = false
     setLoadingEvents(true)
-    setError('')
     attendanceApi
       .events()
       .then((next) => {
         if (cancelled) return
         setEvents(next)
-        setEventoId((current) => current ?? next[0]?.id ?? null)
+        setEventoId((current) => {
+          if (current) return current
+          const pending = next.find((item) => !hasTakenAttendance(item))
+          return pending?.id ?? next[0]?.id ?? null
+        })
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'No se pudieron cargar los eventos'))
+        if (!cancelled) notices.error(getApiErrorMessage(err, 'No se pudieron cargar los eventos'))
       })
       .finally(() => {
         if (!cancelled) setLoadingEvents(false)
@@ -67,17 +79,23 @@ export function AttendancePage() {
     return () => {
       cancelled = true
     }
-  }, [ctx?.organizacion_id])
+  }, [ctx?.organizacion_id, notices])
 
-  function loadRanking() {
-    setLoadingRanking(true)
+  function applyRanking(next: AttendanceRanking) {
+    setRanking((current) => (isSameRanking(current, next) ? current : next))
+  }
+
+  function loadRanking(silent = false) {
+    if (!silent) setLoadingRanking(true)
     attendanceApi
       .ranking()
-      .then(setRanking)
+      .then((next) => applyRanking(next))
       .catch((err) => {
-        setError(getApiErrorMessage(err, 'No se pudo cargar el resumen de asistencia'))
+        if (!silent) notices.error(getApiErrorMessage(err, 'No se pudo cargar el resumen de asistencia'))
       })
-      .finally(() => setLoadingRanking(false))
+      .finally(() => {
+        if (!silent) setLoadingRanking(false)
+      })
   }
 
   useEffect(() => {
@@ -85,23 +103,57 @@ export function AttendancePage() {
   }, [ctx?.organizacion_id])
 
   useEffect(() => {
+    let cancelled = false
+
+    function refresh() {
+      if (cancelled || document.hidden) return
+      attendanceApi
+        .ranking()
+        .then((next) => {
+          if (!cancelled) applyRanking(next)
+        })
+        .catch(() => undefined)
+    }
+
+    const unsubscribe = subscribeAttendanceChanged(refresh)
+    const timer =
+      tab === 'resultados' ? window.setInterval(refresh, 3500) : null
+    document.addEventListener('visibilitychange', refresh)
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+      if (timer) window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [tab, ctx?.organizacion_id])
+
+  useEffect(() => {
     if (!eventoId) {
       setMembers([])
+      draftRef.current = {}
       setDraft({})
       return
     }
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+    }
+    saveSeq.current += 1
+    setSaving(false)
     let cancelled = false
     setLoadingRoster(true)
-    setSaved('')
     attendanceApi
       .roster(eventoId)
       .then((next) => {
         if (cancelled) return
         setMembers(next.integrantes)
-        setDraft(emptyAttendanceDraft(next.integrantes))
+        const nextDraft = emptyAttendanceDraft(next.integrantes)
+        draftRef.current = nextDraft
+        setDraft(nextDraft)
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'No se pudo cargar la asistencia'))
+        if (!cancelled) notices.error(getApiErrorMessage(err, 'No se pudo cargar la asistencia'))
       })
       .finally(() => {
         if (!cancelled) setLoadingRoster(false)
@@ -109,74 +161,113 @@ export function AttendancePage() {
     return () => {
       cancelled = true
     }
-  }, [eventoId])
+  }, [eventoId, notices])
 
   function setEstado(personaId: number, estado: AttendanceEstado | '') {
-    setDraft((current) => ({ ...current, [personaId]: estado }))
+    const next = { ...draftRef.current, [personaId]: estado }
+    draftRef.current = next
+    setDraft(next)
+    queueSave(next)
   }
 
   function markAll(estado: AttendanceEstado | '') {
-    setDraft(Object.fromEntries(members.map((row) => [row.persona_id, estado])))
+    const next = Object.fromEntries(members.map((row) => [row.persona_id, estado]))
+    draftRef.current = next
+    setDraft(next)
+    queueSave(next)
   }
 
-  async function onSave() {
+  function queueSave(nextDraft: Record<number, AttendanceEstado | ''>) {
     if (!eventoId || !canEdit) return
-    setError('')
-    setSaved('')
+    const id = eventoId
+    setSaving(true)
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      saveTimer.current = null
+      void persist(id, nextDraft)
+    }, 220)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+    }
+  }, [])
+
+  async function persist(id: number, nextDraft: Record<number, AttendanceEstado | ''>) {
+    if (!canEdit) return
+    const seq = ++saveSeq.current
     setSaving(true)
     try {
-      const presentes = members
-        .filter((row) => draft[row.persona_id] === 'presente')
-        .map((row) => row.persona_id)
-      const justificados = members
-        .filter((row) => draft[row.persona_id] === 'justificado')
-        .map((row) => row.persona_id)
-      const next = await attendanceApi.save(eventoId, presentes, justificados)
+      const { presentes, puntuales, justificados } = attendancePayloadFromDraft(members, nextDraft)
+      const next = await attendanceApi.save(id, presentes, justificados, puntuales)
+      if (seq !== saveSeq.current) return
       setMembers(next.integrantes)
-      setDraft(emptyAttendanceDraft(next.integrantes))
+      const saved = emptyAttendanceDraft(next.integrantes)
+      draftRef.current = saved
+      setDraft(saved)
       setEvents((current) =>
         current.map((item) =>
-          item.id === eventoId
-            ? { ...item, presentes_count: next.resumen.presentes, integrantes_count: next.resumen.total }
+          item.id === id
+            ? {
+                ...item,
+                presentes_count: next.resumen.presentes,
+                integrantes_count: next.resumen.total,
+                asistencias_count: next.resumen.total - next.resumen.sin_marcar,
+              }
             : item,
         ),
       )
-      setSaved('Asistencia guardada.')
-      loadRanking()
     } catch (err) {
-      setError(getApiErrorMessage(err, 'No se pudo guardar la asistencia'))
+      if (seq !== saveSeq.current) return
+      notices.error(getApiErrorMessage(err, 'No se pudo guardar la asistencia'))
     } finally {
-      setSaving(false)
+      if (seq === saveSeq.current) setSaving(false)
     }
   }
 
   return (
     <section className="admin-page admin-page--attendance">
-      {error ? (
-        <p className="admin-form__alert" role="alert">
-          {error}
-        </p>
+      <div className="admin-event-tabs" role="tablist" aria-label="Asistencia">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'resultados'}
+          className={`admin-events__view${tab === 'resultados' ? ' is-on' : ''}`}
+          onClick={() => setTab('resultados')}
+        >
+          <AdminIcon name="users" />
+          Resultados
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'tomar'}
+          className={`admin-events__view${tab === 'tomar' ? ' is-on' : ''}`}
+          onClick={() => setTab('tomar')}
+        >
+          <AdminIcon name="check" />
+          Tomar asistencia
+        </button>
+      </div>
+
+      {tab === 'resultados' ? (
+        <AppPanel className="admin-attendance-rank" shine={false}>
+          <p className="app-panel__kicker">Resumen</p>
+          <h2 className="app-panel__title">Asistencia del club</h2>
+          <p className="app-panel__subtitle">
+            Integrantes de mayor a menor. Si empatan en asistencias, gana quien tenga más
+            puntualidades. Se actualiza en vivo al marcar desde esta página, Eventos u otra
+            pestaña. Sobre {ranking?.eventos ?? 0} evento
+            {(ranking?.eventos ?? 0) === 1 ? '' : 's'} con asistencia registrada.
+          </p>
+          <AttendanceRankList ranking={ranking} loading={loadingRanking} />
+        </AppPanel>
       ) : null}
-      {saved ? (
-        <p className="admin-form__ok" role="status">
-          {saved}
-        </p>
-      ) : null}
 
-      {loadingEvents ? <p className="admin-empty">Cargando eventos…</p> : null}
+      {tab === 'tomar' && loadingEvents ? <p className="admin-empty">Cargando eventos…</p> : null}
 
-      <AppPanel className="admin-attendance-rank" shine={false}>
-        <p className="app-panel__kicker">Resumen</p>
-        <h2 className="app-panel__title">Asistencia del club</h2>
-        <p className="app-panel__subtitle">
-          Integrantes de menor a mayor. El porcentaje es sobre{' '}
-          {ranking?.eventos ?? 0} evento{(ranking?.eventos ?? 0) === 1 ? '' : 's'} con asistencia
-          registrada.
-        </p>
-        <AttendanceRankList ranking={ranking} loading={loadingRanking} />
-      </AppPanel>
-
-      {!loadingEvents && events.length === 0 ? (
+      {tab === 'tomar' && !loadingEvents && events.length === 0 ? (
         <AppPanel>
           <p className="app-panel__kicker">Agenda</p>
           <h2 className="app-panel__title">No hay eventos</h2>
@@ -186,33 +277,28 @@ export function AttendancePage() {
         </AppPanel>
       ) : null}
 
-      {events.length ? (
+      {tab === 'tomar' && events.length ? (
         <AppPanel className="admin-attendance" shine={false}>
           <p className="app-panel__kicker">Evento</p>
           <h2 className="app-panel__title">Tomar asistencia</h2>
           <p className="app-panel__subtitle">
-            Elige el evento. Marca asistió o excusa; si no marcas nada, se asume que no asistió.
+            Elige el evento. Marca asistió y, si llegó a tiempo, puntual; se guarda al instante. Si
+            no marcas nada, se asume que no asistió.
           </p>
 
-          <div className="attendance-events" role="listbox" aria-label="Eventos">
-            {events.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                role="option"
-                aria-selected={item.id === eventoId}
-                className={`attendance-events__chip${item.id === eventoId ? ' is-on' : ''}`}
-                onClick={() => setEventoId(item.id)}
-              >
-                <strong>{item.name}</strong>
-                <small>
-                  {formatChipDate(item.starts_at)}
-                  {typeof item.presentes_count === 'number'
-                    ? ` · ${item.presentes_count}/${item.integrantes_count ?? 0}`
-                    : ''}
-                </small>
-              </button>
-            ))}
+          <div className="attendance-events-groups">
+            <AttendanceEventSelect
+              items={pendingEvents}
+              eventoId={eventoId}
+              label="Por pasar lista"
+              onSelect={setEventoId}
+            />
+            <AttendanceEventSelect
+              items={takenEvents}
+              eventoId={eventoId}
+              label="Ya pasaron lista"
+              onSelect={setEventoId}
+            />
           </div>
 
           {loadingRoster ? <p className="app-panel__muted">Cargando integrantes…</p> : null}
@@ -229,7 +315,7 @@ export function AttendancePage() {
               saving={saving}
               onEstado={setEstado}
               onMarkAll={markAll}
-              onSave={onSave}
+              showSave={false}
             />
           ) : null}
         </AppPanel>

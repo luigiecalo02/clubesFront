@@ -35,6 +35,8 @@ const PATHS: Record<AdminIconName, string> = {
   star: 'M12 4l2.1 5.3H20l-4.4 3.4 1.7 5.3L12 15.8 6.7 18l1.7-5.3L4 9.3h5.9z',
   eye: 'M2.5 12S6.2 6 12 6s9.5 6 9.5 6-3.7 6-9.5 6-9.5-6-9.5-6zM12 15.2A3.2 3.2 0 1 0 12 8.8a3.2 3.2 0 0 0 0 6.4z',
   wallet: 'M4 8h16v11H4zM4 8V6.5A1.5 1.5 0 0 1 5.5 5H16M16 13.5h3',
+  chevronLeft: 'M15 6l-6 6 6 6',
+  chevronRight: 'M9 6l6 6-6 6',
 }
 
 const PRIME_TO_NAME: Record<string, AdminIconName> = {

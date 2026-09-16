@@ -30,7 +30,7 @@ export function ActivateAccountPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const { logoUrl, backgroundUrl } = usePublicClubBranding(preview?.organizacion_id)
+  const { logoUrl, backgroundUrl, backgroundStyle } = usePublicClubBranding(preview?.organizacion_id)
 
   useEffect(() => {
     if (!token) {
@@ -133,7 +133,7 @@ export function ActivateAccountPage() {
       : []
 
   return (
-    <AdventureScene theme={theme} showCopy={false} backgroundUrl={backgroundUrl}>
+    <AdventureScene theme={theme} showCopy={false} backgroundUrl={backgroundUrl} backgroundStyle={backgroundStyle}>
       <SceneThemeToggle theme={theme} onToggle={toggleTheme} />
       <div className="login-scene__content login-scene__content--form">
         <AppPanel className="login-card login-card--register">

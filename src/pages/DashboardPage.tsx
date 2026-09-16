@@ -22,17 +22,19 @@ export function DashboardPage() {
 
   return (
     <section className="admin-page">
-      {banner ? <img src={banner} alt="" className="admin-banner" /> : null}
-      <header className="admin-page__intro">
-        <p className="admin-kicker">{copy?.kicker || 'Bienvenido'}</p>
-        <h2>Hola, {user.name}</h2>
-        <p>
-          {copy?.motto ? <strong>{copy.motto}. </strong> : null}
-          Estás trabajando como <strong>{ctx?.rol_display_name || user.roles[0] || 'usuario'}</strong>
-          {ctx?.organizacion_nombre ? ` en ${ctx.organizacion_nombre}` : ''}. El menú muestra solo lo que tu rol
-          puede ver.
-        </p>
-        {copy?.values ? <p>{copy.values}</p> : null}
+      <header className={`admin-page__intro${banner ? ' admin-hero has-banner' : ''}`}>
+        {banner ? <img src={banner} alt="" className="admin-hero__media" /> : null}
+        <div className="admin-hero__copy">
+          <p className="admin-kicker">{copy?.kicker || 'Bienvenido'}</p>
+          <h2>Hola, {user.name}</h2>
+          <p>
+            {copy?.motto ? <strong>{copy.motto}. </strong> : null}
+            Estás trabajando como <strong>{ctx?.rol_display_name || user.roles[0] || 'usuario'}</strong>
+            {ctx?.organizacion_nombre ? ` en ${ctx.organizacion_nombre}` : ''}. El menú muestra solo lo que tu rol
+            puede ver.
+          </p>
+          {copy?.values ? <p>{copy.values}</p> : null}
+        </div>
       </header>
 
       <div className="admin-stats">
@@ -53,10 +55,16 @@ export function DashboardPage() {
       {modules.length ? (
         <div className="admin-grid">
           {modules.map((item) => (
-            <Link key={item.path} to={item.path} className="admin-card">
-              <AdminIcon name={item.icon} />
+            <Link
+              key={item.path}
+              to={item.path}
+              className="admin-card"
+              aria-label={`${item.label}. ${item.description}`}
+            >
+              <span className="admin-card__icon">
+                <AdminIcon name={item.icon} />
+              </span>
               <h3>{item.label}</h3>
-              <p>{item.description}</p>
             </Link>
           ))}
         </div>

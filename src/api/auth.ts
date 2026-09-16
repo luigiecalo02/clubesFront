@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { ApiEnvelope, AuthContextOption, AuthUser, LoginResult } from './types'
+import type { ApiEnvelope, AuthContextOption, AuthUser, LoginResult, TenantHandoff } from './types'
 
 export const authApi = {
   async login(email: string, password: string): Promise<LoginResult> {
@@ -23,25 +23,40 @@ export const authApi = {
     requires_context: boolean
     contexto: AuthContextOption | null
     options: AuthContextOption[]
+    menu_options: AuthContextOption[]
   }> {
     const { data } = await api.get<
       ApiEnvelope<{
         requires_context: boolean
         contexto: AuthContextOption | null
         options: AuthContextOption[]
+        menu_options?: AuthContextOption[]
       }>
     >('/api/v1/auth/context-options')
-    return (
-      data.data ?? {
-        requires_context: false,
-        contexto: null,
-        options: [],
-      }
-    )
+    const payload = data.data
+    return {
+      requires_context: payload?.requires_context ?? false,
+      contexto: payload?.contexto ?? null,
+      options: payload?.options ?? [],
+      menu_options: payload?.menu_options ?? payload?.options ?? [],
+    }
   },
 
   async setContext(payload: { organizacion_id?: number | null; rol_id: number }): Promise<AuthUser> {
     const { data } = await api.post<ApiEnvelope<AuthUser>>('/api/v1/auth/context', payload)
+    return data.data
+  },
+
+  async issueHandoff(payload: {
+    organizacion_id?: number | null
+    rol_id: number
+  }): Promise<TenantHandoff> {
+    const { data } = await api.post<ApiEnvelope<TenantHandoff>>('/api/v1/auth/handoff', payload)
+    return data.data
+  },
+
+  async consumeHandoff(code: string): Promise<LoginResult> {
+    const { data } = await api.post<ApiEnvelope<LoginResult>>('/api/v1/auth/handoff/consume', { code })
     return data.data
   },
 

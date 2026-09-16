@@ -7,6 +7,7 @@ import { MemberRow } from '../components/members/MemberActions'
 import { MemberDrawer, type MemberDrawerMode } from '../components/members/MemberDrawer'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
+import { useNotice } from '../theme/NoticeProvider'
 
 export function MembersPage() {
   const auth = useAuth()
@@ -22,10 +23,9 @@ export function MembersPage() {
   const [members, setMembers] = useState<ClubPerson[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [saved, setSaved] = useState('')
   const [mode, setMode] = useState<MemberDrawerMode | null>(null)
   const [selected, setSelected] = useState<ClubPerson | null>(null)
+  const notices = useNotice()
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -45,14 +45,13 @@ export function MembersPage() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError('')
     personasApi
       .list({ organizacionId: ctx?.organizacion_id })
       .then((next) => {
         if (!cancelled) setMembers(next)
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'No se pudieron cargar los integrantes'))
+        if (!cancelled) notices.error(getApiErrorMessage(err, 'No se pudieron cargar los integrantes'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -60,7 +59,7 @@ export function MembersPage() {
     return () => {
       cancelled = true
     }
-  }, [ctx?.organizacion_id])
+  }, [ctx?.organizacion_id, notices])
 
   function closeDrawer() {
     setMode(null)
@@ -68,15 +67,11 @@ export function MembersPage() {
   }
 
   function openCreate() {
-    setError('')
-    setSaved('')
     setSelected(null)
     setMode('create')
   }
 
   function openMode(next: MemberDrawerMode, persona: ClubPerson) {
-    setError('')
-    setSaved('')
     setSelected(persona)
     setMode(next)
   }
@@ -95,17 +90,6 @@ export function MembersPage() {
         </button>
       ) : null}
 
-      {error ? (
-        <p className="admin-form__alert" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {saved ? (
-        <p className="admin-form__ok" role="status">
-          {saved}
-        </p>
-      ) : null}
-
       <MemberDrawer
         mode={mode}
         persona={selected}
@@ -113,8 +97,6 @@ export function MembersPage() {
         onClose={closeDrawer}
         onCreated={() => void loadMembers()}
         onUpdated={() => void loadMembers()}
-        onError={setError}
-        onNotice={setSaved}
       />
 
       {loading ? <p className="admin-empty">Cargando integrantes…</p> : null}

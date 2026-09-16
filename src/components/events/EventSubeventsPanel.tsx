@@ -3,6 +3,7 @@ import { eventsApi } from '../../api/events'
 import { getApiErrorMessage } from '../../api/client'
 import type { EventSummary, EventTipo } from '../../api/types'
 import { formatEventRange } from './EventCard'
+import { useNotice } from '../../theme/NoticeProvider'
 
 function toDateInput(value?: string | null): string {
   const parsed = value ? new Date(value) : new Date()
@@ -30,9 +31,8 @@ type EventSubeventsPanelProps = {
 export function EventSubeventsPanel({ parent, tipos, canCreate, onCount }: EventSubeventsPanelProps) {
   const [children, setChildren] = useState<EventSummary[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [saved, setSaved] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const notices = useNotice()
   const [submitting, setSubmitting] = useState(false)
   const [name, setName] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -49,7 +49,6 @@ export function EventSubeventsPanel({ parent, tipos, canCreate, onCount }: Event
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError('')
     eventsApi
       .children(parent.id)
       .then((next) => {
@@ -58,7 +57,7 @@ export function EventSubeventsPanel({ parent, tipos, canCreate, onCount }: Event
         onCount?.(next.length)
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'No se pudieron cargar los subeventos'))
+        if (!cancelled) notices.error(getApiErrorMessage(err, 'No se pudieron cargar los subeventos'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -66,7 +65,7 @@ export function EventSubeventsPanel({ parent, tipos, canCreate, onCount }: Event
     return () => {
       cancelled = true
     }
-  }, [parent.id, parent.starts_at, parent.ends_at])
+  }, [parent.id, parent.starts_at, parent.ends_at, notices])
 
   function resetForm() {
     setName('')
@@ -80,8 +79,6 @@ export function EventSubeventsPanel({ parent, tipos, canCreate, onCount }: Event
   async function onSave(event: FormEvent) {
     event.preventDefault()
     if (!canCreate) return
-    setError('')
-    setSaved('')
     setSubmitting(true)
     try {
       await eventsApi.create({
@@ -93,11 +90,11 @@ export function EventSubeventsPanel({ parent, tipos, canCreate, onCount }: Event
         tipo_evento_id: tipoId ? Number(tipoId) : parent.tipo_evento?.id ?? null,
         evento_padre_id: parent.id,
       })
-      setSaved('Subevento creado.')
+      notices.success('Subevento creado.')
       resetForm()
       await loadChildren()
     } catch (err) {
-      setError(getApiErrorMessage(err, 'No se pudo crear el subevento'))
+      notices.error(getApiErrorMessage(err, 'No se pudo crear el subevento'))
     } finally {
       setSubmitting(false)
     }
@@ -108,17 +105,6 @@ export function EventSubeventsPanel({ parent, tipos, canCreate, onCount }: Event
       <p className="app-panel__muted">
         Crea actividades hijas de este evento, como en ProjectJA. Quedan ligadas a estas fechas.
       </p>
-      {error ? (
-        <p className="app-panel__alert" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {saved ? (
-        <p className="app-panel__ok" role="status">
-          {saved}
-        </p>
-      ) : null}
-
       {loading ? <p className="app-panel__muted">Cargando subeventos…</p> : null}
       {!loading && children.length === 0 && !showForm ? (
         <p className="app-panel__muted">Aún no hay subeventos.</p>

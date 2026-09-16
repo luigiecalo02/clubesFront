@@ -33,7 +33,7 @@ api.interceptors.response.use(
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem('clubes_user')
       const path = window.location.pathname
-      if (!path.startsWith('/login')) {
+      if (!path.startsWith('/login') && !path.startsWith('/entrar')) {
         window.location.assign('/login')
       }
     }

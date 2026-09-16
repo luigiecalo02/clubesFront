@@ -23,6 +23,7 @@ import { MemberDrawer, type MemberDrawerMode } from '../components/members/Membe
 import { PersonSearchSelect } from '../components/members/PersonSearchSelect'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
+import { useNotice } from '../theme/NoticeProvider'
 
 const MINISTRY_LABELS: Record<string, string> = {
   conquistadores: 'Conquistadores',
@@ -60,14 +61,9 @@ export function MyClubPage() {
   const ctx = auth.user?.contexto
   const [club, setClub] = useState<ClubDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [invite, setInvite] = useState<ClubesInviteLink | null>(null)
-  const [inviteError, setInviteError] = useState('')
-  const [inviteHint, setInviteHint] = useState('')
   const [creatingInvite, setCreatingInvite] = useState(false)
   const [savingBoard, setSavingBoard] = useState<ClubBoardPosition | null>(null)
-  const [boardError, setBoardError] = useState('')
-  const [boardSaved, setBoardSaved] = useState('')
   const access = {
     can: auth.can,
     rolName: ctx?.rol_name,
@@ -81,13 +77,11 @@ export function MyClubPage() {
   const [clubTab, setClubTab] = useState<'directiva' | 'integrantes'>('directiva')
   const [memberMode, setMemberMode] = useState<MemberDrawerMode | null>(null)
   const [memberSelected, setMemberSelected] = useState<ClubPerson | null>(null)
-  const [memberError, setMemberError] = useState('')
-  const [memberSaved, setMemberSaved] = useState('')
+  const notices = useNotice()
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError('')
     clubsApi
       .current()
       .then((next) => {
@@ -96,7 +90,7 @@ export function MyClubPage() {
       .catch((err) => {
         if (!cancelled) {
           setClub(null)
-          setError(getApiErrorMessage(err, 'No se pudo cargar la ficha del club'))
+          notices.error(getApiErrorMessage(err, 'No se pudo cargar la ficha del club'))
         }
       })
       .finally(() => {
@@ -105,18 +99,16 @@ export function MyClubPage() {
     return () => {
       cancelled = true
     }
-  }, [ctx?.organizacion_id, ctx?.rol_id])
+  }, [ctx?.organizacion_id, ctx?.rol_id, notices])
 
   async function onCreateInvite() {
-    setInviteError('')
-    setInviteHint('')
     setCreatingInvite(true)
     try {
       const next = await settingsApi.createInviteLink()
       setInvite(next)
-      setInviteHint('Comparte este enlace. Quien lo abra solo escribe su identificación.')
+      notices.success('Comparte este enlace. Quien lo abra solo escribe su identificación.')
     } catch (err) {
-      setInviteError(getApiErrorMessage(err, 'No se pudo generar el enlace'))
+      notices.error(getApiErrorMessage(err, 'No se pudo generar el enlace'))
     } finally {
       setCreatingInvite(false)
     }
@@ -128,19 +120,17 @@ export function MyClubPage() {
     const assignment: ClubDirectorAssignment = personaId
       ? { mode: 'select', persona_id: personaId }
       : { clear: true }
-    setBoardError('')
-    setBoardSaved('')
     setSavingBoard(position)
     try {
       const next = await clubsApi.updateDirectors(club.id, { [position]: assignment })
       setClub(next)
-      setBoardSaved(
+      notices.success(
         personaId
           ? `${BOARD_LABELS[position]} asignado.`
           : `${BOARD_LABELS[position]} quedó sin asignar.`,
       )
     } catch (err) {
-      setBoardError(getApiErrorMessage(err, 'No se pudo actualizar la directiva'))
+      notices.error(getApiErrorMessage(err, 'No se pudo actualizar la directiva'))
     } finally {
       setSavingBoard(null)
     }
@@ -152,16 +142,12 @@ export function MyClubPage() {
   }
 
   function openCreateMember() {
-    setMemberError('')
-    setMemberSaved('')
     setMemberSelected(null)
     setClubTab('integrantes')
     setMemberMode('create')
   }
 
   function openMember(mode: MemberDrawerMode, persona: ClubPerson) {
-    setMemberError('')
-    setMemberSaved('')
     setMemberSelected(persona)
     setMemberMode(mode)
   }
@@ -186,9 +172,9 @@ export function MyClubPage() {
     if (!invite?.url) return
     try {
       await navigator.clipboard.writeText(invite.url)
-      setInviteHint('Enlace copiado. Envíalo a los integrantes sin cuenta.')
+      notices.success('Enlace copiado. Envíalo a los integrantes sin cuenta.')
     } catch {
-      setInviteHint(invite.url)
+      notices.warning(invite.url)
     }
   }
 
@@ -206,16 +192,6 @@ export function MyClubPage() {
           <h2 className="app-panel__title">Cargando ficha</h2>
           <p className="app-panel__subtitle">Un momento, estamos trayendo los datos del club.</p>
         </AppPanel>
-      ) : null}
-      {error || memberError ? (
-        <p className="app-panel__alert" role="alert">
-          {error || memberError}
-        </p>
-      ) : null}
-      {memberSaved ? (
-        <p className="admin-form__ok" role="status">
-          {memberSaved}
-        </p>
       ) : null}
 
       {canCreateMembers ? (
@@ -237,11 +213,9 @@ export function MyClubPage() {
         onClose={closeMemberDrawer}
         onCreated={applyMember}
         onUpdated={applyMember}
-        onError={setMemberError}
-        onNotice={setMemberSaved}
       />
 
-      {!loading && !club && !error ? (
+      {!loading && !club ? (
         <AppPanel>
           <p className="app-panel__kicker">Contexto</p>
           <h2 className="app-panel__title">Sin club en esta sesión</h2>
@@ -348,16 +322,6 @@ export function MyClubPage() {
                       ? 'Asigna director, subdirector, secretari@ y tesorer@ entre los integrantes.'
                       : 'Estos son los cargos de la directiva de este club.'}
                   </p>
-                  {boardError ? (
-                    <p className="app-panel__alert" role="alert">
-                      {boardError}
-                    </p>
-                  ) : null}
-                  {boardSaved ? (
-                    <p className="app-panel__ok" role="status">
-                      {boardSaved}
-                    </p>
-                  ) : null}
                   <ul className="admin-club__people">
                     {BOARD_POSITIONS.map((position) => {
                       const row = holderFor(directors, position)
@@ -446,12 +410,6 @@ export function MyClubPage() {
                 Genera un enlace de este club. La persona escribe su identificación, completa lo que
                 falte y queda como usuario con rol miembro, sin elegir organización.
               </p>
-              {inviteError ? (
-                <p className="app-panel__alert" role="alert">
-                  {inviteError}
-                </p>
-              ) : null}
-              {inviteHint ? <p className="app-panel__ok">{inviteHint}</p> : null}
               {invite ? (
                 <label>
                   Enlace

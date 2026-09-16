@@ -102,8 +102,12 @@ export function EventCard({
   const logo = showMedia ? resolveFileUrl(item.image_url) : null
   const body = (
     <>
-      {banner ? <img src={banner} alt="" className="admin-event-card__banner" /> : null}
-      {logo ? <img src={logo} alt="" className="admin-event-card__logo" /> : null}
+      {banner || logo ? (
+        <div className={`admin-event-card__media${banner ? ' has-banner' : ''}${logo ? ' has-logo' : ''}`}>
+          {banner ? <img src={banner} alt="" className="admin-event-card__banner" /> : null}
+          {logo ? <img src={logo} alt="" className="admin-event-card__logo" /> : null}
+        </div>
+      ) : null}
       {showHeading ? (
         <>
           <p className="app-panel__kicker">

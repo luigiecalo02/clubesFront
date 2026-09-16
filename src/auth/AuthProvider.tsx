@@ -78,6 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/entrar')) {
+      setLoading(false)
+      return
+    }
+
     if (!token) {
       setLoading(false)
       return

@@ -26,5 +26,6 @@ export function usePublicClubBranding(organizacionId?: number | null) {
     branding,
     logoUrl: resolveFileUrl(branding.clubes.logo_url || branding.logo_url),
     backgroundUrl: resolveFileUrl(branding.background_url || branding.clubes.background_url),
+    backgroundStyle: branding.clubes.background_style,
   }
 }

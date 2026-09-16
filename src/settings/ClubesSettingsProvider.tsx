@@ -65,11 +65,19 @@ export function ClubesSettingsProvider({ children }: { children: ReactNode }) {
   }, [orgKey, refresh])
 
   const update = useCallback(async (payload: Omit<ClubesAppConfig, 'source'>) => {
-    const next = await settingsApi.update(payload)
-    setSettings(next)
-    applySceneTheme(next.clubes.scene_theme)
-    return next
-  }, [])
+    setSettings((current) =>
+      current ? { ...current, clubes: { ...current.clubes, ...payload } } : current,
+    )
+    try {
+      const next = await settingsApi.update(payload)
+      setSettings(next)
+      applySceneTheme(next.clubes.scene_theme)
+      return next
+    } catch (error) {
+      await refresh()
+      throw error
+    }
+  }, [refresh])
 
   const uploadAsset = useCallback(async (asset: ClubesAssetKey, file: File) => {
     const next = await settingsApi.uploadAsset(asset, file)

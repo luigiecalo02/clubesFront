@@ -4,8 +4,12 @@ import { getApiErrorMessage } from '../api/client'
 import { settingsApi } from '../api/settings'
 import { isClubDirectorRole } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
+import { ImageUpload, type ImageUploadVariant } from '../theme/ImageUpload'
+import { BackgroundStylePicker } from '../theme/BackgroundStylePicker'
+import { parseBackgroundStyle } from '../theme/backgroundStyle'
+import { useNotice } from '../theme/NoticeProvider'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
-import type { ClubesAppConfig, ClubesAssetKey, MailSettings } from '../api/types'
+import type { ClubesAppConfig, ClubesAssetKey, ClubesBackgroundStyle, MailSettings } from '../api/types'
 
 type ClubesTextConfig = Omit<
   ClubesAppConfig,
@@ -34,6 +38,9 @@ const INITIAL: ClubesTextConfig = {
   values: 'Disciplina · Servicio · Amor',
   color_principal: DEFAULT_PRIMARY,
   color_secundario: DEFAULT_SECONDARY,
+  background_style: 'cover',
+  background_night_style: 'cover',
+  background_day_style: 'cover',
 }
 
 function pickerValue(value?: string | null, fallback = DEFAULT_PRIMARY): string {
@@ -59,7 +66,7 @@ type ClubAssetItem = {
 }
 
 const CLUB_ASSETS: ClubAssetItem[] = [
-  { key: 'logo', label: 'Logo del inicio', hint: 'Se muestra en la tarjeta de login. Si no hay, se usa el emblema por defecto.' },
+  { key: 'logo', label: 'Logo del inicio', hint: 'Así se ve el emblema en la tarjeta de login. JPG, PNG o WebP.' },
   { key: 'background', label: 'Fondo del login', hint: 'Sustituye la escena ilustrada del inicio de sesión. JPG, PNG o WebP.' },
   { key: 'banner', label: 'Banner principal', hint: 'Opcional. Aparece en el inicio del panel si lo cargas.' },
 ]
@@ -69,52 +76,58 @@ const APP_BACKGROUNDS: ClubAssetItem[] = [
   { key: 'background_day', label: 'Fondo claro', hint: 'Panel en modo día. Si la cargas, se omiten las animaciones y la app arranca más ligera.' },
 ]
 
+type SettingsTab = 'apariencia' | 'imagenes' | 'correo'
+
+function assetVariant(key: ClubesAssetKey): ImageUploadVariant {
+  return key === 'logo' ? 'logo' : 'banner'
+}
+
+function backgroundStyleKey(
+  key: ClubesAssetKey,
+): 'background_night_style' | 'background_day_style' | null {
+  if (key === 'background_night') return 'background_night_style'
+  if (key === 'background_day') return 'background_day_style'
+  return null
+}
+
 function ClubAssetFields({
   assets,
   clubes,
   canUpdate,
   onUpload,
   onReset,
+  onStyle,
 }: {
   assets: ClubAssetItem[]
   clubes: ClubesAppConfig | undefined
   canUpdate: boolean
   onUpload: (key: ClubesAssetKey, file: File) => void
   onReset: (key: ClubesAssetKey) => void
+  onStyle?: (key: ClubesAssetKey, style: ClubesBackgroundStyle) => void
 }) {
   return (
     <div className="admin-assets">
       {assets.map((asset) => {
         const url = resolveFileUrl(assetUrl(clubes, asset.key))
+        const styleField = backgroundStyleKey(asset.key)
         return (
-          <div key={asset.key} className="admin-asset">
-            <span>{asset.label}</span>
-            <small>{asset.hint}</small>
-            {url ? (
-              <img src={url} alt="" className={`admin-asset__preview admin-asset__preview--${asset.key}`} />
-            ) : (
-              <span className="admin-asset__empty">Sin imagen</span>
-            )}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
+          <div key={asset.key} className="admin-assets__item">
+            <ImageUpload
+              label={asset.label}
+              hint={asset.hint}
+              variant={assetVariant(asset.key)}
+              previewUrl={url}
+              emptyText="Sin imagen"
               disabled={!canUpdate}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                event.target.value = ''
-                if (!file) return
-                onUpload(asset.key, file)
-              }}
+              onSelect={(file) => onUpload(asset.key, file)}
+              onClear={url ? () => onReset(asset.key) : undefined}
             />
-            {url ? (
-              <button
-                type="button"
-                className="admin-ghost"
+            {styleField && onStyle ? (
+              <BackgroundStylePicker
+                value={clubes?.[styleField]}
                 disabled={!canUpdate}
-                onClick={() => onReset(asset.key)}
-              >
-                Quitar
-              </button>
+                onChange={(style) => onStyle(asset.key, style)}
+              />
             ) : null}
           </div>
         )
@@ -132,14 +145,12 @@ export function SettingsPage() {
   const [mail, setMail] = useState(INITIAL_MAIL)
   const [mailSet, setMailSet] = useState(false)
   const [mailConfigured, setMailConfigured] = useState(false)
-  const [error, setError] = useState('')
-  const [saved, setSaved] = useState('')
-  const [mailError, setMailError] = useState('')
-  const [mailSaved, setMailSaved] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [savingMail, setSavingMail] = useState(false)
   const [testingMail, setTestingMail] = useState(false)
   const [showMailPassword, setShowMailPassword] = useState(false)
+  const [tab, setTab] = useState<SettingsTab>('apariencia')
+  const notices = useNotice()
 
   useEffect(() => {
     if (!settings) return
@@ -152,6 +163,9 @@ export function SettingsPage() {
       values: settings.clubes.values,
       color_principal: settings.clubes.color_principal || auth.user?.contexto?.color_principal || DEFAULT_PRIMARY,
       color_secundario: settings.clubes.color_secundario || auth.user?.contexto?.color_secundario || DEFAULT_SECONDARY,
+      background_style: parseBackgroundStyle(settings.clubes.background_style),
+      background_night_style: parseBackgroundStyle(settings.clubes.background_night_style),
+      background_day_style: parseBackgroundStyle(settings.clubes.background_day_style),
     })
   }, [auth.user?.contexto?.color_principal, auth.user?.contexto?.color_secundario, settings])
 
@@ -182,38 +196,45 @@ export function SettingsPage() {
   }, [settings?.organizacion_id])
 
   async function onUpload(asset: ClubesAssetKey, file: File) {
-    setError('')
-    setSaved('')
     try {
       await uploadAsset(asset, file)
-      setSaved('Imagen actualizada.')
+      notices.success('Imagen actualizada.')
     } catch (err) {
-      setError(getApiErrorMessage(err, 'No se pudo subir la imagen'))
+      notices.error(getApiErrorMessage(err, 'No se pudo subir la imagen'))
     }
   }
 
   async function onReset(asset: ClubesAssetKey) {
-    setError('')
-    setSaved('')
     try {
       await resetAsset(asset)
-      setSaved('Imagen restaurada.')
+      notices.success('Imagen restaurada.')
     } catch (err) {
-      setError(getApiErrorMessage(err, 'No se pudo quitar la imagen'))
+      notices.error(getApiErrorMessage(err, 'No se pudo quitar la imagen'))
+    }
+  }
+
+  async function onBackgroundStyle(key: ClubesAssetKey, style: ClubesBackgroundStyle) {
+    const field = backgroundStyleKey(key)
+    if (!field || !canUpdate) return
+    const next = { ...form, [field]: style }
+    setForm(next)
+    try {
+      await update(next)
+      notices.success('Estilo del fondo actualizado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo guardar el estilo'))
     }
   }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     if (!canUpdate) return
-    setError('')
-    setSaved('')
     setSubmitting(true)
     try {
       await update(form)
-      setSaved('Configuración del club guardada.')
+      notices.success('Configuración del club guardada.')
     } catch (err) {
-      setError(getApiErrorMessage(err, 'No se pudo guardar la configuración'))
+      notices.error(getApiErrorMessage(err, 'No se pudo guardar la configuración'))
     } finally {
       setSubmitting(false)
     }
@@ -222,17 +243,15 @@ export function SettingsPage() {
   async function onSaveMail(event: FormEvent) {
     event.preventDefault()
     if (!canUpdate) return
-    setMailError('')
-    setMailSaved('')
     setSavingMail(true)
     try {
       const next = await settingsApi.updateMail(mail)
       setMail((current) => ({ ...current, password: next.password || current.password }))
       setMailSet(next.password_set)
       setMailConfigured(next.configured)
-      setMailSaved('Correo de recuperación guardado.')
+      notices.success('Correo de recuperación guardado.')
     } catch (err) {
-      setMailError(getApiErrorMessage(err, 'No se pudo guardar el correo'))
+      notices.error(getApiErrorMessage(err, 'No se pudo guardar el correo'))
     } finally {
       setSavingMail(false)
     }
@@ -241,17 +260,15 @@ export function SettingsPage() {
   async function onTestMail() {
     const to = mail.from_address.trim() || auth.user?.email
     if (!to) {
-      setMailError('Indica un correo remitente para enviar la prueba.')
+      notices.warning('Indica un correo remitente para enviar la prueba.')
       return
     }
-    setMailError('')
-    setMailSaved('')
     setTestingMail(true)
     try {
       await settingsApi.testMail(to)
-      setMailSaved(`Correo de prueba enviado a ${to}.`)
+      notices.success(`Correo de prueba enviado a ${to}.`)
     } catch (err) {
-      setMailError(getApiErrorMessage(err, 'No se pudo enviar el correo de prueba'))
+      notices.error(getApiErrorMessage(err, 'No se pudo enviar el correo de prueba'))
     } finally {
       setTestingMail(false)
     }
@@ -276,19 +293,40 @@ export function SettingsPage() {
         </article>
       </div>
 
+      <div className="admin-event-tabs" role="tablist" aria-label="Secciones de configuración">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'apariencia'}
+          className={`admin-events__view${tab === 'apariencia' ? ' is-on' : ''}`}
+          onClick={() => setTab('apariencia')}
+        >
+          Apariencia
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'imagenes'}
+          className={`admin-events__view${tab === 'imagenes' ? ' is-on' : ''}`}
+          onClick={() => setTab('imagenes')}
+        >
+          Imágenes
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'correo'}
+          className={`admin-events__view${tab === 'correo' ? ' is-on' : ''}`}
+          onClick={() => setTab('correo')}
+        >
+          Correo
+        </button>
+      </div>
+
+      {tab === 'apariencia' ? (
       <form className="app-panel admin-panel admin-form" onSubmit={onSubmit}>
         <h3>Apariencia de este front</h3>
         {loading && !settings ? <p>Cargando configuración…</p> : null}
-        {error ? (
-          <p className="admin-form__alert" role="alert">
-            {error}
-          </p>
-        ) : null}
-        {saved ? (
-          <p className="admin-form__ok" role="status">
-            {saved}
-          </p>
-        ) : null}
 
         <label className="admin-field">
           Tema inicial
@@ -406,27 +444,6 @@ export function SettingsPage() {
           </label>
         </div>
 
-        <h3>Imágenes del club</h3>
-        <ClubAssetFields
-          assets={CLUB_ASSETS}
-          clubes={settings?.clubes}
-          canUpdate={canUpdate}
-          onUpload={(key, file) => void onUpload(key, file)}
-          onReset={(key) => void onReset(key)}
-        />
-
-        <h3>Fondo de la aplicación</h3>
-        <p className="app-panel__muted">
-          Una foto por tema sustituye la escena animada del panel y suele cargar más rápido.
-        </p>
-        <ClubAssetFields
-          assets={APP_BACKGROUNDS}
-          clubes={settings?.clubes}
-          canUpdate={canUpdate}
-          onUpload={(key, file) => void onUpload(key, file)}
-          onReset={(key) => void onReset(key)}
-        />
-
         <div className="admin-form__actions">
           <button
             type="button"
@@ -445,7 +462,38 @@ export function SettingsPage() {
           )}
         </div>
       </form>
+      ) : null}
 
+      {tab === 'imagenes' ? (
+        <div className="app-panel admin-panel admin-form">
+          <h3>Imágenes del club</h3>
+          <ClubAssetFields
+            assets={CLUB_ASSETS}
+            clubes={settings?.clubes ? { ...settings.clubes, ...form } : settings?.clubes}
+            canUpdate={canUpdate}
+            onUpload={(key, file) => void onUpload(key, file)}
+            onReset={(key) => void onReset(key)}
+          />
+
+          <h3>Fondo de la aplicación</h3>
+          <p className="app-panel__muted">
+            Una foto por tema sustituye la escena animada. Elige si se cubre, se contiene, se mosaica o se apila; el recuadro y el panel muestran el resultado.
+          </p>
+          <ClubAssetFields
+            assets={APP_BACKGROUNDS}
+            clubes={settings?.clubes ? { ...settings.clubes, ...form } : settings?.clubes}
+            canUpdate={canUpdate}
+            onUpload={(key, file) => void onUpload(key, file)}
+            onReset={(key) => void onReset(key)}
+            onStyle={(key, style) => void onBackgroundStyle(key, style)}
+          />
+          {!canUpdate ? (
+            <p className="admin-form__hint">Tu rol puede ver esta configuración, pero no editarla.</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {tab === 'correo' ? (
       <form className="app-panel admin-panel admin-form" onSubmit={onSaveMail}>
         <h3>Correo para recuperar contraseñas</h3>
         <p className="admin-form__hint">
@@ -467,16 +515,6 @@ export function SettingsPage() {
             <li>Usuario y remitente: tu Gmail completo. Contraseña SMTP: la de 16 letras.</li>
           </ol>
         </div>
-        {mailError ? (
-          <p className="admin-form__alert" role="alert">
-            {mailError}
-          </p>
-        ) : null}
-        {mailSaved ? (
-          <p className="admin-form__ok" role="status">
-            {mailSaved}
-          </p>
-        ) : null}
 
         <div className="admin-color-grid">
           <label className="admin-field">
@@ -592,6 +630,7 @@ export function SettingsPage() {
           )}
         </div>
       </form>
+      ) : null}
     </section>
   )
 }

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { resolveFileUrl } from '../api/baseUrl'
 import type { AuthContextOption } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
+import { activateContext, isRemoteContext } from '../auth/activateContext'
 import { usePwaInstall } from '../pwa/usePwaInstall'
 import { AppPanel } from '../theme/AppPanel'
 import { useSceneTheme } from '../theme/sceneTheme'
@@ -47,7 +48,7 @@ export function UserMenu({ options }: UserMenuProps) {
   const canSwitch = options.length > 1
   const roleLabel = ctx?.rol_display_name || ctx?.rol_name || user?.roles[0] || 'Sin rol'
   const photo = resolveFileUrl(user?.avatar_url)
-  const shell = rootRef.current?.closest('.admin-shell')
+  const homePhoto = resolveFileUrl(user?.impersonator?.avatar_url)
 
   useLayoutEffect(() => {
     if (!open) return
@@ -91,10 +92,8 @@ export function UserMenu({ options }: UserMenuProps) {
     }
     setSaving(option.key)
     try {
-      await auth.switchContext({
-        organizacion_id: option.organizacion_id,
-        rol_id: option.rol_id,
-      })
+      const mode = await activateContext(option, auth.switchContext)
+      if (mode === 'remote') return
       setOpen(false)
     } catch {
       setSaving(null)
@@ -104,11 +103,12 @@ export function UserMenu({ options }: UserMenuProps) {
   }
 
   const panel =
-    open && anchor && shell
+    open && anchor
       ? createPortal(
           <AppPanel
             as="div"
-            className="admin-user-menu__panel"
+            className={`admin-user-menu__panel${theme === 'day' ? ' is-day' : ''}`}
+            shine={false}
             role="menu"
             aria-label="Cuenta"
             style={{ top: anchor.top, right: anchor.right }}
@@ -124,6 +124,7 @@ export function UserMenu({ options }: UserMenuProps) {
                 <p className="admin-user-menu__label">Cambiar rol</p>
                 {options.map((option) => {
                   const active = option.key === ctx?.key
+                  const remote = isRemoteContext(option)
                   return (
                     <button
                       key={option.key}
@@ -138,7 +139,8 @@ export function UserMenu({ options }: UserMenuProps) {
                       <span className="admin-user-menu__copy">
                         <strong>{option.rol_display_name || option.rol_name}</strong>
                         <span>{option.organizacion_nombre}</span>
-                        {saving === option.key ? <em>Cambiando…</em> : null}
+                        {remote && !active ? <span>Abrir en el otro club</span> : null}
+                        {saving === option.key ? <em>{remote ? 'Abriendo…' : 'Cambiando…'}</em> : null}
                       </span>
                     </button>
                   )
@@ -182,7 +184,13 @@ export function UserMenu({ options }: UserMenuProps) {
                       .catch(() => undefined)
                   }}
                 >
-                  <AdminIcon name="undo" />
+                  <span className="admin-user-menu__avatar admin-user-menu__avatar--sm">
+                    {homePhoto ? (
+                      <img src={homePhoto} alt="" />
+                    ) : (
+                      <span aria-hidden="true">{initials(user.impersonator?.name || user.name)}</span>
+                    )}
+                  </span>
                   <span>Volver a mi cuenta</span>
                 </button>
               ) : (
@@ -193,7 +201,7 @@ export function UserMenu({ options }: UserMenuProps) {
               )}
             </div>
           </AppPanel>,
-          shell,
+          document.body,
         )
       : null
 

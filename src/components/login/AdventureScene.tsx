@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { SceneTheme } from '../../theme/sceneTheme'
+import { backgroundStyleCss, type ClubesBackgroundStyle } from '../../theme/backgroundStyle'
 import { AnimatedSky } from './AnimatedSky'
 import { Birds } from './Birds'
 import { Campfire } from './Campfire'
@@ -26,6 +27,7 @@ type AdventureSceneProps = {
   showCopy?: boolean
   copy?: AdventureSceneCopy
   backgroundUrl?: string | null
+  backgroundStyle?: ClubesBackgroundStyle | null
   children?: ReactNode
 }
 
@@ -40,6 +42,7 @@ export function AdventureScene({
   showCopy = false,
   copy = DEFAULT_COPY,
   backgroundUrl,
+  backgroundStyle,
   children,
 }: AdventureSceneProps) {
   const sceneRef = useRef<HTMLDivElement>(null)
@@ -86,7 +89,10 @@ export function AdventureScene({
       {photo ? (
         <div
           className="login-scene__photo"
-          style={{ backgroundImage: `url(${backgroundUrl})` }}
+          style={{
+            backgroundImage: `url(${backgroundUrl})`,
+            ...backgroundStyleCss(backgroundStyle),
+          }}
           aria-hidden="true"
         />
       ) : (

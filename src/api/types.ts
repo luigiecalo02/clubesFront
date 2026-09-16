@@ -36,6 +36,9 @@ export interface AuthContextOption {
   club_logo_url?: string | null
   color_principal?: string | null
   color_secundario?: string | null
+  host?: string | null
+  origin?: string | null
+  current_tenant?: boolean
 }
 
 export interface AuthUser {
@@ -52,12 +55,20 @@ export interface AuthUser {
   requires_context?: boolean
   contexto?: AuthContextOption | null
   context_options?: AuthContextOption[]
+  menu_options?: AuthContextOption[]
   impersonated?: boolean
   impersonator?: {
     id: number
     name: string
     email: string
+    avatar_url?: string | null
   } | null
+}
+
+export interface TenantHandoff {
+  code: string
+  host: string
+  origin: string
 }
 
 export interface LoginResult {
@@ -128,6 +139,8 @@ export interface ClubesRegisterPayload {
 
 export type ClubesAssetKey = 'logo' | 'background' | 'banner' | 'background_night' | 'background_day'
 
+export type ClubesBackgroundStyle = 'cover' | 'contain' | 'mosaic' | 'stack' | 'stretch'
+
 export interface MailSettings {
   host: string
   port: number
@@ -150,6 +163,9 @@ export interface ClubesAppConfig {
   values: string
   color_principal?: string | null
   color_secundario?: string | null
+  background_style?: ClubesBackgroundStyle
+  background_night_style?: ClubesBackgroundStyle
+  background_day_style?: ClubesBackgroundStyle
   logo_url?: string | null
   background_url?: string | null
   banner_url?: string | null
@@ -194,6 +210,9 @@ export const DEFAULT_LOGIN_BRANDING: ClubesPublicBranding = {
     subtitle: 'Conectados con la misión',
     motto: 'Una misión, un propósito',
     values: 'Disciplina · Servicio · Amor',
+    background_style: 'cover',
+    background_night_style: 'cover',
+    background_day_style: 'cover',
     logo_url: null,
     background_url: null,
     banner_url: null,
@@ -324,11 +343,12 @@ export interface EventSummary {
   banner_url?: string | null
 }
 
-export type AttendanceEstado = 'presente' | 'ausente' | 'justificado'
+export type AttendanceEstado = 'presente' | 'ausente' | 'justificado' | 'puntual'
 
 export interface AttendanceEvent extends EventSummary {
   integrantes_count?: number
   presentes_count?: number
+  asistencias_count?: number
 }
 
 export interface AttendanceMember {
@@ -342,6 +362,7 @@ export interface AttendanceMember {
 export interface AttendanceResumen {
   total: number
   presentes: number
+  puntuales?: number
   ausentes: number
   justificados: number
   sin_marcar: number
@@ -357,11 +378,14 @@ export interface AttendanceRankRow {
   persona_id: number
   full_name: string
   identificacion?: string | null
+  foto_url?: string | null
   presentes: number
+  puntuales?: number
   ausentes: number
   justificados: number
   sin_marcar: number
   eventos: number
+  puntos?: number
   porcentaje: number
 }
 

@@ -6,6 +6,7 @@ import { settingsApi } from '../api/settings'
 import { DEFAULT_LOGIN_BRANDING, type ClubesPublicBranding } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
 import { AdventureScene } from '../components/login/AdventureScene'
+import { parseBackgroundStyle } from '../theme/backgroundStyle'
 import { AnimatedSky } from '../components/login/AnimatedSky'
 import { ForgotPasswordCard } from '../components/login/ForgotPasswordCard'
 import { LoginCard } from '../components/login/LoginCard'
@@ -95,6 +96,7 @@ export function LoginPage() {
       showCopy
       copy={{ values: branding.clubes.values, motto: branding.clubes.motto }}
       backgroundUrl={resolveFileUrl(branding.background_url || branding.clubes.background_url)}
+      backgroundStyle={parseBackgroundStyle(branding.clubes.background_style)}
     >
       <SceneThemeToggle theme={theme} onToggle={toggleTheme} />
       <div
