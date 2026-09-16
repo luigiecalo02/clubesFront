@@ -35,7 +35,7 @@ export function ForgotPasswordCard({ logoUrl, initialEmail = '', onCancel }: For
   }
 
   return (
-    <AppPanel className="login-card login-card--register">
+    <AppPanel className="login-card" narrow>
       {logoUrl ? <img className="login-card__emblem login-card__emblem--photo" src={logoUrl} alt="" /> : null}
       <p className="login-card__kicker">Recuperar acceso</p>
       <h1>Olvidé mi contraseña</h1>

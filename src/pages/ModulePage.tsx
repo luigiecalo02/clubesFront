@@ -11,6 +11,7 @@ const ACTION_LABELS: Record<string, string> = {
   assign_permissions: 'Asignar permisos',
   manage_members: 'Gestionar integrantes',
   manage_directors: 'Gestionar directiva',
+  manage_photos: 'Colocar fotos',
   evaluate: 'Evaluar',
   view_scores: 'Ver puntajes',
   change_status: 'Cambiar estado',

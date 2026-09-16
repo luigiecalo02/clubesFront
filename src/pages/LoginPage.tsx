@@ -95,9 +95,7 @@ export function LoginPage() {
     >
       <SceneThemeToggle theme={theme} onToggle={toggleTheme} />
       <div
-        className={`login-scene__content${
-          mode === 'register' || mode === 'forgot' ? ' login-scene__content--form' : ''
-        }`}
+        className={`login-scene__content${mode === 'register' ? ' login-scene__content--form' : ''}`}
       >
         {mode === 'forgot' ? (
           <ForgotPasswordCard

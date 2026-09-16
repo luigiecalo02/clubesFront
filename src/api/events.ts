@@ -8,6 +8,7 @@ export type CreateEventPayload = {
   starts_at: string
   ends_at: string
   tipo_evento_id?: number | null
+  evento_padre_id?: number | null
   logo?: File | null
   banner?: File | null
   remove_logo?: boolean
@@ -22,6 +23,7 @@ function eventFormData(payload: CreateEventPayload): FormData {
   body.append('starts_at', payload.starts_at)
   body.append('ends_at', payload.ends_at)
   if (payload.tipo_evento_id) body.append('tipo_evento_id', String(payload.tipo_evento_id))
+  if (payload.evento_padre_id) body.append('evento_padre_id', String(payload.evento_padre_id))
   if (payload.logo) body.append('logo', payload.logo)
   if (payload.banner) body.append('banner', payload.banner)
   if (payload.remove_logo) body.append('remove_logo', '1')
@@ -54,6 +56,13 @@ export const eventsApi = {
 
   async list(): Promise<EventSummary[]> {
     return fetchEvents()
+  },
+
+  async children(parentId: number): Promise<EventSummary[]> {
+    const { data } = await api.get<ApiEnvelope<EventSummary[]>>('/api/v1/events', {
+      params: { evento_padre_id: parentId, per_page: 200 },
+    })
+    return data.data ?? []
   },
 
   async tipos(): Promise<EventTipo[]> {

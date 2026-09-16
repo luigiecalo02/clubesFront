@@ -92,14 +92,7 @@ export const ADMIN_MENU: AdminMenuItem[] = [
     label: 'Eventos',
     permission: 'events.view',
     icon: 'calendar',
-    description: 'Gestión de eventos del club.',
-  },
-  {
-    path: '/cronograma',
-    label: 'Cronograma',
-    permission: 'events.view',
-    icon: 'grid',
-    description: 'Calendario mensual de los eventos a tu alcance, con resumen e imágenes.',
+    description: 'Eventos del club en cuadrícula o cronograma.',
   },
   {
     path: '/asistencia',
@@ -142,6 +135,17 @@ export function isClubDirectorRole(rolName: string | null | undefined): boolean 
   return rolName === 'director'
 }
 
+export function canManageClubDirectors(options?: {
+  can?: (permission: string) => boolean
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  if (options?.can?.('mi_club.manage_directors') || options?.can?.('clubs.manage_directors')) {
+    return true
+  }
+  return Boolean(options?.organizacionId) && ['director', 'subdirector'].includes(options?.rolName ?? '')
+}
+
 export function canAccessClubSettings(options?: {
   rolName?: string | null
   organizacionId?: number | null
@@ -156,15 +160,98 @@ export function canAccessClubAttendance(options?: {
   return Boolean(options?.organizacionId) && ['director', 'subdirector', 'secretario'].includes(options?.rolName ?? '')
 }
 
+function canWriteClubEvent(options?: {
+  can?: (permission: string) => boolean
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  if (
+    options?.can?.('events.create') ||
+    options?.can?.('events.create_organization') ||
+    options?.can?.('events.update')
+  ) {
+    return true
+  }
+  return Boolean(options?.organizacionId) && ['director', 'subdirector', 'secretario'].includes(
+    options?.rolName ?? '',
+  )
+}
+
 export function canCreateClubEvent(options?: {
   can?: (permission: string) => boolean
   rolName?: string | null
   organizacionId?: number | null
 }): boolean {
-  if (options?.can?.('events.create') || options?.can?.('events.view')) return true
-  return Boolean(options?.organizacionId) && ['director', 'subdirector', 'secretario', 'tesorero'].includes(
+  return canWriteClubEvent(options)
+}
+
+export function canUpdateClubEvent(options?: {
+  can?: (permission: string) => boolean
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  return canWriteClubEvent(options)
+}
+
+export function canCreateClubMember(options?: {
+  can?: (permission: string) => boolean
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  if (
+    options?.can?.('integrantes.create') ||
+    options?.can?.('personas.create') ||
+    options?.can?.('mi_club.manage_members') ||
+    options?.can?.('clubs.manage_members')
+  ) {
+    return true
+  }
+  return Boolean(options?.organizacionId) && ['director', 'subdirector', 'secretario'].includes(
     options?.rolName ?? '',
   )
+}
+
+export function canUpdateClubMember(options?: {
+  can?: (permission: string) => boolean
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  if (
+    options?.can?.('integrantes.update') ||
+    options?.can?.('personas.update') ||
+    options?.can?.('mi_club.manage_members') ||
+    options?.can?.('clubs.manage_members')
+  ) {
+    return true
+  }
+  return Boolean(options?.organizacionId) && ['director', 'subdirector', 'secretario'].includes(
+    options?.rolName ?? '',
+  )
+}
+
+export function canImpersonateClubMember(options?: {
+  can?: (permission: string) => boolean
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  if (options?.can?.('users.view') || options?.can?.('clubs.manage_members') || options?.can?.('mi_club.manage_members')) {
+    return true
+  }
+  return Boolean(options?.organizacionId) && ['director', 'subdirector'].includes(options?.rolName ?? '')
+}
+
+export function canManageMemberPhotos(options?: {
+  can?: (permission: string) => boolean
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  if (options?.can?.('integrantes.manage_photos')) {
+    return true
+  }
+  if (isClubDirectorRole(options?.rolName) && Boolean(options?.organizacionId)) {
+    return true
+  }
+  return canCreateClubMember(options) || canUpdateClubMember(options)
 }
 
 export function visibleMenu(

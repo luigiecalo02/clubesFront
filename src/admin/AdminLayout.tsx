@@ -58,7 +58,15 @@ export function AdminLayout() {
       className={`admin-shell${open ? ' is-open' : ''}${theme === 'day' ? ' admin-shell--day' : ''}`}
       style={clubBrandStyle(settings?.clubes.color_principal || ctx?.color_principal)}
     >
-      <AdventureScene theme={theme} variant="backdrop" />
+      <AdventureScene
+        theme={theme}
+        variant="backdrop"
+        backgroundUrl={resolveFileUrl(
+          theme === 'day'
+            ? settings?.clubes.background_day_url
+            : settings?.clubes.background_night_url,
+        )}
+      />
       <div
         className="admin-backdrop"
         hidden={!open}
@@ -100,9 +108,10 @@ export function AdminLayout() {
         <header className="admin-topbar">
           <button
             type="button"
-            className="admin-topbar__menu"
+            className={`admin-topbar__menu${open ? ' is-open' : ''}`}
             onClick={() => setOpen((value) => !value)}
-            aria-label="Abrir menú"
+            aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={open}
           >
             <span />
             <span />
@@ -133,9 +142,24 @@ export function AdminLayout() {
                 Cambiar contexto
               </button>
             ) : null}
-            <button type="button" className="admin-ghost" onClick={() => void auth.logout()}>
-              Salir
-            </button>
+            {user.impersonated ? (
+              <button
+                type="button"
+                className="admin-ghost"
+                onClick={() => {
+                  void auth
+                    .stopImpersonation()
+                    .then(() => navigate('/integrantes'))
+                    .catch(() => undefined)
+                }}
+              >
+                Volver
+              </button>
+            ) : (
+              <button type="button" className="admin-ghost" onClick={() => void auth.logout()}>
+                Salir
+              </button>
+            )}
           </div>
         </header>
 

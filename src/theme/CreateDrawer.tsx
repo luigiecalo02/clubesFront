@@ -5,18 +5,16 @@ import './create-drawer.css'
 type CreateDrawerProps = {
   open: boolean
   title: string
-  kicker?: string
-  subtitle?: string
   onClose: () => void
+  footer?: ReactNode
   children: ReactNode
 }
 
 export function CreateDrawer({
   open,
   title,
-  kicker = 'Nuevo',
-  subtitle,
   onClose,
+  footer,
   children,
 }: CreateDrawerProps) {
   useEffect(() => {
@@ -44,16 +42,15 @@ export function CreateDrawer({
         aria-label="Cerrar"
         onClick={onClose}
       />
-      <AppPanel className="create-drawer__panel">
-        <button type="button" className="create-drawer__close" aria-label="Cerrar" onClick={onClose}>
-          ×
-        </button>
+      <AppPanel className="create-drawer__panel" shine={false}>
         <header className="create-drawer__head">
-          <p className="app-panel__kicker">{kicker}</p>
-          <h2 className="app-panel__title">{title}</h2>
-          {subtitle ? <p className="app-panel__subtitle">{subtitle}</p> : null}
+          <h2 className="create-drawer__title">{title}</h2>
+          <button type="button" className="create-drawer__close" aria-label="Cerrar" onClick={onClose}>
+            ×
+          </button>
         </header>
         <div className="create-drawer__body">{children}</div>
+        {footer ? <footer className="create-drawer__footer">{footer}</footer> : null}
       </AppPanel>
     </div>
   )

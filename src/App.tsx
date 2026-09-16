@@ -12,8 +12,8 @@ import { LoginPage } from './pages/LoginPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { ModulePage } from './pages/ModulePage'
 import { AttendancePage } from './pages/AttendancePage'
-import { CalendarPage } from './pages/CalendarPage'
 import { EventsPage } from './pages/EventsPage'
+import { MembersPage } from './pages/MembersPage'
 import { MyClubPage } from './pages/MyClubPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ClubesSettingsProvider } from './settings/ClubesSettingsProvider'
@@ -64,19 +64,20 @@ export default function App() {
                     </RequirePermission>
                   }
                 />
-                <Route
-                  path="/cronograma"
-                  element={
-                    <RequirePermission permission="events.view">
-                      <CalendarPage />
-                    </RequirePermission>
-                  }
-                />
+                <Route path="/cronograma" element={<Navigate to="/eventos?vista=cronograma" replace />} />
                 <Route
                   path="/asistencia"
                   element={
                     <RequirePermission permission="asistencia.view" requireAttendance>
                       <AttendancePage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="/integrantes"
+                  element={
+                    <RequirePermission permission="integrantes.view">
+                      <MembersPage />
                     </RequirePermission>
                   }
                 />
@@ -86,8 +87,8 @@ export default function App() {
                     item.path !== '/configuracion' &&
                     item.path !== '/mi-club' &&
                     item.path !== '/eventos' &&
-                    item.path !== '/cronograma' &&
-                    item.path !== '/asistencia',
+                    item.path !== '/asistencia' &&
+                    item.path !== '/integrantes',
                 ).map(
                   (item) => (
                     <Route

@@ -1,23 +1,29 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { resolveFileUrl } from '../api/baseUrl'
-import { getApiErrorMessage } from '../api/client'
-import { eventsApi } from '../api/events'
-import type { EventSummary } from '../api/types'
-import { AdminIcon } from '../admin/AdminIcon'
-import { EventCountdown, useNow } from '../components/events/EventCountdown'
+import type { EventSummary, EventTipo } from '../api/types'
+import { EventBoard } from '../components/events/EventBoard'
+import { EventCardActions } from '../components/events/EventCard'
 import { AppPanel } from '../theme/AppPanel'
+import { CreateDrawer } from '../theme/CreateDrawer'
 import '../theme/calendar.css'
 import {
   buildMonthGrid,
   eventSpanSlice,
   eventsForDay,
   eventsForMonth,
-  formatDayLabel,
   monthTitle,
   toDateKey,
 } from './calendarMonth'
 
-const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const WEEKDAYS = [
+  { full: 'Dom', mini: 'D', label: 'Domingo' },
+  { full: 'Lun', mini: 'L', label: 'Lunes' },
+  { full: 'Mar', mini: 'M', label: 'Martes' },
+  { full: 'Mié', mini: 'X', label: 'Miércoles' },
+  { full: 'Jue', mini: 'J', label: 'Jueves' },
+  { full: 'Vie', mini: 'V', label: 'Viernes' },
+  { full: 'Sáb', mini: 'S', label: 'Sábado' },
+]
 
 function chipColor(item: EventSummary): string | undefined {
   return item.tipo_evento?.color || undefined
@@ -31,51 +37,35 @@ function eventLogo(item: EventSummary): string | null {
   return resolveFileUrl(item.image_url)
 }
 
-function formatRange(start?: string | null, end?: string | null): string {
-  if (!start) return 'Sin fecha'
-  const from = new Date(start)
-  const to = end ? new Date(end) : null
-  const day = new Intl.DateTimeFormat('es-CO', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-  if (!to || Number.isNaN(to.getTime()) || from.toDateString() === to.toDateString()) {
-    return day.format(from)
-  }
-  return `${day.format(from)} – ${day.format(to)}`
+type EventsCalendarProps = {
+  events: EventSummary[]
+  loading?: boolean
+  error?: string
+  now: number
+  canTakeAttendance: boolean
+  canCreate: boolean
+  tipos: EventTipo[]
+  organizacionId?: number | null
+  onAttendance: (item: EventSummary) => void
+  onEdit: (item: EventSummary) => void
 }
 
-export function CalendarPage() {
-  const now = useNow()
+export function EventsCalendar({
+  events,
+  loading = false,
+  error = '',
+  now,
+  canTakeAttendance,
+  canCreate,
+  tipos,
+  organizacionId,
+  onAttendance,
+  onEdit,
+}: EventsCalendarProps) {
   const today = new Date()
   const [cursor, setCursor] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }))
-  const [events, setEvents] = useState<EventSummary[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [selectedDay, setSelectedDay] = useState(toDateKey(today))
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError('')
-    eventsApi
-      .list()
-      .then((next) => {
-        if (!cancelled) setEvents(next)
-      })
-      .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'No se pudieron cargar los eventos'))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const [openId, setOpenId] = useState<number | null>(null)
 
   const days = useMemo(
     () => buildMonthGrid(cursor.year, cursor.month, today),
@@ -85,25 +75,32 @@ export function CalendarPage() {
     () => eventsForMonth(events, cursor.year, cursor.month),
     [cursor.month, cursor.year, events],
   )
-  const selectedDate = useMemo(() => {
-    const match = days.find((day) => day.key === selectedDay)
-    return match?.date ?? new Date(cursor.year, cursor.month, 1)
-  }, [cursor.month, cursor.year, days, selectedDay])
-  const dayEvents = useMemo(() => eventsForDay(events, selectedDate), [events, selectedDate])
-  const selected = monthEvents.find((item) => item.id === selectedId) ?? dayEvents[0] ?? null
+  const selected = events.find((item) => item.id === openId) ?? null
   const types = new Set(monthEvents.map((item) => item.tipo_evento?.nombre).filter(Boolean))
+  const canEditSelected = Boolean(
+    selected && canCreate && selected.organizacion?.id === organizacionId,
+  )
+
+  function closeEvent() {
+    setOpenId(null)
+  }
+
+  function openEvent(dayKey: string, eventId: number | null) {
+    setSelectedDay(dayKey)
+    setOpenId(eventId)
+  }
 
   function goMonth(delta: number) {
     const next = new Date(cursor.year, cursor.month + delta, 1)
     setCursor({ year: next.getFullYear(), month: next.getMonth() })
     setSelectedDay(toDateKey(next))
-    setSelectedId(null)
+    setOpenId(null)
   }
 
   function goToday() {
     setCursor({ year: today.getFullYear(), month: today.getMonth() })
     setSelectedDay(toDateKey(today))
-    setSelectedId(null)
+    setOpenId(null)
   }
 
   return (
@@ -112,14 +109,30 @@ export function CalendarPage() {
         <div className="admin-calendar__toolbar">
           <h2 className="app-panel__title">{monthTitle(cursor.year, cursor.month)}</h2>
           <div className="admin-calendar__nav">
-            <button type="button" className="app-panel__btn--ghost" onClick={() => goMonth(-1)}>
-              Mes anterior
+            <button
+              type="button"
+              className="app-panel__btn--ghost"
+              aria-label="Mes anterior"
+              onClick={() => goMonth(-1)}
+            >
+              <span className="admin-calendar__nav-full">Mes anterior</span>
+              <span className="admin-calendar__nav-short" aria-hidden="true">
+                ‹
+              </span>
             </button>
             <button type="button" className="app-panel__btn--ghost" onClick={goToday}>
               Hoy
             </button>
-            <button type="button" className="app-panel__btn--ghost" onClick={() => goMonth(1)}>
-              Mes siguiente
+            <button
+              type="button"
+              className="app-panel__btn--ghost"
+              aria-label="Mes siguiente"
+              onClick={() => goMonth(1)}
+            >
+              <span className="admin-calendar__nav-full">Mes siguiente</span>
+              <span className="admin-calendar__nav-short" aria-hidden="true">
+                ›
+              </span>
             </button>
           </div>
         </div>
@@ -141,7 +154,10 @@ export function CalendarPage() {
         <div className="admin-calendar__scroller">
           <div className="admin-calendar__week">
             {WEEKDAYS.map((day) => (
-              <span key={day}>{day}</span>
+              <span key={day.label} aria-label={day.label}>
+                <span className="admin-calendar__wd-full">{day.full}</span>
+                <span className="admin-calendar__wd-mini">{day.mini}</span>
+              </span>
             ))}
           </div>
           <div className="admin-calendar__grid">
@@ -161,10 +177,7 @@ export function CalendarPage() {
                   }${selectedDay === day.key ? ' is-on' : ''}${fullDay ? ' is-full' : ''}${
                     splitDay ? ' is-split' : ''
                   }${daySpan ? ` is-span is-span-${leadSlice?.role}` : ''}`}
-                  onClick={() => {
-                    setSelectedDay(day.key)
-                    setSelectedId(items[0]?.id ?? null)
-                  }}
+                  onClick={() => openEvent(day.key, items[0]?.id ?? null)}
                 >
                   <span className="admin-calendar__num">{day.date.getDate()}</span>
                   {visible.map((item) => {
@@ -192,8 +205,7 @@ export function CalendarPage() {
                         }
                         onClick={(event) => {
                           event.stopPropagation()
-                          setSelectedDay(day.key)
-                          setSelectedId(item.id)
+                          openEvent(day.key, item.id)
                         }}
                       >
                         {cover ? <img src={cover} alt="" className="admin-calendar__chip-cover" /> : null}
@@ -212,52 +224,44 @@ export function CalendarPage() {
         </div>
       </AppPanel>
 
-      <AppPanel className="admin-calendar-detail" shine={false}>
+      <CreateDrawer
+        open={Boolean(selected)}
+        title={selected?.name || 'Evento'}
+        onClose={closeEvent}
+        footer={
+          selected ? (
+            <EventCardActions
+              item={selected}
+              canTakeAttendance={canTakeAttendance}
+              canEdit={canEditSelected}
+              onAttendance={(item) => {
+                closeEvent()
+                onAttendance(item)
+              }}
+              onEdit={(item) => {
+                closeEvent()
+                onEdit(item)
+              }}
+            />
+          ) : null
+        }
+      >
         {selected ? (
-          <>
-            {resolveFileUrl(selected.banner_url) ? (
-              <img src={resolveFileUrl(selected.banner_url) ?? ''} alt="" className="admin-calendar-detail__banner" />
-            ) : null}
-            {resolveFileUrl(selected.image_url) ? (
-              <img src={resolveFileUrl(selected.image_url) ?? ''} alt="" className="admin-calendar-detail__logo" />
-            ) : null}
-            <p className="app-panel__kicker">{selected.tipo_evento?.nombre || 'Evento'}</p>
-            <h2 className="app-panel__title">{selected.name}</h2>
-            <div className="admin-calendar-detail__meta">
-              <p>
-                <AdminIcon name="calendar" />
-                <span>{formatRange(selected.starts_at, selected.ends_at)}</span>
-              </p>
-              {selected.lugar ? (
-                <p>
-                  <AdminIcon name="map" />
-                  <span>{selected.lugar}</span>
-                </p>
-              ) : null}
-              {selected.organizacion?.nombre ? (
-                <p>
-                  <AdminIcon name="flag" />
-                  <span>{selected.organizacion.nombre}</span>
-                </p>
-              ) : null}
-            </div>
-            {selected.descripcion ? <p className="app-panel__muted">{selected.descripcion}</p> : null}
-            <EventCountdown start={selected.starts_at} end={selected.ends_at} now={now} />
-          </>
-        ) : (
-          <>
-            <p className="app-panel__kicker">Resumen</p>
-            <h2 className="app-panel__title">{formatDayLabel(selectedDate)}</h2>
-            <p className="app-panel__subtitle">
-              {loading
-                ? 'Cargando eventos…'
-                : dayEvents.length
-                  ? `${dayEvents.length} evento${dayEvents.length === 1 ? '' : 's'} este día.`
-                  : 'No hay eventos este día. Elige otro o cambia de mes.'}
-            </p>
-          </>
-        )}
-      </AppPanel>
+          <EventBoard
+            item={selected}
+            now={now}
+            tipos={tipos}
+            framed={false}
+            showHeading={false}
+            showActions={false}
+            canTakeAttendance={canTakeAttendance}
+            canEdit={canEditSelected}
+            canManageSubevents={canEditSelected}
+            onAttendance={onAttendance}
+            onEdit={onEdit}
+          />
+        ) : null}
+      </CreateDrawer>
     </section>
   )
 }

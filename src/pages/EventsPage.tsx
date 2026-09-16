@@ -1,33 +1,25 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { attendanceApi } from '../api/attendance'
 import { resolveFileUrl } from '../api/baseUrl'
 import { eventsApi } from '../api/events'
 import { getApiErrorMessage } from '../api/client'
 import type { AttendanceEstado, AttendanceMember, EventSummary, EventTipo } from '../api/types'
-import { AdminIcon } from '../admin/AdminIcon'
-import { canAccessClubAttendance, canCreateClubEvent } from '../admin/menu'
+import { canAccessClubAttendance, canCreateClubEvent, canUpdateClubEvent } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
-import { EventCountdown, useNow } from '../components/events/EventCountdown'
+import { EventBoard } from '../components/events/EventBoard'
+import { isActivityEvent } from '../components/events/EventCard'
+import { EventSubeventsPanel } from '../components/events/EventSubeventsPanel'
+import { EventTabs, type EventWorkspaceTab } from '../components/events/EventTabs'
+import { EventsViewToggle } from '../components/events/EventsViewToggle'
+import { useNow } from '../components/events/EventCountdown'
 import {
   AttendanceMarkList,
   emptyAttendanceDraft,
 } from '../components/attendance/AttendanceMarkList'
 import { AppPanel } from '../theme/AppPanel'
 import { CreateDrawer } from '../theme/CreateDrawer'
-
-const ESTADO_LABELS: Record<string, string> = {
-  borrador: 'Borrador',
-  publicado: 'Publicado',
-  en_proceso: 'En proceso',
-  cerrado: 'Finalizado',
-  cancelado: 'Cancelado',
-}
-
-const VISIBILIDAD_LABELS: Record<string, string> = {
-  publico: 'Libre',
-  organizacion: 'Organización',
-  privado: 'Privado',
-}
+import { EventsCalendar } from './CalendarPage'
 
 const emptyForm = () => ({
   name: '',
@@ -41,22 +33,6 @@ const emptyForm = () => ({
   removeLogo: false,
   removeBanner: false,
 })
-
-function formatRange(start?: string | null, end?: string | null): string {
-  if (!start) return 'Sin fecha'
-  const from = new Date(start)
-  const to = end ? new Date(end) : null
-  const day = new Intl.DateTimeFormat('es-CO', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-  if (!to || Number.isNaN(to.getTime()) || from.toDateString() === to.toDateString()) {
-    return day.format(from)
-  }
-  return `${day.format(from)} – ${day.format(to)}`
-}
 
 function toDateInput(value: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -78,12 +54,6 @@ function dateFromApi(value?: string | null): string {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return defaultStart()
   return toDateInput(parsed)
-}
-
-function isActivityEvent(item: EventSummary): boolean {
-  const slug = item.tipo_evento?.slug?.toLowerCase() ?? ''
-  const name = item.tipo_evento?.nombre?.toLowerCase() ?? ''
-  return slug === 'actividad' || name === 'actividad'
 }
 
 function formFromEvent(item: EventSummary) {
@@ -114,11 +84,15 @@ function useObjectUrl(file: File | null): string | null {
 export function EventsPage() {
   const auth = useAuth()
   const ctx = auth.user?.contexto
-  const canCreate = canCreateClubEvent({
+  const [params, setParams] = useSearchParams()
+  const view = params.get('vista') === 'cronograma' ? 'cronograma' : 'cuadricula'
+  const eventAccess = {
     can: auth.can,
     rolName: ctx?.rol_name,
     organizacionId: ctx?.organizacion_id,
-  })
+  }
+  const canCreate = canCreateClubEvent(eventAccess)
+  const canEditEvents = canUpdateClubEvent(eventAccess)
   const canTakeAttendance =
     canAccessClubAttendance({
       rolName: ctx?.rol_name,
@@ -138,6 +112,7 @@ export function EventsPage() {
   const [savingAttendance, setSavingAttendance] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [eventTab, setEventTab] = useState<EventWorkspaceTab>('ficha')
   const now = useNow()
 
   const logoPreview = useObjectUrl(form.logo)
@@ -146,15 +121,22 @@ export function EventsPage() {
   const bannerSrc = bannerPreview || (form.removeBanner ? null : resolveFileUrl(editing?.banner_url))
 
   async function loadEvents() {
-    const next = await eventsApi.upcoming()
+    const next = await eventsApi.list()
     setEvents(next)
+  }
+
+  function setView(next: 'cuadricula' | 'cronograma') {
+    const nextParams = new URLSearchParams(params)
+    if (next === 'cuadricula') nextParams.delete('vista')
+    else nextParams.set('vista', 'cronograma')
+    setParams(nextParams, { replace: true })
   }
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError('')
-    Promise.all([eventsApi.upcoming(), canCreate ? eventsApi.tipos().catch(() => []) : Promise.resolve([])])
+    Promise.all([eventsApi.list(), canCreate ? eventsApi.tipos().catch(() => []) : Promise.resolve([])])
       .then(([nextEvents, nextTipos]) => {
         if (cancelled) return
         setEvents(nextEvents)
@@ -174,20 +156,23 @@ export function EventsPage() {
   function closeForm() {
     setShowForm(false)
     setEditing(null)
+    setEventTab('ficha')
     setForm(emptyForm())
   }
 
   function openCreate() {
     closeAttendance()
     setEditing(null)
+    setEventTab('ficha')
     setForm(emptyForm())
     setShowForm(true)
   }
 
   function openEdit(item: EventSummary) {
-    if (!canCreate) return
+    if (!canEditEvents) return
     setAttendanceFor(null)
     setEditing(item)
+    setEventTab('ficha')
     setForm(formFromEvent(item))
     setShowForm(true)
   }
@@ -260,6 +245,7 @@ export function EventsPage() {
 
   async function onSave(event: FormEvent) {
     event.preventDefault()
+    if (!canCreate && !canEditEvents) return
     setError('')
     setSaved('')
     setSubmitting(true)
@@ -294,15 +280,17 @@ export function EventsPage() {
 
   return (
     <section className="admin-page admin-page--events">
-      <button
-        type="button"
-        className={`admin-fab${showForm ? ' is-open' : ''}`}
-        aria-label={showForm ? 'Cerrar formulario' : 'Crear evento'}
-        title={showForm ? 'Cerrar formulario' : 'Crear evento'}
-        onClick={() => (showForm ? closeForm() : openCreate())}
-      >
-        <span aria-hidden="true">+</span>
-      </button>
+      {canCreate ? (
+        <button
+          type="button"
+          className={`admin-fab${showForm ? ' is-open' : ''}`}
+          aria-label={showForm ? 'Cerrar formulario' : 'Crear evento'}
+          title={showForm ? 'Cerrar formulario' : 'Crear evento'}
+          onClick={() => (showForm ? closeForm() : openCreate())}
+        >
+          <span aria-hidden="true">+</span>
+        </button>
+      ) : null}
 
       {error ? (
         <p className="admin-form__alert" role="alert">
@@ -317,16 +305,21 @@ export function EventsPage() {
 
       <CreateDrawer
         open={showForm}
-        kicker={editing ? 'Editar' : 'Nuevo'}
         title={editing ? 'Editar evento' : 'Crear evento'}
-        subtitle={
-          editing
-            ? 'Actualiza logo, banner, fecha, lugar y descripción.'
-            : 'Completa logo, banner, fecha, lugar y descripción.'
-        }
         onClose={closeForm}
+        footer={
+          !editing || eventTab === 'ficha' ? (
+            <button type="submit" form="event-form" className="app-panel__btn--primary" disabled={submitting}>
+              {submitting ? 'Guardando…' : editing ? 'Guardar cambios' : 'Guardar evento'}
+            </button>
+          ) : null
+        }
       >
-        <form className="admin-form" onSubmit={onSave}>
+        {editing ? <EventTabs tab={eventTab} onChange={setEventTab} /> : null}
+        {editing && eventTab === 'subeventos' ? (
+          <EventSubeventsPanel parent={editing} tipos={tipos} canCreate={canCreate} />
+        ) : (
+        <form id="event-form" className="admin-form" onSubmit={onSave}>
           <label>
             Nombre
             <input
@@ -450,20 +443,26 @@ export function EventsPage() {
               onChange={(event) => setForm((current) => ({ ...current, ends_at: event.target.value }))}
             />
           </label>
-          <div className="admin-form__actions">
-            <button type="submit" className="app-panel__btn--primary" disabled={submitting}>
-              {submitting ? 'Guardando…' : editing ? 'Guardar cambios' : 'Guardar evento'}
-            </button>
-          </div>
         </form>
+        )}
       </CreateDrawer>
 
       <CreateDrawer
         open={Boolean(attendanceFor)}
-        kicker="Asistencia"
         title={attendanceFor?.name || 'Tomar asistencia'}
-        subtitle="Marca asistió o excusa. Si no marcas nada, se asume que no asistió."
         onClose={closeAttendance}
+        footer={
+          canTakeAttendance && members.length ? (
+            <button
+              type="button"
+              className="app-panel__btn--primary"
+              disabled={savingAttendance}
+              onClick={() => void onSaveAttendance()}
+            >
+              {savingAttendance ? 'Guardando…' : 'Guardar asistencia'}
+            </button>
+          ) : null
+        }
       >
         {loadingRoster ? <p className="app-panel__muted">Cargando integrantes…</p> : null}
         {!loadingRoster && members.length === 0 ? (
@@ -475,6 +474,7 @@ export function EventsPage() {
             draft={draft}
             canEdit={canTakeAttendance}
             saving={savingAttendance}
+            showSave={false}
             onEstado={setEstado}
             onMarkAll={markAll}
             onSave={onSaveAttendance}
@@ -482,12 +482,14 @@ export function EventsPage() {
         ) : null}
       </CreateDrawer>
 
+      <EventsViewToggle view={view} onChange={setView} />
+
       {loading ? <p className="admin-empty">Cargando eventos…</p> : null}
 
       {!loading && events.length === 0 ? (
         <AppPanel className="admin-events__empty" narrow>
           <p className="app-panel__kicker">Agenda</p>
-          <h2 className="app-panel__title">No hay eventos próximos</h2>
+          <h2 className="app-panel__title">No hay eventos</h2>
           <p className="app-panel__subtitle">
             {canCreate
               ? 'Crea el primero para tu club.'
@@ -496,84 +498,38 @@ export function EventsPage() {
         </AppPanel>
       ) : null}
 
-      <div className="admin-events">
-        {events.map((item) => {
-          const banner = resolveFileUrl(item.banner_url)
-          const logo = resolveFileUrl(item.image_url)
-          return (
-            <AppPanel key={item.id} className="admin-event-card" shine={false}>
-              {banner ? <img src={banner} alt="" className="admin-event-card__banner" /> : null}
-              {logo ? <img src={logo} alt="" className="admin-event-card__logo" /> : null}
-              <p className="app-panel__kicker">
-                {item.tipo_evento?.nombre || ESTADO_LABELS[item.estado ?? ''] || 'Evento'}
-              </p>
-              <h2 className="app-panel__title">{item.name}</h2>
-              <div className="admin-event-card__meta">
-                <p>
-                  <AdminIcon name="calendar" />
-                  <span>{formatRange(item.starts_at, item.ends_at)}</span>
-                </p>
-                {item.lugar ? (
-                  <p>
-                    <AdminIcon name="map" />
-                    <span>{item.lugar}</span>
-                  </p>
-                ) : null}
-                {item.organizacion?.nombre ? (
-                  <p>
-                    <AdminIcon name="flag" />
-                    <span>{item.organizacion.nombre}</span>
-                  </p>
-                ) : null}
-                {item.descripcion ? (
-                  <p className="admin-event-card__desc">
-                    <AdminIcon name="tags" />
-                    <span>{item.descripcion}</span>
-                  </p>
-                ) : null}
-              </div>
-              <div className="admin-event-card__facts">
-                <p className="admin-event-card__fact">
-                  <strong>{item.inscritos_count ?? 0}</strong>
-                  <span>Inscritos</span>
-                </p>
-                <p className="admin-event-card__fact">
-                  <strong>{ESTADO_LABELS[item.estado ?? ''] || item.estado || 'Evento'}</strong>
-                  <span>{VISIBILIDAD_LABELS[item.visibilidad ?? ''] || 'Alcance'}</span>
-                </p>
-              </div>
-              <EventCountdown start={item.starts_at} end={item.ends_at} now={now} />
-              {(canTakeAttendance && isActivityEvent(item)) ||
-              (canCreate && item.organizacion?.id === ctx?.organizacion_id) ? (
-                <div className="admin-event-card__actions">
-                  {canTakeAttendance && isActivityEvent(item) ? (
-                    <button
-                      type="button"
-                      className="app-panel__btn--primary"
-                      onClick={() => openAttendance(item)}
-                    >
-                      Asistencia
-                    </button>
-                  ) : null}
-                  {canCreate && item.organizacion?.id === ctx?.organizacion_id ? (
-                    <button
-                      type="button"
-                      className={
-                        canTakeAttendance && isActivityEvent(item)
-                          ? 'app-panel__btn--ghost'
-                          : 'app-panel__btn--primary'
-                      }
-                      onClick={() => openEdit(item)}
-                    >
-                      Editar
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-            </AppPanel>
-          )
-        })}
-      </div>
+      {view === 'cronograma' && events.length ? (
+        <EventsCalendar
+          events={events}
+          loading={loading}
+          error={error}
+          now={now}
+          canTakeAttendance={canTakeAttendance}
+          canCreate={canEditEvents}
+          tipos={tipos}
+          organizacionId={ctx?.organizacion_id}
+          onAttendance={openAttendance}
+          onEdit={openEdit}
+        />
+      ) : null}
+
+      {view === 'cuadricula' ? (
+        <div className="admin-events">
+          {events.map((item) => (
+            <EventBoard
+              key={item.id}
+              item={item}
+              now={now}
+              tipos={tipos}
+              canTakeAttendance={canTakeAttendance}
+              canEdit={canEditEvents && item.organizacion?.id === ctx?.organizacion_id}
+              canManageSubevents={canEditEvents && item.organizacion?.id === ctx?.organizacion_id}
+              onAttendance={openAttendance}
+              onEdit={openEdit}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
   )
 }

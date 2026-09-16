@@ -51,6 +51,12 @@ export interface AuthUser {
   requires_context?: boolean
   contexto?: AuthContextOption | null
   context_options?: AuthContextOption[]
+  impersonated?: boolean
+  impersonator?: {
+    id: number
+    name: string
+    email: string
+  } | null
 }
 
 export interface LoginResult {
@@ -117,7 +123,7 @@ export interface ClubesRegisterPayload {
   sexo?: 'M' | 'F' | ''
 }
 
-export type ClubesAssetKey = 'logo' | 'background' | 'banner'
+export type ClubesAssetKey = 'logo' | 'background' | 'banner' | 'background_night' | 'background_day'
 
 export interface MailSettings {
   host: string
@@ -144,6 +150,8 @@ export interface ClubesAppConfig {
   logo_url?: string | null
   background_url?: string | null
   banner_url?: string | null
+  background_night_url?: string | null
+  background_day_url?: string | null
 }
 
 export interface ClubesSettings {
@@ -186,6 +194,8 @@ export const DEFAULT_LOGIN_BRANDING: ClubesPublicBranding = {
     logo_url: null,
     background_url: null,
     banner_url: null,
+    background_night_url: null,
+    background_day_url: null,
   },
 }
 
@@ -202,16 +212,46 @@ export interface ClubOrganization {
   } | null
 }
 
+export type PersonaIdType = 'CC' | 'TI' | 'CE' | 'PA'
+
 export interface ClubPerson {
   id: number
   user_id?: number | null
   tipo_identificacion?: string | null
   identificacion?: string | null
   nombre1?: string | null
+  nombre2?: string | null
   apellido1?: string | null
+  apellido2?: string | null
+  fecha_nacimiento?: string | null
+  sexo?: string | null
   correo?: string | null
   telefono?: string | null
+  direccion_actual?: string | null
+  foto?: string | null
+  foto_url?: string | null
   full_name: string
+  organizaciones?: Array<{
+    organizacion_id: number
+    organizacion_nombre?: string | null
+    estado: boolean
+  }>
+}
+
+export type CreatePersonaPayload = {
+  tipo_identificacion: PersonaIdType
+  identificacion: string
+  nombre1: string
+  nombre2?: string
+  apellido1: string
+  apellido2?: string
+  fecha_nacimiento?: string
+  sexo?: 'M' | 'F' | ''
+  telefono?: string
+  correo?: string
+  direccion_actual?: string
+  organizacion_ids?: number[]
+  solo_tipo_club?: boolean
 }
 
 export interface ClubDirector {
@@ -221,6 +261,12 @@ export interface ClubDirector {
   user?: { id: number; name: string; email: string } | null
   persona?: { id: number; full_name: string; correo?: string | null } | null
 }
+
+export type ClubBoardPosition = 'director' | 'subdirector' | 'secretaria' | 'tesorero'
+
+export type ClubDirectorAssignment =
+  | { clear: true }
+  | { mode: 'select'; persona_id: number }
 
 export interface ClubDetail {
   id: number
@@ -257,7 +303,10 @@ export interface EventTipo {
 
 export interface EventSummary {
   id: number
-  name: string
+  evento_padre_id?: number | null
+  tiene_subeventos?: boolean
+  hijos_count?: number
+  name: string,
   descripcion?: string | null
   lugar?: string | null
   starts_at?: string | null

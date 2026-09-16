@@ -128,14 +128,22 @@
 }
 
 .attendance-mark__icon {
+  box-sizing: border-box;
+  flex: none;
   width: 2.15rem;
   height: 2.15rem;
+  min-width: 2.15rem;
+  min-height: 2.15rem;
   display: grid;
   place-items: center;
+  padding: 0;
   border: 1.5px solid var(--panel-input-border);
   border-radius: 999px;
-  background: transparent;
+  background: var(--panel-input-bg);
   color: var(--panel-icon);
+  box-shadow: none;
+  font-weight: 400;
+  line-height: 0;
   cursor: pointer;
   transition:
     transform 0.18s ease,
@@ -145,8 +153,10 @@
 }
 
 .attendance-mark__icon svg {
-  width: 1.15rem;
-  height: 1.15rem;
+  display: block;
+  width: 1.2rem;
+  height: 1.2rem;
+  overflow: visible;
 }
 
 .attendance-mark__icon:disabled {

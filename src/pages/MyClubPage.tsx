@@ -3,8 +3,24 @@ import { resolveFileUrl } from '../api/baseUrl'
 import { clubsApi } from '../api/clubs'
 import { getApiErrorMessage } from '../api/client'
 import { settingsApi } from '../api/settings'
-import type { ClubDetail, ClubDirector, ClubesInviteLink } from '../api/types'
-import { isClubDirectorRole } from '../admin/menu'
+import type {
+  ClubBoardPosition,
+  ClubDetail,
+  ClubDirector,
+  ClubDirectorAssignment,
+  ClubPerson,
+  ClubesInviteLink,
+} from '../api/types'
+import {
+  canCreateClubMember,
+  canImpersonateClubMember,
+  canManageClubDirectors,
+  canUpdateClubMember,
+  isClubDirectorRole,
+} from '../admin/menu'
+import { MemberRow } from '../components/members/MemberActions'
+import { MemberDrawer, type MemberDrawerMode } from '../components/members/MemberDrawer'
+import { PersonSearchSelect } from '../components/members/PersonSearchSelect'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
 
@@ -14,30 +30,29 @@ const MINISTRY_LABELS: Record<string, string> = {
   guias_mayores: 'Guías Mayores',
 }
 
-const BOARD_LABELS: Record<string, string> = {
+const BOARD_POSITIONS: ClubBoardPosition[] = ['director', 'subdirector', 'secretaria', 'tesorero']
+
+const BOARD_LABELS: Record<ClubBoardPosition, string> = {
   director: 'Director',
   subdirector: 'Subdirector',
-  secretaria: 'Secretaria',
-  tesorero: 'Tesorero',
+  secretaria: 'Secretari@',
+  tesorero: 'Tesorer@',
 }
 
 function ministryLabel(tipo: string): string {
   return MINISTRY_LABELS[tipo] ?? tipo.replaceAll('_', ' ')
 }
 
-function boardLabel(ministry: string): string {
-  return BOARD_LABELS[ministry] ?? ministry.replaceAll('_', ' ')
+function holderFor(directors: ClubDirector[], position: ClubBoardPosition): ClubDirector | undefined {
+  return directors.find((row) => row.ministry === position)
+}
+
+function boardOptionLabel(persona: ClubPerson): string {
+  return persona.correo ? `${persona.full_name} · ${persona.correo}` : `${persona.full_name} · sin correo`
 }
 
 function directorName(row: ClubDirector): string {
   return row.persona?.full_name || row.user?.name || 'Sin asignar'
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return '—'
-  const parsed = new Date(`${value}T00:00:00`)
-  if (Number.isNaN(parsed.getTime())) return value
-  return parsed.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export function MyClubPage() {
@@ -50,7 +65,24 @@ export function MyClubPage() {
   const [inviteError, setInviteError] = useState('')
   const [inviteHint, setInviteHint] = useState('')
   const [creatingInvite, setCreatingInvite] = useState(false)
+  const [savingBoard, setSavingBoard] = useState<ClubBoardPosition | null>(null)
+  const [boardError, setBoardError] = useState('')
+  const [boardSaved, setBoardSaved] = useState('')
+  const access = {
+    can: auth.can,
+    rolName: ctx?.rol_name,
+    organizacionId: ctx?.organizacion_id,
+  }
   const canInvite = isClubDirectorRole(ctx?.rol_name)
+  const canAssignBoard = canManageClubDirectors(access)
+  const canCreateMembers = canCreateClubMember(access)
+  const canUpdateMembers = canUpdateClubMember(access)
+  const canImpersonateMembers = canImpersonateClubMember(access)
+  const [clubTab, setClubTab] = useState<'directiva' | 'integrantes'>('directiva')
+  const [memberMode, setMemberMode] = useState<MemberDrawerMode | null>(null)
+  const [memberSelected, setMemberSelected] = useState<ClubPerson | null>(null)
+  const [memberError, setMemberError] = useState('')
+  const [memberSaved, setMemberSaved] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -90,6 +122,66 @@ export function MyClubPage() {
     }
   }
 
+  async function onAssignBoard(position: ClubBoardPosition, rawId: string) {
+    if (!club || !canAssignBoard) return
+    const personaId = Number(rawId)
+    const assignment: ClubDirectorAssignment = personaId
+      ? { mode: 'select', persona_id: personaId }
+      : { clear: true }
+    setBoardError('')
+    setBoardSaved('')
+    setSavingBoard(position)
+    try {
+      const next = await clubsApi.updateDirectors(club.id, { [position]: assignment })
+      setClub(next)
+      setBoardSaved(
+        personaId
+          ? `${BOARD_LABELS[position]} asignado.`
+          : `${BOARD_LABELS[position]} quedó sin asignar.`,
+      )
+    } catch (err) {
+      setBoardError(getApiErrorMessage(err, 'No se pudo actualizar la directiva'))
+    } finally {
+      setSavingBoard(null)
+    }
+  }
+
+  function closeMemberDrawer() {
+    setMemberMode(null)
+    setMemberSelected(null)
+  }
+
+  function openCreateMember() {
+    setMemberError('')
+    setMemberSaved('')
+    setMemberSelected(null)
+    setClubTab('integrantes')
+    setMemberMode('create')
+  }
+
+  function openMember(mode: MemberDrawerMode, persona: ClubPerson) {
+    setMemberError('')
+    setMemberSaved('')
+    setMemberSelected(persona)
+    setMemberMode(mode)
+  }
+
+  function applyMember(next: ClubPerson) {
+    setClub((current) => {
+      if (!current) return current
+      const personas = current.personas ?? []
+      const exists = personas.some((row) => row.id === next.id)
+      const nextPersonas = exists
+        ? personas.map((row) => (row.id === next.id ? { ...row, ...next } : row))
+        : [...personas, next]
+      return {
+        ...current,
+        personas: nextPersonas,
+        personas_count: nextPersonas.length,
+      }
+    })
+  }
+
   async function onCopyInvite() {
     if (!invite?.url) return
     try {
@@ -108,21 +200,40 @@ export function MyClubPage() {
 
   return (
     <section className="admin-page">
-      <header className="admin-page__intro">
-        <p className="admin-kicker">Mi club</p>
-        <h2>{club?.nombre || ctx?.organizacion_nombre || 'Mi Club'}</h2>
-        <p>
-          {club?.lema ||
-            'Ficha del club de tu contexto: datos, directiva e integrantes.'}
-        </p>
-      </header>
-
       {loading ? <p className="admin-empty">Cargando ficha del club…</p> : null}
-      {error ? (
+      {error || memberError ? (
         <p className="admin-form__alert" role="alert">
-          {error}
+          {error || memberError}
         </p>
       ) : null}
+      {memberSaved ? (
+        <p className="admin-form__ok" role="status">
+          {memberSaved}
+        </p>
+      ) : null}
+
+      {canCreateMembers ? (
+        <button
+          type="button"
+          className={`admin-fab${memberMode === 'create' ? ' is-open' : ''}`}
+          aria-label={memberMode === 'create' ? 'Cerrar formulario' : 'Agregar integrante'}
+          title={memberMode === 'create' ? 'Cerrar formulario' : 'Agregar integrante'}
+          onClick={() => (memberMode === 'create' ? closeMemberDrawer() : openCreateMember())}
+        >
+          <span aria-hidden="true">+</span>
+        </button>
+      ) : null}
+
+      <MemberDrawer
+        mode={memberMode}
+        persona={memberSelected}
+        organizacionId={ctx?.organizacion_id}
+        onClose={closeMemberDrawer}
+        onCreated={applyMember}
+        onUpdated={applyMember}
+        onError={setMemberError}
+        onNotice={setMemberSaved}
+      />
 
       {!loading && !club && !error ? (
         <AppPanel>
@@ -145,56 +256,47 @@ export function MyClubPage() {
               <small>Estado</small>
               <strong>{club.is_active ? 'Activo' : 'Inactivo'}</strong>
             </article>
-            <article>
+            <article className="admin-stats__members">
               <small>Integrantes</small>
               <strong>{club.personas_count ?? members.length}</strong>
+              {canCreateMembers ? (
+                <button
+                  type="button"
+                  className="admin-stats__add"
+                  onClick={openCreateMember}
+                >
+                  Agregar
+                </button>
+              ) : null}
             </article>
           </div>
 
           <div className="admin-club">
             <AppPanel className="admin-club__card">
-              {logo ? <img src={logo} alt="" className="admin-club__logo" /> : null}
-              <p className="app-panel__kicker">{club.nombre_corto || 'Club'}</p>
-              <h2 className="app-panel__title">{club.nombre}</h2>
+              <header className="admin-club__heading">
+                {logo ? <img src={logo} alt="" className="admin-club__logo" /> : null}
+                <p className="app-panel__kicker">{club.nombre_corto || 'Club'}</p>
+                <h2 className="app-panel__title">{club.nombre}</h2>
+              </header>
               {club.lema ? <p className="app-panel__subtitle">{club.lema}</p> : null}
               {club.descripcion ? <p className="app-panel__muted">{club.descripcion}</p> : null}
 
               <dl className="admin-club__meta">
                 <div>
-                  <dt>Iglesia</dt>
-                  <dd>{iglesia || '—'}</dd>
-                </div>
-                <div>
-                  <dt>Organización</dt>
-                  <dd>{club.organizacion?.nombre || ctx?.organizacion_nombre || '—'}</dd>
-                </div>
-                <div>
-                  <dt>Fundación</dt>
-                  <dd>{formatDate(club.fecha_fundacion)}</dd>
-                </div>
-                <div>
-                  <dt>Ciudad</dt>
-                  <dd>{club.ciudad || '—'}</dd>
+                  <dt>Zona</dt>
+                  <dd>{club.zona || '—'}</dd>
                 </div>
                 <div>
                   <dt>Distrito</dt>
                   <dd>{club.distrito || '—'}</dd>
                 </div>
                 <div>
-                  <dt>Zona</dt>
-                  <dd>{club.zona || '—'}</dd>
+                  <dt>Iglesia</dt>
+                  <dd>{iglesia || '—'}</dd>
                 </div>
                 <div>
-                  <dt>Sitio web</dt>
-                  <dd>
-                    {club.sitio_web ? (
-                      <a className="app-panel__link" href={club.sitio_web} target="_blank" rel="noreferrer">
-                        {club.sitio_web}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </dd>
+                  <dt>Ciudad</dt>
+                  <dd>{club.ciudad || '—'}</dd>
                 </div>
                 <div>
                   <dt>Colores</dt>
@@ -212,20 +314,120 @@ export function MyClubPage() {
             </AppPanel>
 
             <AppPanel className="admin-club__card">
-              <p className="app-panel__kicker">Directiva</p>
-              <h2 className="app-panel__title">Cargos del club</h2>
-              {directors.length ? (
-                <ul className="admin-club__people">
-                  {directors.map((row) => (
-                    <li key={`${row.ministry}-${row.persona_id ?? row.user_id ?? row.ministry}`}>
-                      <strong>{boardLabel(row.ministry)}</strong>
-                      <span>{directorName(row)}</span>
-                      <small>{row.user?.email || row.persona?.correo || 'Sin correo'}</small>
-                    </li>
-                  ))}
-                </ul>
+              <div className="admin-event-tabs" role="tablist" aria-label="Personas del club">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={clubTab === 'directiva'}
+                  className={`admin-events__view${clubTab === 'directiva' ? ' is-on' : ''}`}
+                  onClick={() => setClubTab('directiva')}
+                >
+                  Directiva
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={clubTab === 'integrantes'}
+                  className={`admin-events__view${clubTab === 'integrantes' ? ' is-on' : ''}`}
+                  onClick={() => setClubTab('integrantes')}
+                >
+                  Integrantes{members.length ? ` (${members.length})` : ''}
+                </button>
+              </div>
+
+              {clubTab === 'directiva' ? (
+                <>
+                  <p className="app-panel__subtitle">
+                    {canAssignBoard
+                      ? 'Asigna director, subdirector, secretari@ y tesorer@ entre los integrantes.'
+                      : 'Estos son los cargos de la directiva de este club.'}
+                  </p>
+                  {boardError ? (
+                    <p className="app-panel__alert" role="alert">
+                      {boardError}
+                    </p>
+                  ) : null}
+                  {boardSaved ? (
+                    <p className="app-panel__ok" role="status">
+                      {boardSaved}
+                    </p>
+                  ) : null}
+                  <ul className="admin-club__people">
+                    {BOARD_POSITIONS.map((position) => {
+                      const row = holderFor(directors, position)
+                      const taken = new Set(
+                        BOARD_POSITIONS.filter((item) => item !== position)
+                          .map((item) => holderFor(directors, item)?.persona_id)
+                          .filter((id): id is number => Boolean(id)),
+                      )
+                      return (
+                        <li key={position}>
+                          <strong>{BOARD_LABELS[position]}</strong>
+                          {canAssignBoard ? (
+                            <label>
+                              Integrante
+                              <PersonSearchSelect
+                                value={row?.persona_id ?? ''}
+                                disabled={savingBoard !== null}
+                                options={[
+                                  ...(row?.persona_id && !members.some((persona) => persona.id === row.persona_id)
+                                    ? [{ id: row.persona_id, label: directorName(row) }]
+                                    : []),
+                                  ...members.map((persona) => ({
+                                    id: persona.id,
+                                    label: boardOptionLabel(persona),
+                                    disabled: taken.has(persona.id),
+                                  })),
+                                ]}
+                                onChange={(next) => void onAssignBoard(position, next)}
+                              />
+                            </label>
+                          ) : (
+                            <>
+                              <span>{row ? directorName(row) : 'Sin asignar'}</span>
+                              <small>{row?.user?.email || row?.persona?.correo || 'Sin correo'}</small>
+                            </>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
+              ) : members.length ? (
+                <div className="admin-club__table-wrap">
+                  <table className="admin-club__table">
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Identificación</th>
+                        <th>Correo</th>
+                        <th>Teléfono</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {members.map((persona) => (
+                        <MemberRow
+                          key={persona.id}
+                          persona={persona}
+                          canUpdate={canUpdateMembers}
+                          canImpersonate={canImpersonateMembers}
+                          currentUserId={auth.user?.id}
+                          onEdit={(row) => openMember('edit', row)}
+                          onPassword={(row) => openMember('password', row)}
+                          onImpersonate={(row) => openMember('impersonate', row)}
+                        >
+                          <td>{persona.full_name}</td>
+                          <td>{persona.identificacion || '—'}</td>
+                          <td>{persona.correo || '—'}</td>
+                          <td>{persona.telefono || '—'}</td>
+                        </MemberRow>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
-                <p className="app-panel__muted">Aún no hay directiva asignada.</p>
+                <p className="app-panel__muted">Este club todavía no tiene integrantes registrados.</p>
               )}
             </AppPanel>
           </div>
@@ -267,37 +469,6 @@ export function MyClubPage() {
               </div>
             </AppPanel>
           ) : null}
-
-          <AppPanel className="admin-club__card">
-            <p className="app-panel__kicker">Integrantes</p>
-            <h2 className="app-panel__title">Personas del club</h2>
-            {members.length ? (
-              <div className="admin-club__table-wrap">
-                <table className="admin-club__table">
-                  <thead>
-                    <tr>
-                      <th>Nombre</th>
-                      <th>Identificación</th>
-                      <th>Correo</th>
-                      <th>Teléfono</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {members.map((persona) => (
-                      <tr key={persona.id}>
-                        <td>{persona.full_name}</td>
-                        <td>{persona.identificacion || '—'}</td>
-                        <td>{persona.correo || '—'}</td>
-                        <td>{persona.telefono || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="app-panel__muted">Este club todavía no tiene integrantes registrados.</p>
-            )}
-          </AppPanel>
         </>
       ) : null}
     </section>

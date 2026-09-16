@@ -33,25 +33,30 @@ type AttendanceMarkListProps = {
   onEstado: (personaId: number, estado: AttendanceEstado | '') => void
   onMarkAll: (estado: AttendanceEstado | '') => void
   onSave: () => void
+  showSave?: boolean
 }
 
 function MarkIcon({ kind }: { kind: 'presente' | 'justificado' }) {
   if (kind === 'presente') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-        <path d="M8.2 12.2 10.8 14.8 15.8 9.4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M6.4 12.4 10.3 16.2 17.6 8.2"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     )
   }
 
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M8 4.5h8.2A2.3 2.3 0 0 1 18.5 6.8v12.1c0 .9-1 1.4-1.7.9L12 16.2l-4.8 3.6c-.7.5-1.7 0-1.7-.9V6.8A2.3 2.3 0 0 1 8 4.5z"
-        fill="none"
+        d="M7.2 5h9.6v13.6L12 15.4 7.2 18.6V5z"
         stroke="currentColor"
-        strokeWidth="1.7"
+        strokeWidth="2"
         strokeLinejoin="round"
       />
     </svg>
@@ -66,6 +71,7 @@ export function AttendanceMarkList({
   onEstado,
   onMarkAll,
   onSave,
+  showSave = true,
 }: AttendanceMarkListProps) {
   const [query, setQuery] = useState('')
 
@@ -163,13 +169,14 @@ export function AttendanceMarkList({
         })}
       </div>
 
-      {canEdit ? (
+      {showSave && canEdit ? (
         <button type="button" className="app-panel__btn--primary" disabled={saving} onClick={onSave}>
           {saving ? 'Guardando…' : 'Guardar asistencia'}
         </button>
-      ) : (
+      ) : null}
+      {showSave && !canEdit ? (
         <p className="app-panel__hint">Solo la directiva puede registrar asistencia.</p>
-      )}
+      ) : null}
     </div>
   )
 }

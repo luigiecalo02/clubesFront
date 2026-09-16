@@ -7,7 +7,10 @@ import { useAuth } from '../auth/AuthProvider'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
 import type { ClubesAppConfig, ClubesAssetKey, MailSettings } from '../api/types'
 
-type ClubesTextConfig = Omit<ClubesAppConfig, 'source' | 'logo_url' | 'background_url' | 'banner_url'>
+type ClubesTextConfig = Omit<
+  ClubesAppConfig,
+  'source' | 'logo_url' | 'background_url' | 'banner_url' | 'background_night_url' | 'background_day_url'
+>
 
 const DEFAULT_PRIMARY = '#f0c14b'
 const DEFAULT_SECONDARY = '#c4921a'
@@ -44,18 +47,81 @@ function assetUrl(
   if (!clubes) return null
   if (key === 'logo') return clubes.logo_url
   if (key === 'background') return clubes.background_url
-  return clubes.banner_url
+  if (key === 'banner') return clubes.banner_url
+  if (key === 'background_night') return clubes.background_night_url
+  return clubes.background_day_url
 }
 
-const ASSETS: Array<{
+type ClubAssetItem = {
   key: ClubesAssetKey
   label: string
   hint: string
-}> = [
+}
+
+const CLUB_ASSETS: ClubAssetItem[] = [
   { key: 'logo', label: 'Logo del inicio', hint: 'Se muestra en la tarjeta de login. Si no hay, se usa el emblema por defecto.' },
-  { key: 'background', label: 'Imagen de fondo', hint: 'Sustituye la escena ilustrada del login. JPG, PNG o WebP.' },
+  { key: 'background', label: 'Fondo del login', hint: 'Sustituye la escena ilustrada del inicio de sesión. JPG, PNG o WebP.' },
   { key: 'banner', label: 'Banner principal', hint: 'Opcional. Aparece en el inicio del panel si lo cargas.' },
 ]
+
+const APP_BACKGROUNDS: ClubAssetItem[] = [
+  { key: 'background_night', label: 'Fondo oscuro', hint: 'Panel en modo noche. Si la cargas, se omiten las animaciones y la app arranca más ligera.' },
+  { key: 'background_day', label: 'Fondo claro', hint: 'Panel en modo día. Si la cargas, se omiten las animaciones y la app arranca más ligera.' },
+]
+
+function ClubAssetFields({
+  assets,
+  clubes,
+  canUpdate,
+  onUpload,
+  onReset,
+}: {
+  assets: ClubAssetItem[]
+  clubes: ClubesAppConfig | undefined
+  canUpdate: boolean
+  onUpload: (key: ClubesAssetKey, file: File) => void
+  onReset: (key: ClubesAssetKey) => void
+}) {
+  return (
+    <div className="admin-assets">
+      {assets.map((asset) => {
+        const url = resolveFileUrl(assetUrl(clubes, asset.key))
+        return (
+          <div key={asset.key} className="admin-asset">
+            <span>{asset.label}</span>
+            <small>{asset.hint}</small>
+            {url ? (
+              <img src={url} alt="" className={`admin-asset__preview admin-asset__preview--${asset.key}`} />
+            ) : (
+              <span className="admin-asset__empty">Sin imagen</span>
+            )}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={!canUpdate}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                event.target.value = ''
+                if (!file) return
+                onUpload(asset.key, file)
+              }}
+            />
+            {url ? (
+              <button
+                type="button"
+                className="admin-ghost"
+                disabled={!canUpdate}
+                onClick={() => onReset(asset.key)}
+              >
+                Quitar
+              </button>
+            ) : null}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export function SettingsPage() {
   const auth = useAuth()
@@ -102,7 +168,7 @@ export function SettingsPage() {
           username: next.username,
           from_address: next.from_address,
           from_name: next.from_name,
-          password: '',
+          password: next.password || '',
         })
         setMailSet(next.password_set)
         setMailConfigured(next.configured)
@@ -161,8 +227,7 @@ export function SettingsPage() {
     setSavingMail(true)
     try {
       const next = await settingsApi.updateMail(mail)
-      setMail((current) => ({ ...current, password: '' }))
-      setShowMailPassword(false)
+      setMail((current) => ({ ...current, password: next.password || current.password }))
       setMailSet(next.password_set)
       setMailConfigured(next.configured)
       setMailSaved('Correo de recuperación guardado.')
@@ -342,41 +407,25 @@ export function SettingsPage() {
         </div>
 
         <h3>Imágenes del club</h3>
-        <div className="admin-assets">
-          {ASSETS.map((asset) => {
-            const url = resolveFileUrl(assetUrl(settings?.clubes, asset.key))
-            return (
-              <div key={asset.key} className="admin-asset">
-                <span>{asset.label}</span>
-                <small>{asset.hint}</small>
-                {url ? <img src={url} alt="" className={`admin-asset__preview admin-asset__preview--${asset.key}`} /> : (
-                  <span className="admin-asset__empty">Sin imagen</span>
-                )}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  disabled={!canUpdate}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0]
-                    event.target.value = ''
-                    if (!file) return
-                    void onUpload(asset.key, file)
-                  }}
-                />
-                {url ? (
-                  <button
-                    type="button"
-                    className="admin-ghost"
-                    disabled={!canUpdate}
-                    onClick={() => void onReset(asset.key)}
-                  >
-                    Quitar
-                  </button>
-                ) : null}
-              </div>
-            )
-          })}
-        </div>
+        <ClubAssetFields
+          assets={CLUB_ASSETS}
+          clubes={settings?.clubes}
+          canUpdate={canUpdate}
+          onUpload={(key, file) => void onUpload(key, file)}
+          onReset={(key) => void onReset(key)}
+        />
+
+        <h3>Fondo de la aplicación</h3>
+        <p className="app-panel__muted">
+          Una foto por tema sustituye la escena animada del panel y suele cargar más rápido.
+        </p>
+        <ClubAssetFields
+          assets={APP_BACKGROUNDS}
+          clubes={settings?.clubes}
+          canUpdate={canUpdate}
+          onUpload={(key, file) => void onUpload(key, file)}
+          onReset={(key) => void onReset(key)}
+        />
 
         <div className="admin-form__actions">
           <button
@@ -488,7 +537,7 @@ export function SettingsPage() {
                 value={mail.password}
                 disabled={!canUpdate}
                 autoComplete="new-password"
-                placeholder={mailSet ? 'Dejar en blanco para no cambiar' : 'Contraseña de la cuenta'}
+                placeholder={mailSet && !mail.password ? 'Hay una contraseña guardada' : 'Contraseña de la cuenta'}
                 onChange={(event) => setMail((current) => ({ ...current, password: event.target.value }))}
               />
               <button

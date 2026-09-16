@@ -1,7 +1,10 @@
 .create-drawer {
   position: fixed;
-  inset: 0;
-  z-index: 20;
+  top: var(--admin-topbar-height, calc(4.65rem + env(safe-area-inset-top, 0px)));
+  right: 0;
+  bottom: 0;
+  left: 16.5rem;
+  z-index: 14;
   display: grid;
 }
 
@@ -14,31 +17,52 @@
   cursor: pointer;
 }
 
-.create-drawer__panel {
+.app-panel.create-drawer__panel {
+  --panel-padding: 0.85rem 1.1rem 0.95rem;
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
+  left: auto;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
   width: 90%;
-  --panel-width: 100%;
+  --panel-width: 90%;
   --panel-max-width: none;
   --panel-radius: 1.4rem 0 0 1.4rem;
-  overflow: auto;
+  overflow: hidden;
   animation: create-drawer-in 0.28s ease;
 }
 
 .create-drawer__head {
-  display: grid;
-  gap: 0.15rem;
-  margin-bottom: 0.4rem;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.4rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--panel-divider);
+}
+
+.app-panel.create-drawer__panel .create-drawer__title {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-family: var(--panel-font);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--panel-title);
 }
 
 .create-drawer__close {
-  position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
-  z-index: 2;
+  position: static;
+  flex: none;
   width: 2.2rem;
   height: 2.2rem;
   padding: 0;
@@ -58,7 +82,28 @@
 
 .create-drawer__body {
   display: grid;
+  flex: 1;
   gap: 0.85rem;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.85rem 0.35rem 0.85rem 0;
+}
+
+.create-drawer__footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--panel-divider);
+}
+
+.create-drawer__footer .app-panel__btn--primary,
+.create-drawer__footer .app-panel__btn--ghost {
+  width: auto;
+  min-width: 9rem;
+  flex: 1 1 9rem;
 }
 
 @keyframes create-drawer-in {
@@ -70,12 +115,19 @@
   }
 }
 
-@media (max-width: 720px) {
-  .create-drawer__panel {
+@media (max-width: 900px) {
+  .create-drawer {
+    left: 0;
+  }
+
+  .app-panel.create-drawer__panel {
     top: auto;
     left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
-    max-height: 92vh;
+    --panel-width: 100%;
+    max-height: 90%;
     --panel-radius: 1.4rem 1.4rem 0 0;
     animation-name: create-drawer-up;
   }

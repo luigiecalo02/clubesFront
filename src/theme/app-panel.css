@@ -43,6 +43,37 @@
   --panel-hint-border: rgb(240 193 75 / 0.22);
   --panel-ok-text: #86efac;
   --panel-divider: rgb(255 255 255 / 0.12);
+  --panel-scroll-size: 5px;
+  --panel-scroll-thumb: color-mix(in srgb, var(--panel-gold) 32%, var(--panel-divider));
+  --panel-scroll-thumb-hover: color-mix(in srgb, var(--panel-gold) 62%, transparent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--panel-scroll-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: var(--panel-scroll-size);
+  height: var(--panel-scroll-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 0;
+  border-radius: 999px;
+  background: var(--panel-scroll-thumb);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--panel-scroll-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .app-panel {

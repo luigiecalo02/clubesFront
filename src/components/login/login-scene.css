@@ -62,6 +62,12 @@
     radial-gradient(circle at 70% 40%, transparent 28%, rgb(2 6 12 / 0.35) 100%);
 }
 
+.login-scene--day .login-scene__photo::after {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(232 238 246 / 0.22)),
+    radial-gradient(circle at 50% 30%, transparent 40%, rgb(232 238 246 / 0.2) 100%);
+}
+
 .login-scene__ground {
   position: absolute;
   left: 0;
@@ -107,14 +113,17 @@
   z-index: 20;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   min-height: 100%;
   padding: 1.5rem clamp(1rem, 5vw, 5.5rem);
   pointer-events: none;
 }
 
 .login-scene__content--form {
-  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   min-height: 0;
   height: 100%;
   max-height: 100%;
@@ -125,6 +134,14 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   pointer-events: auto;
+}
+
+.login-scene__content--form::before,
+.login-scene__content--form::after {
+  content: '';
+  flex: 1 1 0;
+  min-height: 0;
+  pointer-events: none;
 }
 
 /* ---------- Cielo ---------- */
@@ -720,6 +737,7 @@
 
 .login-card {
   z-index: 21;
+  margin-inline: auto;
   pointer-events: auto;
   animation: cardEnter 0.9s cubic-bezier(0.22, 1, 0.36, 1) 1.9s both;
 }
@@ -793,7 +811,8 @@
   }
 
   .login-scene__content.login-scene__content--form {
-    align-items: flex-start;
+    align-items: center;
+    justify-content: flex-start;
     height: 100%;
     max-height: 100%;
     overflow-y: auto;
@@ -1421,7 +1440,8 @@
 
 @media (max-width: 720px) {
   .login-scene__content {
-    align-items: flex-end;
+    align-items: center;
+    justify-content: center;
     padding: 0.9rem 0.9rem 1.1rem;
   }
 
