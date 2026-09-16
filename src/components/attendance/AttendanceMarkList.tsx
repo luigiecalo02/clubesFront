@@ -245,7 +245,7 @@ export function AttendanceMarkList({
             aria-label="Cancelar"
             onClick={() => setPending(null)}
           />
-          <AppPanel className="attendance-confirm__panel" shine={false} narrow>
+          <AppPanel className="attendance-confirm__panel" shine={false}>
             <p className="app-panel__kicker">Confirmar</p>
             <h2 className="app-panel__title" id="attendance-confirm-title">
               {BULK_COPY[pending].title}
