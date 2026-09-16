@@ -20,6 +20,8 @@
 
 .app-panel.create-drawer__panel {
   --panel-padding: 0.85rem 1.1rem 0.95rem;
+  --panel-bg: #081018;
+  --panel-blur: 0;
   position: absolute;
   top: 0;
   right: 0;
@@ -34,6 +36,10 @@
   --panel-radius: 1.4rem 0 0 1.4rem;
   overflow: hidden;
   animation: create-drawer-in 0.28s ease;
+}
+
+.admin-shell--day .app-panel.create-drawer__panel {
+  --panel-bg: #ffffff;
 }
 
 .create-drawer__head {

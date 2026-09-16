@@ -354,9 +354,9 @@
   --panel-padding: 0.55rem;
   --panel-width: min(18.5rem, calc(100vw - 1.5rem));
   --panel-max-width: 18.5rem;
-  --panel-bg: rgb(8 14 24 / 0.28);
-  --panel-blur: 22px;
-  --panel-shadow: 0 16px 40px rgb(0 0 0 / 0.22), inset 0 1px 0 rgb(255 255 255 / 0.2);
+  --panel-bg: #081018;
+  --panel-blur: 0;
+  --panel-shadow: 0 16px 40px rgb(0 0 0 / 0.36), inset 0 1px 0 rgb(255 255 255 / 0.12);
   position: fixed;
   left: auto;
   z-index: 50;
@@ -365,7 +365,7 @@
 
 .app-panel.admin-user-menu__panel.is-day,
 .admin-shell--day .app-panel.admin-user-menu__panel {
-  --panel-bg: rgb(255 255 255 / 0.78);
+  --panel-bg: #ffffff;
   --panel-border: rgb(20 50 80 / 0.16);
   --panel-text: #1a2a3c;
   --panel-title: #0c2340;
@@ -374,6 +374,7 @@
   --panel-icon: #0c2340;
   --panel-divider: rgb(20 50 80 / 0.12);
   --panel-ghost-bg: rgb(12 35 64 / 0.08);
+  --panel-shadow: 0 16px 40px rgb(30 70 110 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.9);
 }
 
 .admin-user-menu__panel button .admin-icon {
