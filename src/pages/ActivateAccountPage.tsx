@@ -20,6 +20,7 @@ export function ActivateAccountPage() {
   const [preview, setPreview] = useState<ClubesInvitePreview | null>(null)
   const [lookup, setLookup] = useState<ClubesInviteLookup | null>(null)
   const [identificacion, setIdentificacion] = useState('')
+  const [tipoIdentificacion, setTipoIdentificacion] = useState<'CC' | 'TI' | 'CE' | 'PA'>('CC')
   const [nombre1, setNombre1] = useState('')
   const [apellido1, setApellido1] = useState('')
   const [correo, setCorreo] = useState('')
@@ -65,10 +66,14 @@ export function ActivateAccountPage() {
     try {
       const next = await settingsApi.inviteLookup(token, identificacion.trim())
       setLookup(next)
+      const tipo = (next.persona.tipo_identificacion ?? 'CC').toUpperCase()
+      setTipoIdentificacion(tipo === 'TI' || tipo === 'CE' || tipo === 'PA' ? tipo : 'CC')
       setNombre1(next.persona.nombre1 ?? '')
       setApellido1(next.persona.apellido1 ?? '')
       setCorreo(next.persona.correo ?? '')
       setTelefono(next.persona.telefono ?? '')
+      setPassword('')
+      setConfirmation('')
     } catch (err) {
       setError(getApiErrorMessage(err, 'No encontramos esa identificación en este club'))
     } finally {
@@ -79,29 +84,53 @@ export function ActivateAccountPage() {
   async function onActivate(event: FormEvent) {
     event.preventDefault()
     if (!lookup) return
+    if (password !== confirmation) {
+      setError('Las contraseñas no coinciden.')
+      return
+    }
+    if (!lookup.has_user && password.trim().length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    if (lookup.has_user && password && password.trim().length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
     setError('')
     setSubmitting(true)
     try {
       const issued = await settingsApi.inviteActivate({
         token,
         identificacion: lookup.persona.identificacion || identificacion.trim(),
-        nombre1: nombre1.trim() || undefined,
-        apellido1: apellido1.trim() || undefined,
-        correo: correo.trim() || undefined,
+        tipo_identificacion: tipoIdentificacion,
+        nombre1: nombre1.trim(),
+        apellido1: apellido1.trim(),
+        correo: correo.trim(),
         telefono: telefono.trim() || undefined,
-        password,
-        password_confirmation: confirmation,
+        ...(password ? { password, password_confirmation: confirmation } : {}),
       })
       await auth.applySession(issued.token)
       navigate('/', { replace: true })
     } catch (err) {
-      setError(getApiErrorMessage(err, 'No se pudo activar la cuenta'))
+      setError(getApiErrorMessage(err, lookup.has_user ? 'No se pudieron guardar los datos' : 'No se pudo activar la cuenta'))
     } finally {
       setSubmitting(false)
     }
   }
 
-  const missing = new Set(lookup?.missing ?? [])
+  const orgPath = lookup?.path?.length
+    ? lookup.path
+    : lookup
+      ? [
+          {
+            id: lookup.organizacion_id,
+            nombre: lookup.organizacion_nombre,
+            tipo_organizacion_id: 0,
+            tipo_nombre: 'Club',
+            is_club: true,
+          },
+        ]
+      : []
 
   return (
     <AdventureScene theme={theme} showCopy={false} backgroundUrl={backgroundUrl}>
@@ -109,11 +138,13 @@ export function ActivateAccountPage() {
       <div className="login-scene__content login-scene__content--form">
         <AppPanel className="login-card login-card--register">
           <LoginCardEmblem logoUrl={logoUrl} />
-          <p className="login-card__kicker">Activar cuenta</p>
-          <h1>{preview?.organizacion_nombre || 'Tu club'}</h1>
+          <p className="login-card__kicker">{lookup ? 'Tus datos' : 'Activar cuenta'}</p>
+          <h1>{lookup ? 'Actualizar datos' : preview?.organizacion_nombre || 'Tu club'}</h1>
           <p className="login-card__subtitle">
             {lookup
-              ? 'Completa solo lo que falte. Quedarás como miembro de esta organización.'
+              ? lookup.has_user
+                ? 'Revisa y actualiza tus datos. Si no quieres cambiar la clave, déjala vacía.'
+                : 'Revisa tus datos y crea tu contraseña para activar la cuenta.'
               : 'Escribe tu identificación. El director ya te tiene como persona de este club.'}
           </p>
           {error ? (
@@ -141,25 +172,38 @@ export function ActivateAccountPage() {
           ) : null}
 
           {lookup ? (
-            <form onSubmit={onActivate}>
+            <form className="login-card__form" onSubmit={onActivate}>
+              {orgPath.length ? (
+                <div className="login-card__path" aria-label="Organizaciones">
+                  {orgPath.map((org) => (
+                    <p key={org.id} className="login-card__path-item">
+                      <span>{org.tipo_nombre}</span>
+                      <strong>{org.nombre}</strong>
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+
               <div className="login-card__grid">
                 <label>
                   Nombre
-                  <input
-                    value={nombre1}
-                    onChange={(event) => setNombre1(event.target.value)}
-                    required={missing.has('nombre1')}
-                    readOnly={!missing.has('nombre1') && Boolean(lookup.persona.nombre1)}
-                  />
+                  <input value={nombre1} onChange={(event) => setNombre1(event.target.value)} required />
                 </label>
                 <label>
                   Apellido
-                  <input
-                    value={apellido1}
-                    onChange={(event) => setApellido1(event.target.value)}
-                    required={missing.has('apellido1')}
-                    readOnly={!missing.has('apellido1') && Boolean(lookup.persona.apellido1)}
-                  />
+                  <input value={apellido1} onChange={(event) => setApellido1(event.target.value)} required />
+                </label>
+                <label>
+                  Tipo de identificación
+                  <select
+                    value={tipoIdentificacion}
+                    onChange={(event) => setTipoIdentificacion(event.target.value as 'CC' | 'TI' | 'CE' | 'PA')}
+                  >
+                    <option value="CC">Cédula</option>
+                    <option value="TI">Tarjeta de identidad</option>
+                    <option value="CE">Cédula de extranjería</option>
+                    <option value="PA">Pasaporte</option>
+                  </select>
                 </label>
                 <label>
                   Identificación
@@ -172,7 +216,7 @@ export function ActivateAccountPage() {
                     autoComplete="email"
                     value={correo}
                     onChange={(event) => setCorreo(event.target.value)}
-                    required={missing.has('correo')}
+                    required
                   />
                 </label>
                 <label>
@@ -186,8 +230,9 @@ export function ActivateAccountPage() {
                     autoComplete="new-password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    required
-                    minLength={8}
+                    required={!lookup.has_user}
+                    minLength={lookup.has_user ? undefined : 8}
+                    placeholder={lookup.has_user ? 'Déjala vacía para no cambiarla' : undefined}
                   />
                 </label>
                 <label>
@@ -197,18 +242,38 @@ export function ActivateAccountPage() {
                     autoComplete="new-password"
                     value={confirmation}
                     onChange={(event) => setConfirmation(event.target.value)}
-                    required
-                    minLength={8}
+                    required={!lookup.has_user || Boolean(password)}
+                    minLength={lookup.has_user ? undefined : 8}
                   />
                 </label>
               </div>
               <button type="submit" className="login-card__submit" disabled={submitting}>
-                {submitting ? 'Activando…' : 'Crear mi usuario'}
+                {submitting
+                  ? lookup.has_user
+                    ? 'Guardando…'
+                    : 'Activando…'
+                  : lookup.has_user
+                    ? 'Guardar y entrar'
+                    : 'Crear mi usuario'}
               </button>
             </form>
           ) : null}
 
           <div className="login-card__links">
+            {lookup ? (
+              <button
+                type="button"
+                className="login-card__link"
+                onClick={() => {
+                  setLookup(null)
+                  setError('')
+                  setPassword('')
+                  setConfirmation('')
+                }}
+              >
+                Otra identificación
+              </button>
+            ) : null}
             <Link className="login-card__link" to="/login">
               Ir a iniciar sesión
             </Link>

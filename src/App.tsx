@@ -15,6 +15,7 @@ import { AttendancePage } from './pages/AttendancePage'
 import { EventsPage } from './pages/EventsPage'
 import { MembersPage } from './pages/MembersPage'
 import { MyClubPage } from './pages/MyClubPage'
+import { ProfilePage } from './pages/ProfilePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ClubesSettingsProvider } from './settings/ClubesSettingsProvider'
 
@@ -40,6 +41,7 @@ export default function App() {
             <Route element={<RequireAuth />}>
               <Route element={<AdminLayout />}>
                 <Route path="/" element={<DashboardPage />} />
+                <Route path="/perfil" element={<ProfilePage />} />
                 <Route
                   path="/configuracion"
                   element={

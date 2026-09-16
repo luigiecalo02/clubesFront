@@ -48,6 +48,7 @@ export interface AuthUser {
   permissions: string[]
   is_super?: boolean
   is_admin?: boolean
+  persona_id?: number | null
   requires_context?: boolean
   contexto?: AuthContextOption | null
   context_options?: AuthContextOption[]
@@ -95,6 +96,8 @@ export interface ClubesInviteLookup {
   organizacion_nombre: string
   persona: ClubesInvitePersona
   missing: string[]
+  has_user: boolean
+  path: PublicOrg[]
 }
 
 export interface PublicOrg {

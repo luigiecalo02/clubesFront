@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { resolveFileUrl } from '../../api/baseUrl'
 import type { EventSummary, EventTipo } from '../../api/types'
 import { AppPanel } from '../../theme/AppPanel'
 import { EventCard } from './EventCard'
@@ -34,10 +35,25 @@ export function EventBoard({
 }: EventBoardProps) {
   const [tab, setTab] = useState<EventWorkspaceTab>('ficha')
   const [count, setCount] = useState(item.hijos_count ?? 0)
+  const banner = resolveFileUrl(item.banner_url)
+  const logo = resolveFileUrl(item.image_url)
+  const headClass = [
+    'admin-event-card__head-bar',
+    banner ? 'has-banner' : '',
+    logo ? 'has-logo' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   const body = (
     <>
-      <EventTabs tab={tab} count={count} onChange={setTab} />
+      <div className="admin-event-card__head">
+        {banner ? <img src={banner} alt="" className="admin-event-card__banner" /> : null}
+        <div className={headClass}>
+          {logo ? <img src={logo} alt="" className="admin-event-card__logo" /> : null}
+          <EventTabs tab={tab} count={count} onChange={setTab} />
+        </div>
+      </div>
       {tab === 'ficha' ? (
         <EventCard
           item={item}
@@ -45,6 +61,7 @@ export function EventBoard({
           framed={false}
           showHeading={showHeading}
           showActions={showActions}
+          showMedia={false}
           canTakeAttendance={canTakeAttendance}
           canEdit={canEdit}
           onAttendance={onAttendance}

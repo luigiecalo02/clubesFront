@@ -965,6 +965,11 @@
   padding-right: 3.4rem;
 }
 
+.login-card input:read-only {
+  opacity: 0.88;
+  cursor: default;
+}
+
 .login-card input::placeholder {
   color: var(--panel-placeholder);
 }
@@ -1434,9 +1439,7 @@
   }
 
   .login-scene__copy,
-  .login-flags,
-  .login-forest,
-  .login-mountains__layer--far {
+  .login-flags {
     display: none;
   }
 
@@ -1461,7 +1464,6 @@
     padding: 0.9rem 0.9rem 1.1rem;
   }
 
-  .login-mountains,
   .login-flags,
   .login-particles,
   .login-squirrel,
@@ -1471,6 +1473,16 @@
   .login-fog__layer--far,
   .login-fog__layer--mid {
     display: none;
+  }
+
+  .login-mountains {
+    display: block;
+    height: 54%;
+  }
+
+  .login-forest {
+    display: block;
+    height: 36%;
   }
 
   .login-card {
@@ -1508,6 +1520,12 @@
 
 .admin-shell > .login-scene--backdrop {
   z-index: 0;
+}
+
+.login-scene--backdrop .login-mountains,
+.login-scene--backdrop .login-mountains__layer,
+.login-scene--backdrop .login-forest {
+  display: block;
 }
 
 .login-scene--static .login-sky,

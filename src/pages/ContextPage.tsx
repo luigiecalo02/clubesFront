@@ -24,7 +24,7 @@ export function ContextPage() {
       .then((result) => {
         if (cancelled) return
         setOptions(result.options)
-        if (!result.requires_context) {
+        if (result.options.length <= 1) {
           navigate('/', { replace: true })
         }
       })
@@ -68,7 +68,7 @@ export function ContextPage() {
     <AppPanel className="auth-card" narrow>
       <p className="app-panel__kicker">Clubes</p>
       <h1 className="app-panel__title">Elige un contexto</h1>
-      <p className="app-panel__subtitle">Tu usuario tiene más de un rol u organización.</p>
+      <p className="app-panel__subtitle">Cambia de rol u organización sin cerrar sesión.</p>
       {error ? <p className="app-panel__alert">{error}</p> : null}
       {loading ? <p className="app-panel__muted">Cargando opciones…</p> : null}
       <ul className="context-list">

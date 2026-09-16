@@ -22,6 +22,18 @@ export type AdminIconName =
   | 'box'
   | 'map'
   | 'grid'
+  | 'user'
+  | 'sun'
+  | 'moon'
+  | 'logout'
+  | 'download'
+  | 'undo'
+  | 'crown'
+  | 'globe'
+  | 'compass'
+  | 'star'
+  | 'eye'
+  | 'wallet'
 
 export const ADMIN_MENU: AdminMenuItem[] = [
   {
@@ -275,4 +287,19 @@ export function findMenuItem(pathname: string): AdminMenuItem | undefined {
     .filter((item) => item.path !== '/')
     .sort((a, b) => b.path.length - a.path.length)
     .find((item) => pathname === item.path || pathname.startsWith(`${item.path}/`))
+}
+
+export const PROFILE_PAGE: AdminMenuItem = {
+  path: '/perfil',
+  label: 'Mi perfil',
+  permission: '',
+  icon: 'user',
+  description: 'Actualiza tus datos personales y tu contraseña.',
+}
+
+export function resolveAdminPage(pathname: string): AdminMenuItem | undefined {
+  if (pathname === PROFILE_PAGE.path || pathname.startsWith(`${PROFILE_PAGE.path}/`)) {
+    return PROFILE_PAGE
+  }
+  return findMenuItem(pathname)
 }

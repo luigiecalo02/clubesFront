@@ -1,28 +1,23 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { resolveFileUrl } from '../api/baseUrl'
 import { authApi } from '../api/auth'
 import { useAuth } from '../auth/AuthProvider'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
 import { AdventureScene } from '../components/login/AdventureScene'
-import { usePwaInstall } from '../pwa/usePwaInstall'
-import { SceneThemeToggle } from '../theme/SceneThemeToggle'
 import { clubBrandStyle } from '../theme/clubBrand'
 import { useSceneTheme } from '../theme/sceneTheme'
 import { AdminIcon } from './AdminIcon'
-import { findMenuItem, visibleMenu } from './menu'
+import { UserMenu } from './UserMenu'
+import { resolveAdminPage, visibleMenu } from './menu'
 import './admin.css'
 
 export function AdminLayout() {
   const auth = useAuth()
   const location = useLocation()
-  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const [canSwitch, setCanSwitch] = useState(
-    (auth.user?.context_options?.length ?? 0) > 1,
-  )
-  const pwa = usePwaInstall()
-  const { theme, toggleTheme } = useSceneTheme()
+  const [contextOptions, setContextOptions] = useState(auth.user?.context_options ?? [])
+  const { theme } = useSceneTheme()
   const { settings } = useClubesSettings()
 
   const user = auth.user
@@ -32,7 +27,7 @@ export function AdminLayout() {
     rolName: ctx?.rol_name,
     organizacionId: ctx?.organizacion_id,
   })
-  const current = findMenuItem(location.pathname) ?? items[0]
+  const current = resolveAdminPage(location.pathname) ?? items[0]
   const brand = resolveFileUrl(settings?.clubes.logo_url || (ctx?.is_club ? ctx.club_logo_url : null))
 
   useEffect(() => {
@@ -41,10 +36,10 @@ export function AdminLayout() {
     authApi
       .contextOptions()
       .then((result) => {
-        if (!cancelled) setCanSwitch(result.options.length > 1)
+        if (!cancelled) setContextOptions(result.options)
       })
       .catch(() => {
-        if (!cancelled) setCanSwitch((user.context_options?.length ?? 0) > 1)
+        if (!cancelled) setContextOptions(user.context_options ?? [])
       })
     return () => {
       cancelled = true
@@ -74,19 +69,13 @@ export function AdminLayout() {
       />
 
       <aside className="admin-sidebar">
-        <button
-          type="button"
-          className={`admin-brand${canSwitch ? ' is-action' : ''}`}
-          onClick={() => {
-            if (canSwitch) navigate('/contexto')
-          }}
-        >
+        <div className="admin-brand">
           {brand ? <img src={brand} alt="" className="admin-brand__logo" /> : <span className="admin-brand__mark">C</span>}
           <span>
             <strong>{ctx?.organizacion_nombre || 'Clubes'}</strong>
-            <small>{ctx?.rol_display_name || ctx?.tipo_nombre || 'Panel'}</small>
+            <small>{ctx?.tipo_nombre || 'Panel'}</small>
           </span>
-        </button>
+        </div>
 
         <nav className="admin-nav" aria-label="Menú principal">
           {items.map((item) => (
@@ -127,39 +116,7 @@ export function AdminLayout() {
           </div>
 
           <div className="admin-topbar__user">
-            <div>
-              <strong>{user.name}</strong>
-              <small>{user.email}</small>
-            </div>
-            <SceneThemeToggle theme={theme} onToggle={toggleTheme} compact />
-            {pwa.canInstall ? (
-              <button type="button" className="admin-ghost" onClick={() => void pwa.install()}>
-                Instalar app
-              </button>
-            ) : null}
-            {canSwitch ? (
-              <button type="button" className="admin-ghost" onClick={() => navigate('/contexto')}>
-                Cambiar contexto
-              </button>
-            ) : null}
-            {user.impersonated ? (
-              <button
-                type="button"
-                className="admin-ghost"
-                onClick={() => {
-                  void auth
-                    .stopImpersonation()
-                    .then(() => navigate('/integrantes'))
-                    .catch(() => undefined)
-                }}
-              >
-                Volver
-              </button>
-            ) : (
-              <button type="button" className="admin-ghost" onClick={() => void auth.logout()}>
-                Salir
-              </button>
-            )}
+            <UserMenu options={contextOptions} />
           </div>
         </header>
 

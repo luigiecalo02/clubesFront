@@ -23,6 +23,7 @@ type AuthContextValue = {
   logout: () => Promise<void>
   impersonate: (userId: number) => Promise<AuthUser>
   stopImpersonation: () => Promise<AuthUser>
+  switchContext: (payload: { organizacion_id?: number | null; rol_id: number }) => Promise<AuthUser>
   applyUser: (user: AuthUser) => void
   applySession: (nextToken: string, nextUser?: AuthUser | null) => Promise<AuthUser>
 }
@@ -133,6 +134,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.user
   }, [persistSession])
 
+  const switchContext = useCallback(
+    async (payload: { organizacion_id?: number | null; rol_id: number }) => {
+      const next = await authApi.setContext(payload)
+      applyUser(next)
+      return next
+    },
+    [applyUser],
+  )
+
   const can = useCallback(
     (permission: string) => {
       if (!user) return false
@@ -155,10 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       impersonate,
       stopImpersonation,
+      switchContext,
       applyUser,
       applySession,
     }),
-    [applySession, applyUser, can, impersonate, loading, login, logout, stopImpersonation, token, user],
+    [applySession, applyUser, can, impersonate, loading, login, logout, stopImpersonation, switchContext, token, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -50,14 +50,15 @@ export const settingsApi = {
   async inviteActivate(payload: {
     token: string
     identificacion: string
+    tipo_identificacion?: string
     nombre1?: string
     apellido1?: string
     correo?: string
     telefono?: string
     sexo?: string
     fecha_nacimiento?: string
-    password: string
-    password_confirmation: string
+    password?: string
+    password_confirmation?: string
   }): Promise<{ token: string }> {
     const { data } = await api.post<ApiEnvelope<{ token: string }>>(
       '/api/v1/settings/clubes/public/activate',

@@ -83,6 +83,7 @@ type EventCardProps = EventCardActionsProps & {
   framed?: boolean
   showHeading?: boolean
   showActions?: boolean
+  showMedia?: boolean
 }
 
 export function EventCard({
@@ -95,9 +96,10 @@ export function EventCard({
   framed = true,
   showHeading = true,
   showActions = true,
+  showMedia = true,
 }: EventCardProps) {
-  const banner = resolveFileUrl(item.banner_url)
-  const logo = resolveFileUrl(item.image_url)
+  const banner = showMedia ? resolveFileUrl(item.banner_url) : null
+  const logo = showMedia ? resolveFileUrl(item.image_url) : null
   const body = (
     <>
       {banner ? <img src={banner} alt="" className="admin-event-card__banner" /> : null}
