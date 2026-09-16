@@ -369,6 +369,12 @@
   color: var(--panel-muted);
 }
 
+.admin-shell {
+  --panel-bg: rgb(8 14 24 / 0.86);
+  --panel-border: rgb(255 255 255 / 0.2);
+  --panel-input-bg: rgb(6 10 18 / 0.66);
+}
+
 .admin-shell--day,
 .login-scene--day {
   color-scheme: light;

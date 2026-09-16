@@ -1100,6 +1100,7 @@
   font-size: 0.82rem;
   padding: 0;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .login-card__link:hover,

@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { authApi } from '../api/auth'
 import { getApiErrorMessage } from '../api/client'
 import { AdventureScene } from '../components/login/AdventureScene'
+import { LoginCardEmblem } from '../components/login/LoginCardEmblem'
+import { usePublicClubBranding } from '../settings/usePublicClubBranding'
 import { AppPanel } from '../theme/AppPanel'
 import { SceneThemeToggle } from '../theme/SceneThemeToggle'
 import { useSceneTheme } from '../theme/sceneTheme'
@@ -15,6 +17,7 @@ export function ConfirmAccountPage() {
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [loading, setLoading] = useState(true)
+  const { logoUrl, backgroundUrl } = usePublicClubBranding()
 
   useEffect(() => {
     if (!Number.isInteger(id) || id <= 0 || !hash) {
@@ -42,10 +45,11 @@ export function ConfirmAccountPage() {
   }, [hash, id])
 
   return (
-    <AdventureScene theme={theme} showCopy={false}>
+    <AdventureScene theme={theme} showCopy={false} backgroundUrl={backgroundUrl}>
       <SceneThemeToggle theme={theme} onToggle={toggleTheme} />
       <div className="login-scene__content">
         <AppPanel className="login-card" narrow>
+          <LoginCardEmblem logoUrl={logoUrl} />
           <p className="login-card__kicker">Cuenta</p>
           <h1>Confirmar correo</h1>
           <p className="login-card__subtitle">

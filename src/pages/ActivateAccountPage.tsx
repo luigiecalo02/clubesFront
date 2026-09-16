@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getApiErrorMessage } from '../api/client'
 import { settingsApi } from '../api/settings'
 import type { ClubesInviteLookup, ClubesInvitePreview } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
 import { AdventureScene } from '../components/login/AdventureScene'
+import { LoginCardEmblem } from '../components/login/LoginCardEmblem'
+import { usePublicClubBranding } from '../settings/usePublicClubBranding'
 import { AppPanel } from '../theme/AppPanel'
 import { SceneThemeToggle } from '../theme/SceneThemeToggle'
 import { useSceneTheme } from '../theme/sceneTheme'
@@ -27,6 +29,7 @@ export function ActivateAccountPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const { logoUrl, backgroundUrl } = usePublicClubBranding(preview?.organizacion_id)
 
   useEffect(() => {
     if (!token) {
@@ -101,10 +104,11 @@ export function ActivateAccountPage() {
   const missing = new Set(lookup?.missing ?? [])
 
   return (
-    <AdventureScene theme={theme} showCopy={false}>
+    <AdventureScene theme={theme} showCopy={false} backgroundUrl={backgroundUrl}>
       <SceneThemeToggle theme={theme} onToggle={toggleTheme} />
       <div className="login-scene__content login-scene__content--form">
         <AppPanel className="login-card login-card--register">
+          <LoginCardEmblem logoUrl={logoUrl} />
           <p className="login-card__kicker">Activar cuenta</p>
           <h1>{preview?.organizacion_nombre || 'Tu club'}</h1>
           <p className="login-card__subtitle">
@@ -203,6 +207,12 @@ export function ActivateAccountPage() {
               </button>
             </form>
           ) : null}
+
+          <div className="login-card__links">
+            <Link className="login-card__link" to="/login">
+              Ir a iniciar sesión
+            </Link>
+          </div>
         </AppPanel>
       </div>
     </AdventureScene>

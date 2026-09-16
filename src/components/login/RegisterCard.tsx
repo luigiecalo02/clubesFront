@@ -4,6 +4,7 @@ import { getApiErrorMessage } from '../../api/client'
 import { settingsApi } from '../../api/settings'
 import type { PublicOrg } from '../../api/types'
 import { AppPanel } from '../../theme/AppPanel'
+import { LoginCardEmblem } from './LoginCardEmblem'
 
 type Step = {
   options: PublicOrg[]
@@ -148,7 +149,7 @@ export function RegisterCard({ logoUrl, onCancel, onRegistered }: RegisterCardPr
   if (registeredEmail) {
     return (
       <AppPanel className="login-card login-card--register">
-        {logoUrl ? <img className="login-card__emblem login-card__emblem--photo" src={logoUrl} alt="" /> : null}
+        <LoginCardEmblem logoUrl={logoUrl} />
         <p className="login-card__kicker">Confirma tu correo</p>
         <h1>Cuenta inactiva</h1>
         <p className="login-card__subtitle">
@@ -178,7 +179,7 @@ export function RegisterCard({ logoUrl, onCancel, onRegistered }: RegisterCardPr
 
   return (
     <AppPanel className="login-card login-card--register">
-      {logoUrl ? <img className="login-card__emblem login-card__emblem--photo" src={logoUrl} alt="" /> : null}
+      <LoginCardEmblem logoUrl={logoUrl} />
       <p className="login-card__kicker">Registro</p>
       <h1>Crear cuenta</h1>
       <p className="login-card__subtitle">

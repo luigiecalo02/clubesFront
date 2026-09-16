@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { authApi } from '../../api/auth'
 import { getApiErrorMessage } from '../../api/client'
 import { AppPanel } from '../../theme/AppPanel'
+import { LoginCardEmblem } from './LoginCardEmblem'
 
 type ForgotPasswordCardProps = {
   logoUrl?: string | null
@@ -36,7 +37,7 @@ export function ForgotPasswordCard({ logoUrl, initialEmail = '', onCancel }: For
 
   return (
     <AppPanel className="login-card" narrow>
-      {logoUrl ? <img className="login-card__emblem login-card__emblem--photo" src={logoUrl} alt="" /> : null}
+      <LoginCardEmblem logoUrl={logoUrl} />
       <p className="login-card__kicker">Recuperar acceso</p>
       <h1>Olvidé mi contraseña</h1>
       <p className="login-card__subtitle">
