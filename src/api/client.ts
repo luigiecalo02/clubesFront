@@ -83,7 +83,13 @@ export function getApiErrorMessage(error: unknown, fallback = 'Error inesperado'
       if (messages.length) return messages.join(' ')
     }
 
-    if (data?.message) return humanizeApiMessage(data.message)
+    if (data?.message) {
+      const message = humanizeApiMessage(data.message)
+      if (error.response.status === 404 && /^(no encontrado|not found)$/i.test(message)) {
+        return fallback
+      }
+      return message
+    }
     if (error.response.status >= 500) return 'Error del servidor. Intenta de nuevo.'
     return fallback
   }
