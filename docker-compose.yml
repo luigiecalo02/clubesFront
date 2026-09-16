@@ -5,6 +5,7 @@ services:
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://127.0.0.1:8000}
       VITE_CLUB_ID: ${VITE_CLUB_ID:-}
+      VITE_CLUB_HOSTS: ${VITE_CLUB_HOSTS:-}
     ports:
       - "${HTTP_PORT:-4173}:80"
     restart: unless-stopped

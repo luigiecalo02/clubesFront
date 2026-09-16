@@ -4,6 +4,7 @@
 interface ImportMetaEnv {
   readonly VITE_API_URL: string
   readonly VITE_CLUB_ID?: string
+  readonly VITE_CLUB_HOSTS?: string
 }
 
 interface ImportMeta {
