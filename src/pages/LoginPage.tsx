@@ -61,7 +61,10 @@ export function LoginPage() {
     return (
       <div className={`login-scene login-scene--booting${theme === 'day' ? ' login-scene--day' : ''}`}>
         <AnimatedSky />
-        <p className="login-scene__status">Cargando sesión…</p>
+        <div className="login-scene__boot">
+          <img className="login-scene__boot-logo" src="/ric-logo.png" alt="RIC" />
+          <p className="login-scene__status">Cargando sesión…</p>
+        </div>
       </div>
     )
   }

@@ -6,7 +6,12 @@ export function RequireAuth() {
   const location = useLocation()
 
   if (auth.loading) {
-    return <p className="page-status admin-boot">Cargando sesión…</p>
+    return (
+      <div className="admin-boot">
+        <img className="admin-boot__logo" src="/ric-logo.png" alt="RIC" />
+        <p className="page-status">Cargando sesión…</p>
+      </div>
+    )
   }
 
   if (!auth.user) {

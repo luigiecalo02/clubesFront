@@ -33,6 +33,21 @@
   place-items: center;
 }
 
+.login-scene__boot {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  justify-items: center;
+  gap: 0.85rem;
+}
+
+.login-scene__boot-logo {
+  width: 7.5rem;
+  height: 7.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 22px rgb(0 0 0 / 0.28));
+}
+
 .login-scene__status {
   position: relative;
   z-index: 20;
@@ -1488,6 +1503,10 @@
 .login-scene--backdrop {
   z-index: 0;
   pointer-events: none;
+}
+
+.admin-shell > .login-scene--backdrop {
+  z-index: 0;
 }
 
 .login-scene--static .login-sky,

@@ -2,6 +2,14 @@
   min-height: 100vh;
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 0.85rem;
+}
+
+.admin-boot__logo {
+  width: 6.5rem;
+  height: 6.5rem;
+  object-fit: contain;
 }
 
 .admin-shell {
@@ -128,6 +136,8 @@
 }
 
 .admin-main {
+  position: relative;
+  z-index: 1;
   min-width: 0;
   min-height: 100vh;
   min-height: 100dvh;
@@ -482,7 +492,31 @@
 }
 
 .admin-shell--day .admin-sidebar {
-  background: rgb(18 52 84 / 0.42);
+  background: rgb(255 255 255 / 0.88);
+  color: #071e48;
+}
+
+.admin-shell--day .admin-brand {
+  background: rgb(7 30 72 / 0.06);
+}
+
+.admin-shell--day .admin-brand.is-action:hover {
+  background: rgb(7 30 72 / 0.1);
+}
+
+.admin-shell--day .admin-brand small,
+.admin-shell--day .admin-nav__link {
+  color: #1a2f48;
+}
+
+.admin-shell--day .admin-nav__link:hover {
+  background: rgb(7 30 72 / 0.06);
+  color: #071e48;
+}
+
+.admin-shell--day .admin-nav__link.is-active {
+  background: color-mix(in srgb, var(--admin-gold) 22%, transparent);
+  color: #0c2340;
 }
 
 .admin-shell--day .admin-topbar {

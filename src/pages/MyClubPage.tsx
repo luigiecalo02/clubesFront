@@ -200,9 +200,15 @@ export function MyClubPage() {
 
   return (
     <section className="admin-page">
-      {loading ? <p className="admin-empty">Cargando ficha del club…</p> : null}
+      {loading ? (
+        <AppPanel>
+          <p className="app-panel__kicker">Mi Club</p>
+          <h2 className="app-panel__title">Cargando ficha</h2>
+          <p className="app-panel__subtitle">Un momento, estamos trayendo los datos del club.</p>
+        </AppPanel>
+      ) : null}
       {error || memberError ? (
-        <p className="admin-form__alert" role="alert">
+        <p className="app-panel__alert" role="alert">
           {error || memberError}
         </p>
       ) : null}
