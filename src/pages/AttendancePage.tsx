@@ -47,8 +47,6 @@ export function AttendancePage() {
   const [error, setError] = useState('')
   const [saved, setSaved] = useState('')
 
-  const selected = events.find((item) => item.id === eventoId) ?? null
-
   useEffect(() => {
     let cancelled = false
     setLoadingEvents(true)
