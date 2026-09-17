@@ -234,7 +234,8 @@ async function bitmapToPreviewUrl(bitmap: ImageBitmap): Promise<string> {
 }
 
 async function encodeOptimizedCanvas(canvas: HTMLCanvasElement, options: OptimizeImageOptions): Promise<File> {
-  const mimes = uniqueMimes([options.mime, 'image/webp', 'image/jpeg'])
+  const mimes =
+    options.mime === 'image/png' ? ['image/png'] : uniqueMimes([options.mime, 'image/webp', 'image/jpeg'])
   let best: { blob: Blob; mime: string } | null = null
 
   for (const mime of mimes) {

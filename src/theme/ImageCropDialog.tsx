@@ -185,7 +185,7 @@ export function ImageCropDialog({ file, variant, onCancel, onConfirm }: ImageCro
         },
         {
           outputWidth: OUTPUT[variant].width,
-          mime: 'image/webp',
+          mime: variant === 'logo' ? 'image/png' : 'image/webp',
           quality: OUTPUT[variant].quality,
           maxBytes: OUTPUT[variant].maxBytes,
           fileName: `${base}-recorte`,
