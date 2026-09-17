@@ -21,7 +21,7 @@
 .app-panel.create-drawer__panel {
   --panel-padding: 0.85rem 1.1rem 0.95rem;
   --panel-bg: rgb(8 14 24 / 0.9);
-  --panel-blur: 14px;
+  --panel-blur: 24px;
   position: absolute;
   top: 0;
   right: 0;
@@ -39,7 +39,7 @@
 }
 
 .admin-shell--day .app-panel.create-drawer__panel {
-  --panel-bg: rgb(255 255 255 / 0.66);
+  --panel-bg: rgb(255 255 255 / 0.78);
 }
 
 .create-drawer__head {
