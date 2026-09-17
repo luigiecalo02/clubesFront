@@ -86,8 +86,7 @@
   background: var(--panel-bg);
   color: var(--panel-text);
   box-shadow: var(--panel-shadow);
-  backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturate));
-  -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturate));
+  backdrop-filter: blur(var(--panel-blur, 10px)) saturate(var(--panel-saturate, 1.25));
   font-family: var(--panel-font);
 }
 
@@ -454,7 +453,7 @@
   background: var(--notice-fill, var(--panel-bg));
   color: var(--notice-text, var(--panel-title));
   box-shadow: var(--panel-shadow);
-  backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturate));
+  backdrop-filter: blur(var(--panel-blur, 10px)) saturate(var(--panel-saturate, 1.25));
   animation: app-notice-in 0.45s cubic-bezier(0.2, 1.15, 0.32, 1);
 }
 
