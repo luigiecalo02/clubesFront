@@ -60,10 +60,15 @@ export const authApi = {
     return data.data
   },
 
-  async forgotPassword(email: string, organizacionId?: number | null): Promise<{ email_masked?: string }> {
+  async forgotPassword(payload: {
+    email?: string
+    identificacion?: string
+    organizacionId?: number | null
+  }): Promise<{ email_masked?: string }> {
     const { data } = await api.post<ApiEnvelope<{ email_masked?: string }>>('/api/v1/auth/password/forgot', {
-      email,
-      ...(organizacionId ? { organizacion_id: organizacionId } : {}),
+      ...(payload.email ? { email: payload.email } : {}),
+      ...(payload.identificacion ? { identificacion: payload.identificacion } : {}),
+      ...(payload.organizacionId ? { organizacion_id: payload.organizacionId } : {}),
     })
     return data.data ?? {}
   },

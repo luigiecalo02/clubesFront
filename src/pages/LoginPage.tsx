@@ -106,6 +106,7 @@ export function LoginPage() {
           <ForgotPasswordCard
             logoUrl={resolveFileUrl(branding.clubes.logo_url || branding.logo_url)}
             initialEmail={email}
+            organizacionId={orgId}
             onCancel={() => {
               setMode('login')
               setError('')

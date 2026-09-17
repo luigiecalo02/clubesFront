@@ -371,10 +371,10 @@
 }
 
 .admin-shell {
-  --panel-bg: #081018;
+  --panel-bg: rgb(8 14 24 / 0.9);
   --panel-border: rgb(255 255 255 / 0.18);
   --panel-input-bg: rgb(6 10 18 / 0.72);
-  --panel-blur: 0;
+  --panel-blur: 14px;
 }
 
 .admin-shell--day,
@@ -382,7 +382,7 @@
 .image-crop.is-day,
 .app-notice-host.is-day {
   color-scheme: light;
-  --panel-bg: #ffffff;
+  --panel-bg: rgb(255 255 255 / 0.9);
   --panel-border: rgb(20 50 80 / 0.14);
   --panel-shadow:
     0 20px 48px rgb(30 70 110 / 0.14),
@@ -413,11 +413,11 @@
 }
 
 .admin-shell--day {
-  --panel-bg: #ffffff;
-  --panel-shine: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent);
-  --panel-input-bg: #fff;
+  --panel-bg: rgb(255 255 255 / 0.66);
+  --panel-shine: linear-gradient(180deg, rgb(255 255 255 / 0.4), transparent);
+  --panel-input-bg: rgb(255 255 255 / 0.92);
   --panel-input-bg-focus: #fff;
-  --panel-ghost-bg: rgb(255 255 255 / 0.92);
+  --panel-ghost-bg: rgb(255 255 255 / 0.72);
 }
 
 .app-notice-host {

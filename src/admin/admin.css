@@ -633,7 +633,7 @@
 
 .admin-stats article,
 .admin-card,
-.admin-panel {
+.admin-panel:not(.app-panel) {
   background: var(--panel-bg);
   color: var(--panel-text);
   border: 1px solid var(--panel-border);
@@ -927,7 +927,7 @@
 }
 
 .admin-shell--day .admin-sidebar {
-  background: rgb(255 255 255 / 0.88);
+  background: rgb(255 255 255 / 0.66);
   color: #071e48;
 }
 

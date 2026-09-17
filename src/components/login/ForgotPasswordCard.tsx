@@ -7,14 +7,30 @@ import { LoginCardEmblem } from './LoginCardEmblem'
 type ForgotPasswordCardProps = {
   logoUrl?: string | null
   initialEmail?: string
+  organizacionId?: number | null
   onCancel: () => void
 }
 
-export function ForgotPasswordCard({ logoUrl, initialEmail = '', onCancel }: ForgotPasswordCardProps) {
+type LookupMode = 'email' | 'identificacion'
+
+export function ForgotPasswordCard({
+  logoUrl,
+  initialEmail = '',
+  organizacionId = null,
+  onCancel,
+}: ForgotPasswordCardProps) {
+  const [mode, setMode] = useState<LookupMode>('email')
   const [email, setEmail] = useState(initialEmail)
+  const [identificacion, setIdentificacion] = useState('')
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  function switchMode(next: LookupMode) {
+    setMode(next)
+    setError('')
+    setOk('')
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -22,7 +38,12 @@ export function ForgotPasswordCard({ logoUrl, initialEmail = '', onCancel }: For
     setOk('')
     setSubmitting(true)
     try {
-      const result = await authApi.forgotPassword(email.trim())
+      const result = await authApi.forgotPassword({
+        ...(mode === 'email'
+          ? { email: email.trim() }
+          : { identificacion: identificacion.trim().replace(/[^A-Za-z0-9.\-]/g, '') }),
+        organizacionId,
+      })
       setOk(
         result.email_masked
           ? `Enviamos el enlace a ${result.email_masked}. Revisa también el spam.`
@@ -41,7 +62,9 @@ export function ForgotPasswordCard({ logoUrl, initialEmail = '', onCancel }: For
       <p className="login-card__kicker">Recuperar acceso</p>
       <h1>Olvidé mi contraseña</h1>
       <p className="login-card__subtitle">
-        Escribe tu correo. Usaremos la organización a la que ya perteneces, sin que tengas que elegirla.
+        {mode === 'email'
+          ? 'Escribe tu correo. Usaremos la organización a la que ya perteneces, sin que tengas que elegirla.'
+          : 'Si no recuerdas el correo, escribe tu número de identificación. Enviaremos el enlace al correo de tu ficha.'}
       </p>
 
       {error ? (
@@ -56,16 +79,30 @@ export function ForgotPasswordCard({ logoUrl, initialEmail = '', onCancel }: For
       ) : null}
 
       <form className="login-card__form" onSubmit={onSubmit}>
-        <label>
-          Correo electrónico
-          <input
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-        </label>
+        {mode === 'email' ? (
+          <label>
+            Correo electrónico
+            <input
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </label>
+        ) : (
+          <label>
+            Número de identificación
+            <input
+              type="text"
+              autoComplete="off"
+              value={identificacion}
+              onChange={(event) => setIdentificacion(event.target.value)}
+              required
+              minLength={5}
+            />
+          </label>
+        )}
 
         <button type="submit" className="login-card__submit" disabled={submitting}>
           {submitting ? 'Enviando…' : 'Enviar enlace'}
@@ -73,6 +110,15 @@ export function ForgotPasswordCard({ logoUrl, initialEmail = '', onCancel }: For
       </form>
 
       <div className="login-card__links">
+        {mode === 'email' ? (
+          <button type="button" className="login-card__link" onClick={() => switchMode('identificacion')}>
+            No tengo el correo
+          </button>
+        ) : (
+          <button type="button" className="login-card__link" onClick={() => switchMode('email')}>
+            Recuperar con correo
+          </button>
+        )}
         <button type="button" className="login-card__link" onClick={onCancel}>
           Volver al ingreso
         </button>
