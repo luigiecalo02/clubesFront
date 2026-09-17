@@ -1522,6 +1522,11 @@
   z-index: 0;
 }
 
+.login-scene--backdrop .login-scene__photo {
+  filter: blur(18px);
+  transform: scale(1.08);
+}
+
 .login-scene--backdrop .login-mountains,
 .login-scene--backdrop .login-mountains__layer,
 .login-scene--backdrop .login-forest {
