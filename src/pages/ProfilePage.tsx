@@ -7,6 +7,7 @@ import type { PersonaIdType } from '../api/types'
 import { usersApi } from '../api/users'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
+import { DateInput } from '../theme/DateInput'
 import { ImageUpload } from '../theme/ImageUpload'
 import { useNotice } from '../theme/NoticeProvider'
 
@@ -246,10 +247,9 @@ export function ProfilePage() {
           </label>
           <label>
             Fecha de nacimiento
-            <input
-              type="date"
+            <DateInput
               value={form.fecha_nacimiento}
-              onChange={(event) => setForm((current) => ({ ...current, fecha_nacimiento: event.target.value }))}
+              onChange={(fecha_nacimiento) => setForm((current) => ({ ...current, fecha_nacimiento }))}
             />
           </label>
           <label>

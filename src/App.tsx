@@ -17,6 +17,7 @@ import { EventsPage } from './pages/EventsPage'
 import { MembersPage } from './pages/MembersPage'
 import { MyClubPage } from './pages/MyClubPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { ServicesPage } from './pages/ServicesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ClubesSettingsProvider } from './settings/ClubesSettingsProvider'
 import { NoticeProvider } from './theme/NoticeProvider'
@@ -87,6 +88,14 @@ export default function App() {
                     </RequirePermission>
                   }
                 />
+                <Route
+                  path="/servicios"
+                  element={
+                    <RequirePermission permission="productos_servicios.view">
+                      <ServicesPage />
+                    </RequirePermission>
+                  }
+                />
                 {ADMIN_MENU.filter(
                   (item) =>
                     item.path !== '/' &&
@@ -94,7 +103,8 @@ export default function App() {
                     item.path !== '/mi-club' &&
                     item.path !== '/eventos' &&
                     item.path !== '/asistencia' &&
-                    item.path !== '/integrantes',
+                    item.path !== '/integrantes' &&
+                    item.path !== '/servicios',
                 ).map(
                   (item) => (
                     <Route

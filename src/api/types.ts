@@ -393,3 +393,82 @@ export interface AttendanceRanking {
   eventos: number
   integrantes: AttendanceRankRow[]
 }
+
+export interface ClubIcono {
+  id: number
+  nombre: string
+  slug: string
+  categoria: string
+  etiquetas: string[]
+  tipo: 'prime' | 'imagen' | string
+  valor: string
+  url?: string | null
+}
+
+export interface ClubServicio {
+  id: number
+  organizacion_id?: number | null
+  nombre: string
+  tipo?: string | null
+  descripcion?: string | null
+  precio: number | string
+  unidad?: string | null
+  image_url?: string | null
+  icono?: string | null
+  activo: boolean
+}
+
+export interface EventoServicioOferta {
+  id: number
+  evento_id: number
+  producto_servicio_id: number
+  precio: number | string
+  activo: boolean
+  producto?: ClubServicio | null
+}
+
+export interface EventoServicios {
+  evento: {
+    id: number
+    name: string
+    es_economica?: boolean
+  }
+  catalogo: ClubServicio[]
+  ofertas: EventoServicioOferta[]
+}
+
+export interface EventParticipantVenta {
+  producto_servicio_id: number
+  cantidad: number
+}
+
+export interface EventParticipant {
+  persona_id: number
+  full_name: string
+  identificacion?: string | null
+  participa?: boolean | null
+  ventas?: EventParticipantVenta[]
+}
+
+export interface EventParticipantService {
+  id: number
+  nombre: string
+  precio?: number | string
+  icono?: string | null
+  image_url?: string | null
+}
+
+export interface EventParticipantsResumen {
+  total: number
+  participan: number
+  no_participan: number
+  sin_marcar: number
+  unidades?: number
+}
+
+export interface EventParticipantsRoster {
+  evento: EventSummary
+  servicios?: EventParticipantService[]
+  integrantes: EventParticipant[]
+  resumen: EventParticipantsResumen
+}

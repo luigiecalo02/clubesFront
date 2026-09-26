@@ -36,6 +36,7 @@ export type AdminIconName =
   | 'wallet'
   | 'chevronLeft'
   | 'chevronRight'
+  | 'filter'
 
 export const ADMIN_MENU: AdminMenuItem[] = [
   {
@@ -134,7 +135,7 @@ export const ADMIN_MENU: AdminMenuItem[] = [
     label: 'Servicios',
     permission: 'productos_servicios.view',
     icon: 'box',
-    description: 'Catálogo de productos y servicios para eventos.',
+    description: 'Catálogo de servicios del club para actividades económicas.',
   },
   {
     path: '/lugares',
@@ -172,6 +173,19 @@ export function canAccessClubAttendance(options?: {
   organizacionId?: number | null
 }): boolean {
   return Boolean(options?.organizacionId) && ['director', 'subdirector', 'secretario'].includes(options?.rolName ?? '')
+}
+
+export function canManageClubServices(options?: {
+  can?: (permission: string) => boolean
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  if (options?.can?.('productos_servicios.create') || options?.can?.('productos_servicios.update')) {
+    return true
+  }
+  return Boolean(options?.organizacionId) && ['director', 'subdirector', 'secretario'].includes(
+    options?.rolName ?? '',
+  )
 }
 
 function canWriteClubEvent(options?: {

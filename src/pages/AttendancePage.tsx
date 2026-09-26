@@ -18,6 +18,7 @@ import {
 } from '../components/attendance/AttendanceMarkList'
 import { AttendanceRankList } from '../components/attendance/AttendanceRankList'
 import { AttendanceEventSelect } from '../components/attendance/AttendanceEventSelect'
+import { isEconomicEvent } from '../components/events/EventCard'
 import { AppPanel } from '../theme/AppPanel'
 import { useNotice } from '../theme/NoticeProvider'
 import '../theme/attendance-rank.css'
@@ -53,8 +54,12 @@ export function AttendancePage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveSeq = useRef(0)
   draftRef.current = draft
-  const pendingEvents = useMemo(() => events.filter((item) => !hasTakenAttendance(item)), [events])
-  const takenEvents = useMemo(() => events.filter(hasTakenAttendance), [events])
+  const attendanceEvents = useMemo(() => events.filter((item) => !isEconomicEvent(item)), [events])
+  const pendingEvents = useMemo(
+    () => attendanceEvents.filter((item) => !hasTakenAttendance(item)),
+    [attendanceEvents],
+  )
+  const takenEvents = useMemo(() => attendanceEvents.filter(hasTakenAttendance), [attendanceEvents])
 
   useEffect(() => {
     let cancelled = false
@@ -267,7 +272,7 @@ export function AttendancePage() {
 
       {tab === 'tomar' && loadingEvents ? <p className="admin-empty">Cargando eventos…</p> : null}
 
-      {tab === 'tomar' && !loadingEvents && events.length === 0 ? (
+      {tab === 'tomar' && !loadingEvents && attendanceEvents.length === 0 ? (
         <AppPanel>
           <p className="app-panel__kicker">Agenda</p>
           <h2 className="app-panel__title">No hay eventos</h2>
@@ -277,7 +282,7 @@ export function AttendancePage() {
         </AppPanel>
       ) : null}
 
-      {tab === 'tomar' && events.length ? (
+      {tab === 'tomar' && attendanceEvents.length ? (
         <AppPanel className="admin-attendance" shine={false}>
           <p className="app-panel__kicker">Evento</p>
           <h2 className="app-panel__title">Tomar asistencia</h2>

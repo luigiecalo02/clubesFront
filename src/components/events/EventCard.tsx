@@ -2,15 +2,21 @@ import { AdminIcon } from '../../admin/AdminIcon'
 import { resolveFileUrl } from '../../api/baseUrl'
 import type { EventSummary } from '../../api/types'
 import { AppPanel } from '../../theme/AppPanel'
+import { formatDateRange } from '../../theme/dates'
 import { EventCountdown } from './EventCountdown'
 
-const ESTADO_LABELS: Record<string, string> = {
-  borrador: 'Borrador',
+export const ESTADO_LABELS: Record<string, string> = {
   publicado: 'Publicado',
   en_proceso: 'En proceso',
   cerrado: 'Finalizado',
+  borrador: 'Borrador',
   cancelado: 'Cancelado',
 }
+
+export const EVENT_ESTADO_OPTIONS = Object.entries(ESTADO_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 const VISIBILIDAD_LABELS: Record<string, string> = {
   publico: 'Libre',
@@ -18,26 +24,30 @@ const VISIBILIDAD_LABELS: Record<string, string> = {
   privado: 'Privado',
 }
 
+export const ECONOMIC_EVENT_SLUG = 'actividad-economica'
+
 export function isActivityEvent(item: EventSummary): boolean {
   const slug = item.tipo_evento?.slug?.toLowerCase() ?? ''
   const name = item.tipo_evento?.nombre?.toLowerCase() ?? ''
   return slug === 'actividad' || name === 'actividad'
 }
 
+export function isEconomicEvent(
+  item?: {
+    tipo_evento?: { slug?: string | null; nombre?: string | null } | null
+    slug?: string | null
+    nombre?: string | null
+  } | null,
+): boolean {
+  if (!item) return false
+  const tipo = item.tipo_evento ?? item
+  const slug = tipo.slug?.toLowerCase() ?? ''
+  const name = tipo.nombre?.toLowerCase() ?? ''
+  return slug === ECONOMIC_EVENT_SLUG || name === 'actividad económica' || name === 'actividad economica'
+}
+
 export function formatEventRange(start?: string | null, end?: string | null): string {
-  if (!start) return 'Sin fecha'
-  const from = new Date(start)
-  const to = end ? new Date(end) : null
-  const day = new Intl.DateTimeFormat('es-CO', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-  if (!to || Number.isNaN(to.getTime()) || from.toDateString() === to.toDateString()) {
-    return day.format(from)
-  }
-  return `${day.format(from)} – ${day.format(to)}`
+  return formatDateRange(start, end)
 }
 
 type EventCardActionsProps = {
@@ -56,7 +66,8 @@ export function EventCardActions({
   onEdit,
 }: EventCardActionsProps) {
   const showAttendance = canTakeAttendance && isActivityEvent(item)
-  if (!showAttendance && !canEdit) return null
+  const showParticipants = canTakeAttendance && isEconomicEvent(item)
+  if (!showAttendance && !showParticipants && !canEdit) return null
 
   return (
     <>
@@ -65,10 +76,15 @@ export function EventCardActions({
           Asistencia
         </button>
       ) : null}
+      {showParticipants ? (
+        <button type="button" className="app-panel__btn--primary" onClick={() => onAttendance(item)}>
+          Participantes
+        </button>
+      ) : null}
       {canEdit ? (
         <button
           type="button"
-          className={showAttendance ? 'app-panel__btn--ghost' : 'app-panel__btn--primary'}
+          className={showAttendance || showParticipants ? 'app-panel__btn--ghost' : 'app-panel__btn--primary'}
           onClick={() => onEdit(item)}
         >
           Editar

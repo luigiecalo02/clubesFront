@@ -1,4 +1,5 @@
 import type { EventSummary } from '../api/types'
+import { formatDate } from '../theme/dates'
 
 export type CalendarDay = {
   date: Date
@@ -122,9 +123,5 @@ export function eventsForMonth(events: EventSummary[], year: number, month: numb
 }
 
 export function formatDayLabel(value: Date): string {
-  return new Intl.DateTimeFormat('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(value)
+  return formatDate(value)
 }

@@ -13,6 +13,7 @@ import {
 } from '../../admin/menu'
 import { useAuth } from '../../auth/AuthProvider'
 import { CreateDrawer } from '../../theme/CreateDrawer'
+import { DateInput } from '../../theme/DateInput'
 import { ImageUpload } from '../../theme/ImageUpload'
 import { useNotice } from '../../theme/NoticeProvider'
 import { memberUserId } from './MemberActions'
@@ -464,11 +465,10 @@ export function MemberDrawer({
           </label>
           <label>
             Fecha de nacimiento
-            <input
-              type="date"
+            <DateInput
               value={form.fecha_nacimiento}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, fecha_nacimiento: event.target.value }))
+              onChange={(fecha_nacimiento) =>
+                setForm((current) => ({ ...current, fecha_nacimiento }))
               }
             />
           </label>

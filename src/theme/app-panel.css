@@ -1,6 +1,8 @@
 :root {
-  --panel-font: Outfit, Inter, Segoe UI, system-ui, sans-serif;
-  --panel-title-font: Cinzel, Georgia, serif;
+  --panel-font: Outfit, "Segoe UI", system-ui, sans-serif;
+  --panel-title-font: Outfit, "Segoe UI", system-ui, sans-serif;
+  --panel-weight: 400;
+  --panel-weight-strong: 500;
   --panel-bg: rgb(8 14 24 / 0.48);
   --panel-border: rgb(255 255 255 / 0.14);
   --panel-radius: 1.4rem;
@@ -109,7 +111,7 @@
   margin: 0;
   text-align: center;
   font-size: 0.68rem;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--panel-kicker);
 }
@@ -118,17 +120,17 @@
 .app-panel h1,
 .app-panel h2,
 .app-panel h3 {
-  margin: 0.2rem 0 0.25rem;
+  margin: 0.15rem 0 0.2rem;
   font-family: var(--panel-title-font);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: var(--panel-weight-strong);
+  letter-spacing: 0.01em;
   color: var(--panel-title);
 }
 
 .app-panel__title,
 .app-panel h1 {
   text-align: center;
-  font-size: clamp(1.55rem, 3vw, 1.9rem);
+  font-size: clamp(1.2rem, 2.4vw, 1.45rem);
 }
 
 .app-panel__subtitle,
@@ -238,6 +240,47 @@
   line-height: 1.45;
 }
 
+.app-date-input {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.app-date-input__picker {
+  color: transparent;
+  caret-color: transparent;
+}
+
+.app-date-input__picker::-webkit-datetime-edit,
+.app-date-input__picker::-webkit-datetime-edit-fields-wrapper,
+.app-date-input__picker::-webkit-datetime-edit-text,
+.app-date-input__picker::-webkit-datetime-edit-month-field,
+.app-date-input__picker::-webkit-datetime-edit-day-field,
+.app-date-input__picker::-webkit-datetime-edit-year-field {
+  color: transparent;
+}
+
+.app-date-input__picker::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.72;
+}
+
+.app-date-input__value {
+  position: absolute;
+  left: 1.05rem;
+  right: 2.1rem;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  color: var(--panel-title);
+}
+
+.app-date-input__value.is-empty {
+  color: var(--panel-placeholder);
+}
+
 .app-panel input[type='file'] {
   padding: 0.55rem 0.7rem 0.55rem 0.75rem;
 }
@@ -279,7 +322,7 @@
   color: var(--panel-muted);
   font: inherit;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: var(--panel-weight-strong);
   padding: 0.25rem 0.4rem;
   cursor: pointer;
 }
@@ -321,8 +364,8 @@
   min-height: 2.85rem;
   border-radius: 999px;
   font: inherit;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-weight: var(--panel-weight-strong);
+  letter-spacing: 0.02em;
   cursor: pointer;
 }
 
@@ -503,7 +546,7 @@
 .app-notice__copy strong {
   color: var(--notice-text);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: var(--panel-weight-strong);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -512,7 +555,7 @@
   margin: 0;
   color: var(--panel-title);
   font-size: 0.95rem;
-  font-weight: 650;
+  font-weight: var(--panel-weight-strong);
   line-height: 1.35;
 }
 
@@ -522,7 +565,7 @@
   color: var(--panel-muted);
   font: inherit;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: var(--panel-weight-strong);
   letter-spacing: 0.04em;
   cursor: pointer;
 }

@@ -8,7 +8,8 @@
   --accent: #0b5cab;
   --danger: #b42318;
   --border: #d5deea;
-  font-family: Inter, Segoe UI, system-ui, sans-serif;
+  font-family: Outfit, "Segoe UI", system-ui, sans-serif;
+  font-weight: 400;
   color: var(--ink);
   background: var(--bg);
   line-height: 1.45;
@@ -74,7 +75,7 @@ body:has(.admin-shell--day) {
 .kicker {
   margin: 0 0 0.35rem;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent);
@@ -108,7 +109,7 @@ label {
   display: grid;
   gap: 0.35rem;
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ink);
 }
 
@@ -137,7 +138,7 @@ button {
   background: var(--accent);
   color: #fff;
   font: inherit;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
 }
 

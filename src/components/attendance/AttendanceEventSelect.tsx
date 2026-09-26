@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AttendanceEvent } from '../../api/types'
+import { formatDate } from '../../theme/dates'
 
 type AttendanceEventSelectProps = {
   items: AttendanceEvent[]
@@ -9,10 +10,7 @@ type AttendanceEventSelectProps = {
 }
 
 export function formatEventChipDate(start?: string | null): string {
-  if (!start) return 'Sin fecha'
-  const from = new Date(start)
-  if (Number.isNaN(from.getTime())) return 'Sin fecha'
-  return new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short' }).format(from)
+  return formatDate(start) || 'Sin fecha'
 }
 
 function eventSearchText(item: AttendanceEvent): string {

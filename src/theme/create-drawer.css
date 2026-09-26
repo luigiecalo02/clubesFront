@@ -62,7 +62,7 @@
   text-align: left;
   font-family: var(--panel-font);
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0;
   color: var(--panel-title);
 }
@@ -107,6 +107,10 @@
   align-content: start;
 }
 
+.create-drawer__body:has(.admin-search-select.is-open) {
+  overflow: visible;
+}
+
 .create-drawer__body:has(.admin-form--compact) {
   align-content: center;
   justify-items: center;
@@ -120,6 +124,14 @@
 
 .create-drawer__body .admin-form label {
   align-content: start;
+}
+
+.create-drawer__body .admin-form .admin-service-picks label,
+.create-drawer__body .admin-form .admin-service-picks__check {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.65rem;
 }
 
 .create-drawer__body .admin-form input:not([type='file']):not([type='checkbox']):not([type='radio']),

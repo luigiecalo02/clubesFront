@@ -3,6 +3,7 @@ import { eventsApi } from '../../api/events'
 import { getApiErrorMessage } from '../../api/client'
 import type { EventSummary, EventTipo } from '../../api/types'
 import { formatEventRange } from './EventCard'
+import { DateInput } from '../../theme/DateInput'
 import { useNotice } from '../../theme/NoticeProvider'
 
 function toDateInput(value?: string | null): string {
@@ -161,14 +162,12 @@ export function EventSubeventsPanel({ parent, tipos, canCreate, onCount }: Event
           ) : null}
           <label>
             Fecha de inicio
-            <input
-              type="date"
+            <DateInput
               required
               min={toDateInput(parent.starts_at)}
               max={toDateInput(parent.ends_at || parent.starts_at)}
               value={startsAt}
-              onChange={(event) => {
-                const next = event.target.value
+              onChange={(next) => {
                 setStartsAt(next)
                 if (endsAt < next) setEndsAt(next)
               }}
@@ -176,13 +175,12 @@ export function EventSubeventsPanel({ parent, tipos, canCreate, onCount }: Event
           </label>
           <label>
             Fecha de fin
-            <input
-              type="date"
+            <DateInput
               required
               min={startsAt}
               max={toDateInput(parent.ends_at || startsAt)}
               value={endsAt}
-              onChange={(event) => setEndsAt(event.target.value)}
+              onChange={setEndsAt}
             />
           </label>
           <div className="admin-form__actions">

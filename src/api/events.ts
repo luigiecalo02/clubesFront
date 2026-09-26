@@ -8,6 +8,7 @@ export type CreateEventPayload = {
   starts_at: string
   ends_at: string
   tipo_evento_id?: number | null
+  estado?: string
   evento_padre_id?: number | null
   logo?: File | null
   banner?: File | null
@@ -23,6 +24,7 @@ function eventFormData(payload: CreateEventPayload): FormData {
   body.append('starts_at', payload.starts_at)
   body.append('ends_at', payload.ends_at)
   if (payload.tipo_evento_id) body.append('tipo_evento_id', String(payload.tipo_evento_id))
+  if (payload.estado) body.append('estado', payload.estado)
   if (payload.evento_padre_id) body.append('evento_padre_id', String(payload.evento_padre_id))
   if (payload.logo) body.append('logo', payload.logo)
   if (payload.banner) body.append('banner', payload.banner)
@@ -42,20 +44,70 @@ const formDataRequest = {
   ],
 }
 
-async function fetchEvents(params: Record<string, number> = {}): Promise<EventSummary[]> {
-  const { data } = await api.get<ApiEnvelope<EventSummary[]>>('/api/v1/events', {
-    params: { solo_raiz: 1, per_page: 200, ...params },
-  })
+export type EventListQuery = {
+  proximos?: boolean
+  estado?: string
+  tipo_evento_id?: number
+  desde?: string
+  hasta?: string
+}
+
+function formatDateInput(value: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
+}
+
+export function endOfMonthDate(isoDate: string): string {
+  const [year, month] = isoDate.split('-').map(Number)
+  if (!year || !month) return isoDate
+  return formatDateInput(new Date(year, month, 0))
+}
+
+export function defaultEventDateRange(now = new Date()): { desde: string; hasta: string } {
+  const desde = formatDateInput(now)
+  return { desde, hasta: endOfMonthDate(desde) }
+}
+
+export function buildEventListQuery(filters: {
+  estado?: string
+  tipo?: string
+  desde?: string
+  hasta?: string
+}): EventListQuery {
+  const defaults = defaultEventDateRange()
+  const estado = filters.estado?.trim() ?? ''
+  const tipo = Number(filters.tipo)
+  const desde = filters.desde?.trim() || defaults.desde
+  const hasta = filters.hasta?.trim() || defaults.hasta
+  const hasEstado = estado !== '' && estado !== 'vigentes'
+  const query: EventListQuery = { desde, hasta }
+
+  if (hasEstado && estado !== 'todos') query.estado = estado
+  if (Number.isInteger(tipo) && tipo > 0) query.tipo_evento_id = tipo
+  if (!hasEstado) query.proximos = true
+
+  return query
+}
+
+async function fetchEvents(query: EventListQuery = {}): Promise<EventSummary[]> {
+  const params: Record<string, string | number> = { solo_raiz: 1, per_page: 200 }
+  if (query.proximos) params.proximos = 1
+  if (query.estado) params.estado = query.estado
+  if (query.tipo_evento_id) params.tipo_evento_id = query.tipo_evento_id
+  if (query.desde) params.desde = query.desde
+  if (query.hasta) params.hasta = query.hasta
+
+  const { data } = await api.get<ApiEnvelope<EventSummary[]>>('/api/v1/events', { params })
   return data.data ?? []
 }
 
 export const eventsApi = {
   async upcoming(): Promise<EventSummary[]> {
-    return fetchEvents({ proximos: 1 })
+    return fetchEvents({ proximos: true })
   },
 
-  async list(): Promise<EventSummary[]> {
-    return fetchEvents()
+  async list(query: EventListQuery = {}): Promise<EventSummary[]> {
+    return fetchEvents(query)
   },
 
   async children(parentId: number): Promise<EventSummary[]> {
