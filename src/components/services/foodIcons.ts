@@ -75,6 +75,6 @@ export const FOOD_ICONS: Record<string, LucideIcon> = {
   'concierge-bell': ConciergeBell,
 }
 
-export function isFoodIcon(value?: string | null): value is string {
+export function isFoodIcon(value?: string | null): boolean {
   return Boolean(value && value in FOOD_ICONS)
 }

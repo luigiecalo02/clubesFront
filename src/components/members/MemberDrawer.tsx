@@ -466,7 +466,7 @@ export function MemberDrawer({
           <label>
             Fecha de nacimiento
             <DateInput
-              value={form.fecha_nacimiento}
+              value={form.fecha_nacimiento ?? ''}
               onChange={(fecha_nacimiento) =>
                 setForm((current) => ({ ...current, fecha_nacimiento }))
               }
