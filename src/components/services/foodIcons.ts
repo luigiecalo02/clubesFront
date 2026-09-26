@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import type { ClubIcono } from '../../api/types'
 import {
   Banana,
   Beef,
@@ -77,4 +78,57 @@ export const FOOD_ICONS: Record<string, LucideIcon> = {
 
 export function isFoodIcon(value?: string | null): boolean {
   return Boolean(value && value in FOOD_ICONS)
+}
+
+const FOOD_CATALOG_ITEMS: Array<{ nombre: string; valor: string; etiquetas: string[] }> = [
+  { nombre: 'Hamburguesa', valor: 'hamburger', etiquetas: ['hamburguesa', 'comida', 'rapida'] },
+  { nombre: 'Sándwich', valor: 'sandwich', etiquetas: ['sandwich', 'lonchera'] },
+  { nombre: 'Pescado', valor: 'fish', etiquetas: ['pescado', 'pez', 'mariscos'] },
+  { nombre: 'Sopa', valor: 'soup', etiquetas: ['sopa', 'caldo', 'comida'] },
+  { nombre: 'Olla', valor: 'cooking-pot', etiquetas: ['olla', 'guiso', 'cocina'] },
+  { nombre: 'Pizza', valor: 'pizza', etiquetas: ['pizza', 'comida'] },
+  { nombre: 'Plato', valor: 'utensils-crossed', etiquetas: ['plato', 'almuerzo', 'cubiertos'] },
+  { nombre: 'Cubiertos', valor: 'utensils', etiquetas: ['tenedor', 'cuchara'] },
+  { nombre: 'Ensalada', valor: 'salad', etiquetas: ['ensalada', 'verdura'] },
+  { nombre: 'Pollo', valor: 'drumstick', etiquetas: ['pollo', 'asado'] },
+  { nombre: 'Carne', valor: 'beef', etiquetas: ['carne', 'res'] },
+  { nombre: 'Jamón', valor: 'ham', etiquetas: ['jamon', 'embutido'] },
+  { nombre: 'Huevo', valor: 'egg-fried', etiquetas: ['huevo', 'desayuno'] },
+  { nombre: 'Torta', valor: 'cake-slice', etiquetas: ['torta', 'postre', 'cumple'] },
+  { nombre: 'Postre', valor: 'dessert', etiquetas: ['postre', 'postres', 'dulce'] },
+  { nombre: 'Galleta', valor: 'cookie', etiquetas: ['galleta', 'postre'] },
+  { nombre: 'Dona', valor: 'donut', etiquetas: ['dona', 'postre'] },
+  { nombre: 'Croissant', valor: 'croissant', etiquetas: ['pan', 'desayuno'] },
+  { nombre: 'Helado', valor: 'ice-cream-cone', etiquetas: ['helado', 'postre'] },
+  { nombre: 'Copa helado', valor: 'ice-cream-bowl', etiquetas: ['helado', 'postre'] },
+  { nombre: 'Paleta', valor: 'popsicle', etiquetas: ['paleta', 'hielo'] },
+  { nombre: 'Caramelo', valor: 'candy', etiquetas: ['dulce', 'postre'] },
+  { nombre: 'Palomitas', valor: 'popcorn', etiquetas: ['snack'] },
+  { nombre: 'Refresco', valor: 'cup-soda', etiquetas: ['bebida', 'vaso'] },
+  { nombre: 'Bebida caliente', valor: 'coffee', etiquetas: ['te', 'bebida'] },
+  { nombre: 'Agua', valor: 'glass-water', etiquetas: ['agua', 'vaso'] },
+  { nombre: 'Leche', valor: 'milk', etiquetas: ['leche', 'desayuno'] },
+  { nombre: 'Cereza', valor: 'cherry', etiquetas: ['fruta'] },
+  { nombre: 'Banano', valor: 'banana', etiquetas: ['fruta'] },
+  { nombre: 'Uvas', valor: 'grape', etiquetas: ['fruta'] },
+  { nombre: 'Zanahoria', valor: 'carrot', etiquetas: ['verdura'] },
+  { nombre: 'Cítrico', valor: 'citrus', etiquetas: ['naranja', 'fruta'] },
+  { nombre: 'Pan', valor: 'wheat', etiquetas: ['pan', 'cereal'] },
+  { nombre: 'Chef', valor: 'chef-hat', etiquetas: ['cocina'] },
+  { nombre: 'Servicio mesa', valor: 'concierge-bell', etiquetas: ['mesero'] },
+]
+
+export const FOOD_CATALOG: ClubIcono[] = FOOD_CATALOG_ITEMS.map((item, index) => ({
+  id: -1 - index,
+  nombre: item.nombre,
+  slug: `comidas-${item.valor}`,
+  categoria: 'comidas',
+  etiquetas: item.etiquetas,
+  tipo: 'trazo',
+  valor: item.valor,
+}))
+
+export function mergeIconCatalog(remote: ClubIcono[]): ClubIcono[] {
+  const seen = new Set(remote.map((icon) => icon.valor))
+  return [...FOOD_CATALOG.filter((icon) => !seen.has(icon.valor)), ...remote]
 }

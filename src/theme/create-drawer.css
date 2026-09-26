@@ -53,6 +53,19 @@
   border-bottom: 1px solid var(--panel-divider);
 }
 
+.create-drawer__heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.create-drawer__heading .app-panel__kicker {
+  margin: 0 0 0.12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
 .app-panel.create-drawer__panel .create-drawer__title {
   margin: 0;
   min-width: 0;
@@ -65,6 +78,65 @@
   font-weight: 500;
   letter-spacing: 0;
   color: var(--panel-title);
+}
+
+.create-drawer__head--cover {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  min-height: 9rem;
+  margin: -0.85rem -1.1rem 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.create-drawer__cover,
+.create-drawer__cover-fade {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.create-drawer__cover {
+  display: block;
+  width: 100%;
+  height: 9rem;
+  object-fit: cover;
+}
+
+.create-drawer__cover-fade {
+  position: absolute;
+  inset: 0;
+  background: rgb(4 8 14 / 0.62);
+  pointer-events: none;
+}
+
+.create-drawer__head--cover .create-drawer__heading {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: end;
+  z-index: 1;
+  width: fit-content;
+  max-width: calc(100% - 1.2rem);
+  margin: 0 0 0.75rem 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--panel-input-radius);
+  background: rgb(4 8 14 / 0.82);
+}
+
+.create-drawer__head--cover .app-panel__kicker,
+.create-drawer__head--cover .create-drawer__title {
+  color: #fff;
+}
+
+.create-drawer__head--cover .create-drawer__close {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  z-index: 2;
+  margin: 0.65rem 0.75rem 0 0;
+  background: rgb(8 14 24 / 0.55);
+  color: #fff;
 }
 
 .create-drawer__close {

@@ -1,10 +1,10 @@
 import type { ClubIcono } from '../../api/types'
 
 export const ICON_CATEGORY_LABELS: Record<string, string> = {
+  comidas: 'Comidas',
   eventos: 'Eventos',
   clubes: 'Clubes',
   deportes: 'Deportes',
-  comidas: 'Comidas',
   naturaleza: 'Naturaleza',
   personas: 'Personas',
   tiempo: 'Tiempo',

@@ -5,6 +5,7 @@ import type {
   ClubServicio,
   EventoServicios,
   EventParticipantsRoster,
+  EventSelfParticipation,
 } from './types'
 
 export type ClubServicioPayload = {
@@ -122,6 +123,27 @@ export const serviciosApi = {
     const { data } = await api.put<ApiEnvelope<EventParticipantsRoster>>(
       `/api/v1/settings/clubes/events/${eventoId}/participantes`,
       { participantes },
+    )
+    return data.data
+  },
+
+  async myParticipation(eventoId: number): Promise<EventSelfParticipation> {
+    const { data } = await api.get<ApiEnvelope<EventSelfParticipation>>(
+      `/api/v1/settings/clubes/events/${eventoId}/participantes/yo`,
+    )
+    return data.data
+  },
+
+  async saveMyParticipation(
+    eventoId: number,
+    payload: {
+      participa: boolean
+      ventas: Array<{ producto_servicio_id: number; cantidad: number }>
+    },
+  ): Promise<EventSelfParticipation> {
+    const { data } = await api.put<ApiEnvelope<EventSelfParticipation>>(
+      `/api/v1/settings/clubes/events/${eventoId}/participantes/yo`,
+      payload,
     )
     return data.data
   },

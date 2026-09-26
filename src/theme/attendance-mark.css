@@ -337,6 +337,19 @@
   height: 1.7rem;
 }
 
+.attendance-mark--join {
+  gap: 0.85rem;
+}
+
+.attendance-mark--join .app-panel__subtitle {
+  margin: 0;
+  text-align: left;
+}
+
+.attendance-mark--join .attendance-mark__sale-list {
+  margin: 0;
+}
+
 .app-panel .attendance-mark__sale input {
   min-height: 2.25rem;
   max-height: 2.25rem;

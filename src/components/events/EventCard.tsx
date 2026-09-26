@@ -53,21 +53,28 @@ export function formatEventRange(start?: string | null, end?: string | null): st
 type EventCardActionsProps = {
   item: EventSummary
   canTakeAttendance: boolean
+  canJoin?: boolean
   canEdit: boolean
   onAttendance: (item: EventSummary) => void
+  onJoin?: (item: EventSummary) => void
   onEdit: (item: EventSummary) => void
 }
 
 export function EventCardActions({
   item,
   canTakeAttendance,
+  canJoin = false,
   canEdit,
   onAttendance,
+  onJoin,
   onEdit,
 }: EventCardActionsProps) {
   const showAttendance = canTakeAttendance && isActivityEvent(item)
   const showParticipants = canTakeAttendance && isEconomicEvent(item)
-  if (!showAttendance && !showParticipants && !canEdit) return null
+  const showJoin = canJoin && Boolean(onJoin) && isEconomicEvent(item) && item.estado !== 'cancelado'
+  if (!showAttendance && !showParticipants && !showJoin && !canEdit) return null
+
+  const hasPrimary = showAttendance || showParticipants || showJoin
 
   return (
     <>
@@ -81,10 +88,15 @@ export function EventCardActions({
           Participantes
         </button>
       ) : null}
+      {showJoin && onJoin ? (
+        <button type="button" className="app-panel__btn--primary" onClick={() => onJoin(item)}>
+          Participar
+        </button>
+      ) : null}
       {canEdit ? (
         <button
           type="button"
-          className={showAttendance || showParticipants ? 'app-panel__btn--ghost' : 'app-panel__btn--primary'}
+          className={hasPrimary ? 'app-panel__btn--ghost' : 'app-panel__btn--primary'}
           onClick={() => onEdit(item)}
         >
           Editar
@@ -106,8 +118,10 @@ export function EventCard({
   item,
   now,
   canTakeAttendance,
+  canJoin = false,
   canEdit,
   onAttendance,
+  onJoin,
   onEdit,
   framed = true,
   showHeading = true,
@@ -176,8 +190,10 @@ export function EventCard({
           <EventCardActions
             item={item}
             canTakeAttendance={canTakeAttendance}
+            canJoin={canJoin}
             canEdit={canEdit}
             onAttendance={onAttendance}
+            onJoin={onJoin}
             onEdit={onEdit}
           />
         </div>

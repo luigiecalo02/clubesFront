@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getApiErrorMessage } from '../../api/client'
 import { resolveFileUrl } from '../../api/baseUrl'
 import { serviciosApi } from '../../api/servicios'
 import type { ClubIcono, ClubServicio } from '../../api/types'
 import { CatalogIcon } from './CatalogIcon'
+import { mergeIconCatalog } from './foodIcons'
 import { findClubIcon, groupClubIcons, matchesClubIcon } from './iconCatalog'
 
 let iconosCache: Promise<ClubIcono[]> | null = null
@@ -55,12 +55,15 @@ export function ServiceIconPicker({ value, onChange }: ServiceIconPickerProps) {
     loadClubIconos()
       .then((next) => {
         if (!cancelled) {
-          setIcons(next)
+          setIcons(mergeIconCatalog(next))
           setError('')
         }
       })
-      .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'No se pudieron cargar los íconos'))
+      .catch(() => {
+        if (!cancelled) {
+          setIcons(mergeIconCatalog([]))
+          setError('')
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -122,7 +125,7 @@ export function ServiceIconPicker({ value, onChange }: ServiceIconPickerProps) {
               ref={inputRef}
               className="admin-search-select__input admin-service-icon-select__search"
               value={query}
-              placeholder="Buscar por nombre…"
+              placeholder="hamburguesa, pescado, postre…"
               aria-expanded={open}
               aria-autocomplete="list"
               role="combobox"

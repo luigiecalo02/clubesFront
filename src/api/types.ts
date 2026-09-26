@@ -472,3 +472,9 @@ export interface EventParticipantsRoster {
   integrantes: EventParticipant[]
   resumen: EventParticipantsResumen
 }
+
+export interface EventSelfParticipation {
+  evento: EventSummary
+  servicios: EventParticipantService[]
+  integrante: EventParticipant
+}

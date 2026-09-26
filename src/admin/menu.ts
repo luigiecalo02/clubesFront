@@ -175,6 +175,13 @@ export function canAccessClubAttendance(options?: {
   return Boolean(options?.organizacionId) && ['director', 'subdirector', 'secretario'].includes(options?.rolName ?? '')
 }
 
+export function canJoinClubEconomicEvent(options?: {
+  organizacionId?: number | null
+  personaId?: number | null
+}): boolean {
+  return Boolean(options?.organizacionId && options?.personaId)
+}
+
 export function canManageClubServices(options?: {
   can?: (permission: string) => boolean
   rolName?: string | null

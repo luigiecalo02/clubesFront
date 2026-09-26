@@ -14,10 +14,16 @@ import type {
   EventSummary,
   EventTipo,
 } from '../api/types'
-import { canAccessClubAttendance, canCreateClubEvent, canUpdateClubEvent } from '../admin/menu'
+import {
+  canAccessClubAttendance,
+  canCreateClubEvent,
+  canJoinClubEconomicEvent,
+  canUpdateClubEvent,
+} from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { EventBoard } from '../components/events/EventBoard'
 import { ESTADO_LABELS, EVENT_ESTADO_OPTIONS, isActivityEvent, isEconomicEvent } from '../components/events/EventCard'
+import { EventMemberJoin } from '../components/events/EventMemberJoin'
 import { EventServicesField } from '../components/events/EventServicesField'
 import {
   emptyParticipantsDraft,
@@ -120,6 +126,10 @@ export function EventsPage() {
       rolName: ctx?.rol_name,
       organizacionId: ctx?.organizacion_id,
     }) || auth.can('asistencia.update')
+  const canJoinEconomic = canJoinClubEconomicEvent({
+    organizacionId: ctx?.organizacion_id,
+    personaId: auth.user?.persona_id,
+  })
   const [events, setEvents] = useState<EventSummary[]>([])
   const [tipos, setTipos] = useState<EventTipo[]>([])
   const [loading, setLoading] = useState(true)
@@ -127,6 +137,7 @@ export function EventsPage() {
   const [editing, setEditing] = useState<EventSummary | null>(null)
   const [attendanceFor, setAttendanceFor] = useState<EventSummary | null>(null)
   const [participantsFor, setParticipantsFor] = useState<EventSummary | null>(null)
+  const [joinFor, setJoinFor] = useState<EventSummary | null>(null)
   const [members, setMembers] = useState<AttendanceMember[]>([])
   const [participants, setParticipants] = useState<EventParticipant[]>([])
   const [participantServices, setParticipantServices] = useState<EventParticipantService[]>([])
@@ -230,6 +241,7 @@ export function EventsPage() {
   function openCreate() {
     closeAttendance()
     closeParticipants()
+    closeJoin()
     setEditing(null)
     setEventTab('ficha')
     setForm(emptyForm())
@@ -241,10 +253,23 @@ export function EventsPage() {
     if (!canEditEvents) return
     setAttendanceFor(null)
     setParticipantsFor(null)
+    setJoinFor(null)
     setEditing(item)
     setEventTab('ficha')
     setForm(formFromEvent(item))
     setShowForm(true)
+  }
+
+  function openJoin(item: EventSummary) {
+    if (!canJoinEconomic || !isEconomicEvent(item)) return
+    closeForm()
+    closeAttendance()
+    closeParticipants()
+    setJoinFor(item)
+  }
+
+  function closeJoin() {
+    setJoinFor(null)
   }
 
   function openAttendance(item: EventSummary) {
@@ -252,12 +277,14 @@ export function EventsPage() {
     if (isEconomicEvent(item)) {
       closeForm()
       closeAttendance()
+      closeJoin()
       setParticipantsFor(item)
       return
     }
     if (!isActivityEvent(item)) return
     closeForm()
     closeParticipants()
+    closeJoin()
     setAttendanceFor(item)
   }
 
@@ -693,6 +720,8 @@ export function EventsPage() {
         ) : null}
       </CreateDrawer>
 
+      {joinFor ? <EventMemberJoin event={joinFor} onClose={closeJoin} /> : null}
+
       <div className="admin-events__toolbar">
         <EventsViewToggle
           view={view}
@@ -738,10 +767,12 @@ export function EventsPage() {
           loading={loading}
           now={now}
           canTakeAttendance={canTakeAttendance}
+          canJoin={canJoinEconomic}
           canCreate={canEditEvents}
           tipos={tipos}
           organizacionId={ctx?.organizacion_id}
           onAttendance={openAttendance}
+          onJoin={openJoin}
           onEdit={openEdit}
         />
       ) : null}
@@ -755,9 +786,11 @@ export function EventsPage() {
               now={now}
               tipos={tipos}
               canTakeAttendance={canTakeAttendance}
+              canJoin={canJoinEconomic}
               canEdit={canEditEvents && item.organizacion?.id === ctx?.organizacion_id}
               canManageSubevents={canEditEvents && item.organizacion?.id === ctx?.organizacion_id}
               onAttendance={openAttendance}
+              onJoin={openJoin}
               onEdit={openEdit}
             />
           ))}

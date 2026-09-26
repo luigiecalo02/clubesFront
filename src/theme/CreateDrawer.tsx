@@ -5,6 +5,8 @@ import './create-drawer.css'
 type CreateDrawerProps = {
   open: boolean
   title: string
+  subtitle?: string | null
+  cover?: string | null
   onClose: () => void
   footer?: ReactNode
   children: ReactNode
@@ -13,6 +15,8 @@ type CreateDrawerProps = {
 export function CreateDrawer({
   open,
   title,
+  subtitle,
+  cover,
   onClose,
   footer,
   children,
@@ -43,8 +47,13 @@ export function CreateDrawer({
         onClick={onClose}
       />
       <AppPanel className="create-drawer__panel" shine={false}>
-        <header className="create-drawer__head">
-          <h2 className="create-drawer__title">{title}</h2>
+        <header className={`create-drawer__head${cover ? ' create-drawer__head--cover' : ''}`}>
+          {cover ? <img src={cover} alt="" className="create-drawer__cover" /> : null}
+          {cover ? <span className="create-drawer__cover-fade" aria-hidden="true" /> : null}
+          <div className="create-drawer__heading">
+            {subtitle ? <p className="app-panel__kicker">{subtitle}</p> : null}
+            <h2 className="create-drawer__title">{title}</h2>
+          </div>
           <button type="button" className="create-drawer__close" aria-label="Cerrar" onClick={onClose}>
             ×
           </button>
