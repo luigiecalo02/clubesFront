@@ -7,6 +7,11 @@ type CreateDrawerProps = {
   title: string
   subtitle?: string | null
   cover?: string | null
+  avatar?: string | null
+  avatarFallback?: string | null
+  placement?: 'end' | 'top' | 'bottom'
+  size?: 'default' | 'half'
+  stacked?: boolean
   onClose: () => void
   footer?: ReactNode
   children: ReactNode
@@ -17,6 +22,11 @@ export function CreateDrawer({
   title,
   subtitle,
   cover,
+  avatar,
+  avatarFallback,
+  placement = 'end',
+  size = 'default',
+  stacked = false,
   onClose,
   footer,
   children,
@@ -27,19 +37,26 @@ export function CreateDrawer({
     document.body.style.overflow = 'hidden'
 
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
+      if (event.key !== 'Escape') return
+      if (stacked) event.stopImmediatePropagation()
+      onClose()
     }
-    window.addEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, stacked)
     return () => {
       document.body.style.overflow = previous
-      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keydown', onKey, stacked)
     }
-  }, [onClose, open])
+  }, [onClose, open, stacked])
 
   if (!open) return null
 
   return (
-    <div className="create-drawer" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className={`create-drawer${placement === 'top' ? ' create-drawer--top' : ''}${placement === 'bottom' ? ' create-drawer--bottom' : ''}${size === 'half' ? ' create-drawer--half' : ''}${stacked ? ' create-drawer--stacked' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       <button
         type="button"
         className="create-drawer__backdrop"
@@ -50,6 +67,11 @@ export function CreateDrawer({
         <header className={`create-drawer__head${cover ? ' create-drawer__head--cover' : ''}`}>
           {cover ? <img src={cover} alt="" className="create-drawer__cover" /> : null}
           {cover ? <span className="create-drawer__cover-fade" aria-hidden="true" /> : null}
+          {avatar || avatarFallback ? (
+            <span className="create-drawer__avatar" aria-hidden="true">
+              {avatar ? <img src={avatar} alt="" /> : avatarFallback}
+            </span>
+          ) : null}
           <div className="create-drawer__heading">
             {subtitle ? <p className="app-panel__kicker">{subtitle}</p> : null}
             <h2 className="create-drawer__title">{title}</h2>

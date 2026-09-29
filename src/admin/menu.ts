@@ -117,6 +117,13 @@ export const ADMIN_MENU: AdminMenuItem[] = [
     description: 'Relaciona la asistencia de un evento con los integrantes del club.',
   },
   {
+    path: '/abonos',
+    label: 'Abonos',
+    permission: 'abonos.view',
+    icon: 'wallet',
+    description: 'Registra lo recogido de las actividades económicas, por integrante o por actividad.',
+  },
+  {
     path: '/eventos/catalogos',
     label: 'Categorías y criterios',
     permission: 'events.update',
@@ -180,6 +187,16 @@ export function canJoinClubEconomicEvent(options?: {
   personaId?: number | null
 }): boolean {
   return Boolean(options?.organizacionId && options?.personaId)
+}
+
+export function canAccessClubAbonos(options?: {
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  return (
+    Boolean(options?.organizacionId) &&
+    ['director', 'subdirector', 'secretario', 'tesorero'].includes(options?.rolName ?? '')
+  )
 }
 
 export function canManageClubServices(options?: {
@@ -299,6 +316,9 @@ export function visibleMenu(
     }
     if (item.path === '/asistencia') {
       return canAccessClubAttendance(options) || can(item.permission)
+    }
+    if (item.path === '/abonos') {
+      return canAccessClubAbonos(options) || can(item.permission)
     }
     return can(item.permission)
   })

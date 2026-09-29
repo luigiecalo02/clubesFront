@@ -40,7 +40,7 @@
 }
 
 .attendance-mark__stats--money {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .attendance-mark__icon--text {
@@ -207,10 +207,10 @@
 }
 
 .attendance-mark__card--sales {
-  grid-template-columns: minmax(10.5rem, 16rem) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   justify-items: stretch;
-  align-items: center;
-  gap: 0.65rem 1rem;
+  align-items: start;
+  gap: 0.45rem;
   padding: 0.7rem 0.75rem;
 }
 
@@ -228,31 +228,27 @@
 
 .attendance-mark__card--sales .attendance-mark__icons {
   justify-content: flex-start;
+  align-items: center;
 }
 
 .attendance-mark__sales {
   display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.attendance-mark__sales.is-open {
   justify-items: stretch;
   align-content: start;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
 .attendance-mark__sales-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.7rem;
+  gap: 0.55rem;
   width: auto;
   max-width: 100%;
-  min-height: 2.4rem;
-  margin: 0 auto;
-  padding: 0.45rem 0.9rem;
+  min-height: 2.15rem;
+  margin: 0;
+  padding: 0.35rem 0.75rem;
   border: 1.5px solid var(--panel-input-border);
   border-radius: var(--panel-input-radius);
   background: var(--panel-input-bg);
@@ -260,12 +256,6 @@
   font: inherit;
   text-align: center;
   cursor: pointer;
-}
-
-.attendance-mark__sales.is-open .attendance-mark__sales-toggle {
-  width: 100%;
-  justify-content: space-between;
-  text-align: left;
 }
 
 .attendance-mark__sales-toggle small {
@@ -348,6 +338,55 @@
 
 .attendance-mark--join .attendance-mark__sale-list {
   margin: 0;
+}
+
+.attendance-mark--join .admin-events__view-tabs {
+  justify-content: flex-start;
+}
+
+.attendance-mark__abono-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.attendance-mark__abono-summary {
+  margin: 0;
+  color: var(--panel-muted);
+  font-size: 0.78rem;
+}
+
+.attendance-mark__abono-bar .app-panel__btn--primary {
+  width: auto;
+  min-width: 7.5rem;
+  flex: none;
+}
+
+.attendance-mark__abonos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.attendance-mark__abonos li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  border: 1.5px solid var(--panel-input-border);
+  color: var(--panel-muted);
+  font-size: 0.82rem;
+}
+
+.attendance-mark__abonos strong {
+  color: var(--panel-title);
+  font-weight: 500;
 }
 
 .app-panel .attendance-mark__sale input {
@@ -508,6 +547,25 @@
 @media (max-width: 720px) {
   .attendance-mark__stats,
   .attendance-mark__stats--money {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .attendance-mark__stat {
+    min-width: 0;
+    padding: 0.4rem 0.2rem 0.35rem;
+  }
+
+  .attendance-mark__stat strong {
+    overflow: hidden;
+    font-size: 0.92rem;
+    text-overflow: ellipsis;
+  }
+
+  .attendance-mark__stat span {
+    font-size: 0.62rem;
+  }
+
+  .attendance-mark__abono-bar .app-panel__btn--primary {
+    width: 100%;
   }
 }

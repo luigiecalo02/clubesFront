@@ -446,8 +446,11 @@ export interface EventParticipant {
   persona_id: number
   full_name: string
   identificacion?: string | null
+  foto_url?: string | null
   participa?: boolean | null
   ventas?: EventParticipantVenta[]
+  abonado?: number
+  abonos?: AbonoMovimiento[]
 }
 
 export interface EventParticipantService {
@@ -477,4 +480,66 @@ export interface EventSelfParticipation {
   evento: EventSummary
   servicios: EventParticipantService[]
   integrante: EventParticipant
+  recaudo?: {
+    abonado: number
+    abonos: AbonoMovimiento[]
+  }
+}
+
+export type AbonosModo = 'integrante' | 'actividad'
+
+export interface AbonoOption {
+  id: number
+  nombre: string
+  starts_at?: string | null
+  foto_url?: string | null
+  image_url?: string | null
+}
+
+export interface AbonoMovimiento {
+  id: number
+  monto: number
+  nota?: string | null
+  created_at?: string | null
+}
+
+export interface AbonoPedido {
+  id: number
+  nombre: string
+  cantidad: number
+  precio: number
+  total: number
+  icono?: string | null
+  image_url?: string | null
+}
+
+export interface AbonoFila {
+  persona_id?: number | null
+  full_name?: string | null
+  foto_url?: string | null
+  evento_id?: number | null
+  evento_name?: string | null
+  image_url?: string | null
+  starts_at?: string | null
+  comprometido: number
+  abonado: number
+  pendiente: number
+  items?: number
+  pendientes?: number
+  pedidos?: AbonoPedido[]
+  abonos?: AbonoMovimiento[]
+}
+
+export interface AbonosBoard {
+  modo: AbonosModo
+  persona_id?: number | null
+  evento_id?: number | null
+  resumen: {
+    comprometido: number
+    abonado: number
+    pendiente: number
+  }
+  opciones_integrantes: AbonoOption[]
+  opciones_actividades: AbonoOption[]
+  filas: AbonoFila[]
 }

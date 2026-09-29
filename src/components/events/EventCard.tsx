@@ -18,6 +18,10 @@ export const EVENT_ESTADO_OPTIONS = Object.entries(ESTADO_LABELS).map(([value, l
   label,
 }))
 
+export function eventEstadoLabel(estado?: string | null): string {
+  return ESTADO_LABELS[estado ?? ''] || estado || ''
+}
+
 const VISIBILIDAD_LABELS: Record<string, string> = {
   publico: 'Libre',
   organizacion: 'Organización',
@@ -30,6 +34,11 @@ export function isActivityEvent(item: EventSummary): boolean {
   const slug = item.tipo_evento?.slug?.toLowerCase() ?? ''
   const name = item.tipo_evento?.nombre?.toLowerCase() ?? ''
   return slug === 'actividad' || name === 'actividad'
+}
+
+export function isEconomicParticipationLocked(item?: { estado?: string | null } | null): boolean {
+  const estado = item?.estado ?? ''
+  return estado === 'en_proceso' || estado === 'cerrado'
 }
 
 export function isEconomicEvent(
@@ -48,6 +57,19 @@ export function isEconomicEvent(
 
 export function formatEventRange(start?: string | null, end?: string | null): string {
   return formatDateRange(start, end)
+}
+
+function EventCardKicker({ item }: { item: EventSummary }) {
+  const tipo = item.tipo_evento?.nombre || 'Evento'
+  const estado = eventEstadoLabel(item.estado)
+  return (
+    <p className="app-panel__kicker admin-event-card__kicker">
+      <span>{tipo}</span>
+      {estado ? (
+        <span className={`admin-event-card__estado is-${item.estado ?? ''}`}>{estado}</span>
+      ) : null}
+    </p>
+  )
 }
 
 type EventCardActionsProps = {
@@ -71,6 +93,7 @@ export function EventCardActions({
 }: EventCardActionsProps) {
   const showAttendance = canTakeAttendance && isActivityEvent(item)
   const showParticipants = canTakeAttendance && isEconomicEvent(item)
+  const joinLocked = isEconomicParticipationLocked(item)
   const showJoin = canJoin && Boolean(onJoin) && isEconomicEvent(item) && item.estado !== 'cancelado'
   if (!showAttendance && !showParticipants && !showJoin && !canEdit) return null
 
@@ -90,7 +113,7 @@ export function EventCardActions({
       ) : null}
       {showJoin && onJoin ? (
         <button type="button" className="app-panel__btn--primary" onClick={() => onJoin(item)}>
-          Participar
+          {joinLocked ? 'Ver' : 'Participar'}
         </button>
       ) : null}
       {canEdit ? (
@@ -140,15 +163,11 @@ export function EventCard({
       ) : null}
       {showHeading ? (
         <>
-          <p className="app-panel__kicker">
-            {item.tipo_evento?.nombre || ESTADO_LABELS[item.estado ?? ''] || 'Evento'}
-          </p>
+          <EventCardKicker item={item} />
           <h2 className="app-panel__title">{item.name}</h2>
         </>
       ) : (
-        <p className="app-panel__kicker">
-          {item.tipo_evento?.nombre || ESTADO_LABELS[item.estado ?? ''] || 'Evento'}
-        </p>
+        <EventCardKicker item={item} />
       )}
       <div className="admin-event-card__meta">
         <p>
@@ -180,9 +199,15 @@ export function EventCard({
           <span>Inscritos</span>
         </p>
         <p className="admin-event-card__fact">
-          <strong>{ESTADO_LABELS[item.estado ?? ''] || item.estado || 'Evento'}</strong>
-          <span>{VISIBILIDAD_LABELS[item.visibilidad ?? ''] || 'Alcance'}</span>
+          <strong>{eventEstadoLabel(item.estado) || '—'}</strong>
+          <span>Estado</span>
         </p>
+        {item.visibilidad ? (
+          <p className="admin-event-card__fact">
+            <strong>{VISIBILIDAD_LABELS[item.visibilidad] || item.visibilidad}</strong>
+            <span>Alcance</span>
+          </p>
+        ) : null}
       </div>
       <EventCountdown start={item.starts_at} end={item.ends_at} now={now} />
       {showActions ? (

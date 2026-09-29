@@ -12,6 +12,7 @@ import { HandoffPage } from './pages/HandoffPage'
 import { LoginPage } from './pages/LoginPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { ModulePage } from './pages/ModulePage'
+import { AbonosPage } from './pages/AbonosPage'
 import { AttendancePage } from './pages/AttendancePage'
 import { EventsPage } from './pages/EventsPage'
 import { MembersPage } from './pages/MembersPage'
@@ -81,6 +82,14 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/abonos"
+                  element={
+                    <RequirePermission permission="abonos.view" requireAbonos>
+                      <AbonosPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
                   path="/integrantes"
                   element={
                     <RequirePermission permission="integrantes.view">
@@ -103,6 +112,7 @@ export default function App() {
                     item.path !== '/mi-club' &&
                     item.path !== '/eventos' &&
                     item.path !== '/asistencia' &&
+                    item.path !== '/abonos' &&
                     item.path !== '/integrantes' &&
                     item.path !== '/servicios',
                 ).map(

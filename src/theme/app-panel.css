@@ -40,6 +40,8 @@
   --panel-alert-bg: rgb(180 35 24 / 0.18);
   --panel-alert-text: #fecaca;
   --panel-alert-border: rgb(248 113 113 / 0.28);
+  --panel-danger: #b42318;
+  --panel-danger-text: #fff;
   --panel-hint-bg: rgb(240 193 75 / 0.1);
   --panel-hint-text: #f6e7b2;
   --panel-hint-border: rgb(240 193 75 / 0.22);
@@ -262,6 +264,12 @@
 
 .app-date-input__picker::-webkit-calendar-picker-indicator {
   cursor: pointer;
+  opacity: 0.92;
+  filter: invert(1);
+}
+
+.admin-shell--day .app-date-input__picker::-webkit-calendar-picker-indicator {
+  filter: none;
   opacity: 0.72;
 }
 
@@ -416,6 +424,7 @@
   --panel-bg: rgb(8 14 24 / 0.9);
   --panel-border: rgb(255 255 255 / 0.18);
   --panel-input-bg: rgb(6 10 18 / 0.72);
+  --panel-icon: #ffffff;
   --panel-blur: 10px;
 }
 

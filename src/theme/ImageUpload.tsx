@@ -15,6 +15,7 @@ type ImageUploadProps = {
   file?: File | null
   previewUrl?: string | null
   emptyText?: string
+  actionLabel?: string
   disabled?: boolean
   onSelect: (file: File) => void
   onClear?: () => void
@@ -42,6 +43,7 @@ export function ImageUpload({
   file = null,
   previewUrl = null,
   emptyText,
+  actionLabel,
   disabled = false,
   onSelect,
   onClear,
@@ -55,7 +57,7 @@ export function ImageUpload({
   const [draft, setDraft] = useState<File | null>(null)
 
   const empty = emptyText ?? (variant === 'avatar' ? 'Sin foto' : 'Sin imagen')
-  const action = shown ? 'Cambiar' : 'Elegir imagen'
+  const action = shown ? actionLabel || 'Cambiar' : 'Elegir imagen'
 
   function take(file: File | undefined | null) {
     if (!file || disabled) return
@@ -80,6 +82,7 @@ export function ImageUpload({
   return (
     <div className={`image-upload image-upload--${variant}`}>
       <span className="image-upload__label">{label}</span>
+      <div className="image-upload__frame">
       <label
         htmlFor={inputId}
         className={`image-upload__drop${over ? ' is-over' : ''}${shown ? ' has-file' : ''}`}
@@ -129,12 +132,6 @@ export function ImageUpload({
           }}
         />
       </label>
-      {hint ? <small className="image-upload__hint">{hint}</small> : null}
-      {error ? (
-        <small className="image-upload__error" role="alert">
-          {error}
-        </small>
-      ) : null}
       {shown && onClear && !disabled ? (
         <button
           type="button"
@@ -145,8 +142,25 @@ export function ImageUpload({
             if (inputRef.current) inputRef.current.value = ''
           }}
         >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M5 7h14M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7M8 7l.7 12.2A1.5 1.5 0 0 0 10.2 20h3.6a1.5 1.5 0 0 0 1.5-1.4L16 7"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
           Quitar
         </button>
+      ) : null}
+      </div>
+      {hint ? <small className="image-upload__hint">{hint}</small> : null}
+      {error ? (
+        <small className="image-upload__error" role="alert">
+          {error}
+        </small>
       ) : null}
       {draft ? (
         <ImageCropDialog

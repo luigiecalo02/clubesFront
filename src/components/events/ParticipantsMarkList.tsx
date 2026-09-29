@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { EventParticipant, EventParticipantService } from '../../api/types'
+import { formatDate } from '../../theme/dates'
 import { ServiceThumb } from '../services/ServiceVisual'
 import '../../theme/attendance-mark.css'
 
@@ -53,7 +54,7 @@ function servicePrice(service: EventParticipantService): number {
   return Number.isFinite(amount) ? amount : 0
 }
 
-function saleTotals(services: EventParticipantService[], ventas: Record<number, number>) {
+export function saleTotals(services: EventParticipantService[], ventas: Record<number, number>) {
   return services.reduce(
     (acc, service) => {
       const cantidad = Math.max(0, Number(ventas[service.id]) || 0)
@@ -69,10 +70,14 @@ type ParticipantsMarkListProps = {
   services: EventParticipantService[]
   draft: ParticipantDraft
   canEdit: boolean
+  canAbonar?: boolean
+  participationLocked?: boolean
   saving?: boolean
+  payingId?: number | null
   onChange: (personaId: number, participa: boolean | '') => void
   onQty: (personaId: number, productoServicioId: number, cantidad: number) => void
   onMarkAll: (participa: boolean | '') => void
+  onStartAbono?: (personaId: number) => void
 }
 
 export function ParticipantsMarkList({
@@ -80,10 +85,14 @@ export function ParticipantsMarkList({
   services,
   draft,
   canEdit,
+  canAbonar = false,
+  participationLocked = false,
   saving = false,
+  payingId = null,
   onChange,
   onQty,
   onMarkAll,
+  onStartAbono,
 }: ParticipantsMarkListProps) {
   const [query, setQuery] = useState('')
   const [openIds, setOpenIds] = useState<number[]>([])
@@ -109,6 +118,7 @@ export function ParticipantsMarkList({
           ...acc,
           unidades: acc.unidades + totals.unidades,
           recaudo: acc.recaudo + totals.recaudo,
+          abonado: acc.abonado + (Number(row.abonado) || 0),
         }
       },
       {
@@ -117,6 +127,7 @@ export function ParticipantsMarkList({
         sinMarcar: members.length - participan - noParticipan,
         unidades: 0,
         recaudo: 0,
+        abonado: 0,
       },
     )
   }, [draft, members, services])
@@ -151,6 +162,10 @@ export function ParticipantsMarkList({
             <strong>{formatPrice(counts.recaudo)}</strong>
             <span>Recaudo</span>
           </p>
+          <p className="attendance-mark__stat attendance-mark__stat--presente">
+            <strong>{formatPrice(counts.abonado)}</strong>
+            <span>Abonado</span>
+          </p>
         </div>
       </div>
       <label className="attendance-mark__search">
@@ -182,6 +197,8 @@ export function ParticipantsMarkList({
           const selected = current.participa
           const open = openIds.includes(row.persona_id)
           const totals = saleTotals(services, current.ventas)
+          const abonado = Number(row.abonado) || 0
+          const pendiente = totals.recaudo - abonado
           return (
             <article
               key={row.persona_id}
@@ -215,27 +232,27 @@ export function ParticipantsMarkList({
                   >
                     No
                   </button>
+                  {selected === true ? (
+                    <button
+                      type="button"
+                      className="attendance-mark__sales-toggle"
+                      aria-expanded={open}
+                      onClick={() => toggleOpen(row.persona_id)}
+                    >
+                      <span>
+                        {services.length === 0
+                          ? 'Sin servicios en el evento'
+                          : totals.unidades
+                            ? `${totals.unidades} uds · ${formatPrice(totals.recaudo)}`
+                            : 'Sin cantidades'}
+                      </span>
+                      <small>{open ? 'Cerrar' : canAbonar ? 'Servicios y abonos' : 'Ver servicios'}</small>
+                    </button>
+                  ) : null}
                 </div>
-              </div>
-              {selected === true ? (
-                <div className={`attendance-mark__sales${open ? ' is-open' : ''}`}>
-                  <button
-                    type="button"
-                    className="attendance-mark__sales-toggle"
-                    aria-expanded={open}
-                    onClick={() => toggleOpen(row.persona_id)}
-                  >
-                    <span>
-                      {services.length === 0
-                        ? 'Sin servicios en el evento'
-                        : totals.unidades
-                          ? `${totals.unidades} uds · ${formatPrice(totals.recaudo)}`
-                          : 'Sin cantidades'}
-                    </span>
-                    <small>{open ? 'Cerrar' : 'Ver servicios'}</small>
-                  </button>
-                  {open ? (
-                    services.length === 0 ? (
+                {selected === true && open ? (
+                  <div className="attendance-mark__sales is-open">
+                    {services.length === 0 ? (
                       <p className="attendance-mark__sales-empty">Asocia servicios en la ficha del evento.</p>
                     ) : (
                       <ul className="attendance-mark__sale-list">
@@ -266,18 +283,54 @@ export function ParticipantsMarkList({
                           )
                         })}
                       </ul>
-                    )
-                  ) : null}
-                </div>
-              ) : null}
+                    )}
+                    {canAbonar && onStartAbono ? (
+                      <div className="attendance-mark__abono-bar">
+                        <p className="attendance-mark__abono-summary">
+                          Abonado {formatPrice(abonado)} · Faltante {formatPrice(pendiente)}
+                        </p>
+                        <button
+                          type="button"
+                          className="app-panel__btn--primary"
+                          disabled={payingId === row.persona_id || pendiente <= 0}
+                          onClick={() => onStartAbono(row.persona_id)}
+                        >
+                          Abonar
+                        </button>
+                      </div>
+                    ) : null}
+                    {row.abonos?.length ? (
+                      <ul className="attendance-mark__abonos">
+                        {row.abonos.map((abono) => (
+                          <li key={abono.id}>
+                            <span>
+                              {formatDate(abono.created_at)}
+                              {abono.nota ? ` · ${abono.nota}` : ''}
+                            </span>
+                            <strong>{formatPrice(abono.monto)}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </article>
           )
         })}
       </div>
 
       {saving ? <p className="app-panel__muted">Guardando…</p> : null}
-      {!canEdit ? (
+      {participationLocked ? (
+        <p className="app-panel__hint">
+          La actividad ya está en curso. Aquí solo puedes consultar y registrar abonos.
+        </p>
+      ) : null}
+      {!canEdit && !participationLocked ? (
         <p className="app-panel__hint">Solo la directiva puede registrar participantes.</p>
+      ) : null}
+      {canAbonar ? (
+        <p className="app-panel__hint">Pulsa Abonar en un participante para registrar el recaudo.</p>
       ) : null}
     </div>
   )

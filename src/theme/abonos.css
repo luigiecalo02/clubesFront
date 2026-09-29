@@ -1,0 +1,507 @@
+.admin-page--abonos {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
+  gap: 0.85rem;
+}
+
+.abonos-workspace {
+  min-height: 0;
+  height: auto;
+  overflow: visible;
+}
+
+.abonos-workspace .app-panel__kicker,
+.abonos-workspace .app-panel__title,
+.abonos-workspace .app-panel__subtitle {
+  text-align: left;
+}
+
+.abonos-workspace .app-panel__subtitle {
+  margin-bottom: 0;
+}
+
+.abonos-workspace__grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.92fr) minmax(22rem, 1.08fr);
+  gap: 0.85rem;
+  min-height: 0;
+}
+
+.abonos-board,
+.abonos-detail {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.app-panel.abonos-board,
+.app-panel.abonos-detail {
+  height: 100%;
+  overflow: hidden;
+}
+
+.abonos-board .admin-event-tabs {
+  margin: 0;
+}
+
+.abonos-search {
+  margin: 0;
+}
+
+.abonos-search .app-panel__field {
+  display: block;
+}
+
+.abonos-search__clear {
+  position: absolute;
+  top: 50%;
+  right: 0.65rem;
+  translate: 0 -50%;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--panel-muted);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.abonos-board__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  color: var(--panel-muted);
+  font-size: 0.78rem;
+}
+
+.abonos-board__meta p,
+.abonos-board__meta label {
+  margin: 0;
+}
+
+.abonos-board__meta select {
+  min-height: 2.2rem;
+  padding: 0.25rem 1.8rem 0.25rem 0.7rem;
+}
+
+.abonos-picks,
+.abonos-deals,
+.abonos-detail {
+  overflow: auto;
+}
+
+.abonos-picks {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+  flex: 1;
+  min-height: 0;
+  padding-right: 0.15rem;
+}
+
+.abonos-avatar {
+  width: 2.55rem;
+  height: 2.55rem;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel-gold) 16%, var(--panel-input-bg));
+  color: var(--panel-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.abonos-avatar.is-square {
+  border-radius: 0.7rem;
+}
+
+.abonos-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.abonos-pick,
+.abonos-deal__toggle {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  border: 1.5px solid var(--panel-input-border);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.abonos-pick {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  cursor: pointer;
+}
+
+.abonos-pick:hover,
+.abonos-deal__toggle:hover {
+  border-color: color-mix(in srgb, var(--panel-gold) 45%, var(--panel-input-border));
+}
+
+.abonos-pick.is-on {
+  border-color: var(--panel-gold);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--panel-gold) 35%, transparent);
+}
+
+.abonos-pick__who,
+.abonos-deal__who,
+.abonos-pick__money,
+.abonos-detail__total {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.abonos-pick__who strong,
+.abonos-deal__who strong,
+.abonos-detail__head h3 {
+  margin: 0;
+  color: var(--panel-title);
+  font-size: 0.94rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abonos-pick__who small,
+.abonos-deal__who small,
+.abonos-pick__money small,
+.abonos-detail__head p,
+.abonos-detail__total span {
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+}
+
+.abonos-pick__money,
+.abonos-detail__total {
+  text-align: right;
+  justify-items: end;
+}
+
+.abonos-pick__money strong,
+.abonos-detail__total strong {
+  color: var(--panel-gold);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.abonos-pick svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--panel-muted);
+}
+
+.abonos-detail__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.abonos-deals,
+.abonos-pay {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.abonos-deals h3,
+.abonos-pay h3 {
+  margin: 0.2rem 0 0;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.abonos-deal {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0;
+  border: 1.5px solid transparent;
+  border-radius: var(--panel-input-radius);
+}
+
+.abonos-deal.is-open {
+  padding: 0 0 0.7rem;
+  border-color: color-mix(in srgb, var(--panel-gold) 50%, var(--panel-input-border));
+  background: var(--panel-input-bg);
+  box-shadow: var(--panel-input-shadow);
+}
+
+.abonos-deal.is-open .abonos-deal__toggle {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.abonos-deal__badge {
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--panel-gold);
+  color: var(--panel-gold);
+  font-size: 0.7rem;
+}
+
+.abonos-deal__badge.is-ok {
+  border-color: var(--panel-ok-text);
+  color: var(--panel-ok-text);
+}
+
+.abonos-deal__body {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0 0.65rem;
+}
+
+.abonos-deal__money,
+.create-drawer .abonos-deal__money {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.abonos-deal__money p,
+.abonos-deal__money .event-countdown__cell {
+  margin: 0;
+  min-width: 0;
+  padding: 0.55rem 0.25rem;
+}
+
+.abonos-deal__money strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abonos-deal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  grid-column: 1 / -1;
+}
+
+.abonos-deal__actions .app-panel__btn--ghost,
+.abonos-deal__actions .app-panel__btn--primary {
+  width: auto;
+  min-width: 0;
+  min-height: 2.15rem;
+  flex: 1 1 8rem;
+  padding: 0 0.75rem;
+}
+
+.abonos-pedidos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.abonos-pedidos li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.5rem 0.55rem;
+  border-radius: var(--panel-input-radius);
+  border: 1.5px solid var(--panel-input-border);
+  background: color-mix(in srgb, var(--panel-input-bg) 70%, transparent);
+}
+
+.abonos-pedidos__name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+  color: var(--panel-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abonos-pedidos__qty {
+  color: var(--panel-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.abonos-pedidos strong {
+  color: var(--panel-title);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.abonos-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.abonos-history li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.5rem 0.55rem;
+  border-radius: var(--panel-input-radius);
+  border: 1.5px solid var(--panel-input-border);
+  background: color-mix(in srgb, var(--panel-input-bg) 70%, transparent);
+}
+
+.abonos-history__who {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.abonos-history__who .admin-icon {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  color: var(--panel-gold);
+}
+
+.abonos-history__who > span {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.abonos-history__who strong {
+  overflow: hidden;
+  color: var(--panel-title);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abonos-history__who small {
+  overflow: hidden;
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abonos-history > li > strong {
+  color: var(--panel-title);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.abonos-pay {
+  padding-top: 0.2rem;
+}
+
+.abonos-pay__amount-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.abonos-pay__percents {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.abonos-pay__percents .app-panel__btn--ghost {
+  min-width: 3.4rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.abonos-pay__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.abonos-pay .app-panel__btn--primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.abonos-pay .app-panel__btn--primary svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.create-drawer--top .abonos-detail,
+.create-drawer--bottom .abonos-detail {
+  overflow: visible;
+}
+
+.create-drawer--top .abonos-detail__head h3,
+.create-drawer--bottom .abonos-detail__head h3 {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .admin-page--abonos {
+    grid-template-rows: auto auto;
+  }
+
+  .abonos-workspace__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-panel.abonos-board,
+  .app-panel.abonos-detail {
+    height: auto;
+    overflow: visible;
+  }
+
+  .abonos-pay__amount-row,
+  .abonos-pay__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .abonos-deal__money,
+  .create-drawer .abonos-deal__money {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .abonos-deal__money strong {
+    font-size: 1.05rem;
+  }
+
+  .abonos-picks {
+    overflow: visible;
+  }
+}

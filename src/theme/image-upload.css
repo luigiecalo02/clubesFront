@@ -163,11 +163,41 @@
   font-size: 0.82rem;
 }
 
+.image-upload__frame {
+  position: relative;
+  min-width: 0;
+}
+
 .image-upload__clear {
   width: auto;
-  min-height: 2.4rem;
+  min-width: 0;
+  min-height: 2.15rem;
   justify-self: start;
-  padding: 0 1rem;
+  padding: 0 0.9rem;
+}
+
+.image-upload__clear svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+}
+
+.app-panel .image-upload--banner .image-upload__clear {
+  position: absolute;
+  top: auto;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  left: auto;
+  z-index: 2;
+  width: auto;
+  max-width: max-content;
+  flex: none;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  background: var(--panel-danger);
+  border-color: var(--panel-danger);
+  color: var(--panel-danger-text);
 }
 
 .image-upload--avatar .image-upload__clear {

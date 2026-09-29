@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { abonosApi } from '../api/abonos'
 import { attendanceApi } from '../api/attendance'
 import { resolveFileUrl } from '../api/baseUrl'
 import { buildEventListQuery, defaultEventDateRange, endOfMonthDate, eventsApi } from '../api/events'
@@ -14,21 +15,26 @@ import type {
   EventSummary,
   EventTipo,
 } from '../api/types'
+import { AdminIcon } from '../admin/AdminIcon'
 import {
+  canAccessClubAbonos,
   canAccessClubAttendance,
   canCreateClubEvent,
   canJoinClubEconomicEvent,
+  canManageClubServices,
   canUpdateClubEvent,
 } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { EventBoard } from '../components/events/EventBoard'
-import { ESTADO_LABELS, EVENT_ESTADO_OPTIONS, isActivityEvent, isEconomicEvent } from '../components/events/EventCard'
+import { ESTADO_LABELS, EVENT_ESTADO_OPTIONS, isActivityEvent, isEconomicEvent, isEconomicParticipationLocked } from '../components/events/EventCard'
 import { EventMemberJoin } from '../components/events/EventMemberJoin'
 import { EventServicesField } from '../components/events/EventServicesField'
+import { AbonoPayForm, composeAbonoNota, emptyAbonoPayDraft } from '../components/abonos/AbonoPayForm'
 import {
   emptyParticipantsDraft,
   participantsPayloadFromDraft,
   ParticipantsMarkList,
+  saleTotals,
   type ParticipantDraft,
 } from '../components/events/ParticipantsMarkList'
 import { EventSubeventsPanel } from '../components/events/EventSubeventsPanel'
@@ -40,6 +46,7 @@ import {
   AttendanceMarkList,
   attendancePayloadFromDraft,
   emptyAttendanceDraft,
+  memberInitials,
 } from '../components/attendance/AttendanceMarkList'
 import { AppPanel } from '../theme/AppPanel'
 import { DateInput } from '../theme/DateInput'
@@ -65,6 +72,12 @@ const emptyForm = () => ({
 function toDateInput(value: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
+}
+
+function formatPrice(value: number | string): string {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) return String(value)
+  return amount.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
 }
 
 function defaultStart(): string {
@@ -130,6 +143,16 @@ export function EventsPage() {
     organizacionId: ctx?.organizacion_id,
     personaId: auth.user?.persona_id,
   })
+  const canAbonar =
+    canAccessClubAbonos({
+      rolName: ctx?.rol_name,
+      organizacionId: ctx?.organizacion_id,
+    }) || auth.can('abonos.update')
+  const canCreateServices = canManageClubServices({
+    can: auth.can,
+    rolName: ctx?.rol_name,
+    organizacionId: ctx?.organizacion_id,
+  })
   const [events, setEvents] = useState<EventSummary[]>([])
   const [tipos, setTipos] = useState<EventTipo[]>([])
   const [loading, setLoading] = useState(true)
@@ -150,6 +173,9 @@ export function EventsPage() {
   const [loadingParticipants, setLoadingParticipants] = useState(false)
   const [savingAttendance, setSavingAttendance] = useState(false)
   const [savingParticipants, setSavingParticipants] = useState(false)
+  const [payingId, setPayingId] = useState<number | null>(null)
+  const [abonoForId, setAbonoForId] = useState<number | null>(null)
+  const [abonoDraft, setAbonoDraft] = useState(emptyAbonoPayDraft)
   const [submitting, setSubmitting] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(hasListFilters)
   const [form, setForm] = useState(emptyForm)
@@ -298,6 +324,13 @@ export function EventsPage() {
     setParticipantsFor(null)
     setParticipants([])
     setParticipantDraft({})
+    setPayingId(null)
+    closeParticipantAbono()
+  }
+
+  function closeParticipantAbono() {
+    setAbonoForId(null)
+    setAbonoDraft(emptyAbonoPayDraft())
   }
 
   useEffect(() => {
@@ -458,7 +491,17 @@ export function EventsPage() {
     try {
       const next = await serviciosApi.saveParticipants(id, participantsPayloadFromDraft(nextDraft))
       if (seq !== participantSaveSeq.current) return
-      setParticipants(next.integrantes)
+      setParticipants((current) =>
+        next.integrantes.map((row) => {
+          const prev = current.find((item) => item.persona_id === row.persona_id)
+          const prevAbonado = Number(prev?.abonado) || 0
+          const nextAbonado = Number(row.abonado) || 0
+          if (prev && prevAbonado > nextAbonado) {
+            return { ...row, abonado: prev.abonado, abonos: prev.abonos }
+          }
+          return row
+        }),
+      )
       setParticipantServices(next.servicios ?? [])
       const saved = emptyParticipantsDraft(next.integrantes)
       participantDraftRef.current = saved
@@ -468,6 +511,59 @@ export function EventsPage() {
       notices.error(getApiErrorMessage(err, 'No se pudieron guardar los participantes'))
     } finally {
       if (seq === participantSaveSeq.current) setSavingParticipants(false)
+    }
+  }
+
+  function openParticipantAbono(personaId: number) {
+    const row = participants.find((item) => item.persona_id === personaId)
+    if (!row) return
+    const ventas = participantDraft[personaId]?.ventas ?? {}
+    const pendiente = saleTotals(participantServices, ventas).recaudo - (Number(row.abonado) || 0)
+    setAbonoForId(personaId)
+    setAbonoDraft({
+      ...emptyAbonoPayDraft(),
+      monto: pendiente > 0 ? String(Math.round(pendiente)) : '',
+    })
+  }
+
+  async function submitParticipantAbono(event?: FormEvent) {
+    event?.preventDefault()
+    if (!participantsFor || !canAbonar || !abonoForId) return
+    const monto = Number(abonoDraft.monto)
+    if (!abonoDraft.metodo) {
+      notices.warning('Elige un método de pago.')
+      return
+    }
+    if (!Number.isFinite(monto) || monto <= 0) {
+      notices.warning('Escribe un monto mayor a cero.')
+      return
+    }
+    setPayingId(abonoForId)
+    try {
+      const next = await abonosApi.store({
+        evento_id: participantsFor.id,
+        persona_id: abonoForId,
+        monto,
+        nota: composeAbonoNota(abonoDraft),
+        modo: 'actividad',
+      })
+      setParticipants((current) =>
+        current.map((row) => {
+          const fila = next.filas.find((item) => item.persona_id === row.persona_id)
+          if (!fila) return row
+          return {
+            ...row,
+            abonado: fila.abonado,
+            abonos: fila.abonos ?? row.abonos,
+          }
+        }),
+      )
+      notices.success('Abono registrado.')
+      closeParticipantAbono()
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo registrar el abono'))
+    } finally {
+      setPayingId(null)
     }
   }
 
@@ -532,6 +628,13 @@ export function EventsPage() {
     }
   }
 
+  const abonoFor = participants.find((row) => row.persona_id === abonoForId) ?? null
+  const abonoMoney = abonoFor
+    ? saleTotals(participantServices, participantDraft[abonoFor.persona_id]?.ventas ?? {})
+    : { unidades: 0, recaudo: 0 }
+  const abonoAbonado = Number(abonoFor?.abonado) || 0
+  const abonoPendiente = abonoMoney.recaudo - abonoAbonado
+
   return (
     <section className="admin-page admin-page--events">
       {canCreate ? (
@@ -549,12 +652,22 @@ export function EventsPage() {
       <CreateDrawer
         open={showForm}
         title={editing ? 'Editar evento' : 'Crear evento'}
+        subtitle={
+          editing
+            ? 'Actualiza la información. Los cambios se guardan al finalizar.'
+            : 'Completa la ficha. Se guardará al finalizar.'
+        }
         onClose={closeForm}
         footer={
           !editing || eventTab === 'ficha' ? (
-            <button type="submit" form="event-form" className="app-panel__btn--primary" disabled={submitting}>
-              {submitting ? 'Guardando…' : editing ? 'Guardar cambios' : 'Guardar evento'}
-            </button>
+            <>
+              <button type="button" className="app-panel__btn--ghost" onClick={closeForm}>
+                Cancelar
+              </button>
+              <button type="submit" form="event-form" className="app-panel__btn--primary" disabled={submitting}>
+                {submitting ? 'Guardando…' : editing ? 'Guardar cambios' : 'Guardar evento'}
+              </button>
+            </>
           ) : null
         }
       >
@@ -562,31 +675,16 @@ export function EventsPage() {
         {editing && eventTab === 'subeventos' ? (
           <EventSubeventsPanel parent={editing} tipos={tipos} canCreate={canCreate} />
         ) : (
-        <form id="event-form" className="admin-form" onSubmit={onSave}>
-          <label>
-            Nombre
-            <input
-              value={form.name}
-              required
-              maxLength={255}
-              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-            />
-          </label>
-
-          <div className="admin-assets">
-            <ImageUpload
-              label="Logo"
-              hint="Emblema del evento. JPG, PNG o WebP."
-              variant="logo"
-              file={form.logo}
-              previewUrl={form.removeLogo ? null : resolveFileUrl(editing?.image_url)}
-              emptyText="Sin logo"
-              onSelect={(next) => setForm((current) => ({ ...current, logo: next, removeLogo: false }))}
-              onClear={() => setForm((current) => ({ ...current, logo: null, removeLogo: true }))}
-            />
+        <form id="event-form" className="admin-form event-form" onSubmit={onSave}>
+          <section className="event-form__section">
+            <h3>
+              <AdminIcon name="eye" />
+              Banner
+            </h3>
             <ImageUpload
               label="Banner"
-              hint="Imagen de portada. JPG, PNG o WebP."
+              hint="Recomendado 1600 × 500 px. JPG, PNG o WebP."
+              actionLabel="Cambiar banner"
               variant="banner"
               file={form.banner}
               previewUrl={form.removeBanner ? null : resolveFileUrl(editing?.banner_url)}
@@ -594,90 +692,161 @@ export function EventsPage() {
               onSelect={(next) => setForm((current) => ({ ...current, banner: next, removeBanner: false }))}
               onClear={() => setForm((current) => ({ ...current, banner: null, removeBanner: true }))}
             />
-          </div>
+          </section>
 
-          <label>
-            Descripción
-            <textarea
-              value={form.descripcion}
-              rows={3}
-              onChange={(event) => setForm((current) => ({ ...current, descripcion: event.target.value }))}
-            />
-          </label>
-          <label>
-            Lugar
-            <input
-              value={form.lugar}
-              maxLength={255}
-              onChange={(event) => setForm((current) => ({ ...current, lugar: event.target.value }))}
-            />
-          </label>
-          {tipos.length ? (
-            <label>
-              Tipo
-              <select
-                value={form.tipo_evento_id}
-                onChange={(event) => setForm((current) => ({ ...current, tipo_evento_id: event.target.value }))}
-              >
-                <option value="">Sin tipo</option>
-                {tipos.map((tipo) => (
-                  <option key={tipo.id} value={tipo.id}>
-                    {tipo.nombre}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
+          <section className="event-form__section">
+            <h3>
+              <AdminIcon name="user" />
+              Identidad
+            </h3>
+            <div className="event-form__identity">
+              <div className="event-form__photo">
+                <ImageUpload
+                  label="Foto"
+                  hint="Cambiar foto"
+                  actionLabel="Cambiar foto"
+                  variant="logo"
+                  file={form.logo}
+                  previewUrl={form.removeLogo ? null : resolveFileUrl(editing?.image_url)}
+                  emptyText="Sin foto"
+                  onSelect={(next) => setForm((current) => ({ ...current, logo: next, removeLogo: false }))}
+                  onClear={() => setForm((current) => ({ ...current, logo: null, removeLogo: true }))}
+                />
+              </div>
+              <label>
+                Nombre de la actividad
+                <input
+                  value={form.name}
+                  required
+                  maxLength={255}
+                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                />
+                <small>{form.name.length}/255</small>
+              </label>
+              {tipos.length ? (
+                <label>
+                  Tipo
+                  <select
+                    value={form.tipo_evento_id}
+                    onChange={(event) => setForm((current) => ({ ...current, tipo_evento_id: event.target.value }))}
+                  >
+                    <option value="">Sin tipo</option>
+                    {tipos.map((tipo) => (
+                      <option key={tipo.id} value={tipo.id}>
+                        {tipo.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="event-form__section">
+            <h3>
+              <AdminIcon name="idCard" />
+              Información
+            </h3>
+            <div className="event-form__field">
+              <label htmlFor="event-descripcion">
+                Descripción
+                <small>{form.descripcion.length}/500</small>
+              </label>
+              <textarea
+                id="event-descripcion"
+                name="descripcion"
+                value={form.descripcion}
+                rows={3}
+                maxLength={500}
+                placeholder="Objetivo, recomendaciones o información adicional."
+                onChange={(event) => setForm((current) => ({ ...current, descripcion: event.target.value }))}
+              />
+            </div>
+            <div className="event-form__pair">
+              <label>
+                Lugar
+                <input
+                  value={form.lugar}
+                  maxLength={255}
+                  onChange={(event) => setForm((current) => ({ ...current, lugar: event.target.value }))}
+                />
+              </label>
+              <label>
+                Estado
+                <select
+                  value={form.estado}
+                  onChange={(event) => setForm((current) => ({ ...current, estado: event.target.value }))}
+                >
+                  {EVENT_ESTADO_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+
           {formIsEconomic ? (
-            <EventServicesField
-              catalog={serviceCatalog}
-              selectedIds={serviceIds}
-              loading={loadingServices}
-              onChange={setServiceIds}
-            />
+            <section className="event-form__section">
+              <h3>
+                <AdminIcon name="box" />
+                Servicios del club
+              </h3>
+              <EventServicesField
+                catalog={serviceCatalog}
+                selectedIds={serviceIds}
+                loading={loadingServices}
+                canCreate={canCreateServices}
+                hideLegend
+                onChange={setServiceIds}
+                onCreated={(service) =>
+                  setServiceCatalog((current) =>
+                    current.some((item) => item.id === service.id) ? current : [...current, service],
+                  )
+                }
+              />
+            </section>
           ) : null}
-          <label>
-            Estado
-            <select
-              value={form.estado}
-              onChange={(event) => setForm((current) => ({ ...current, estado: event.target.value }))}
-            >
-              {EVENT_ESTADO_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Fecha de inicio
-            <DateInput
-              required
-              value={form.starts_at}
-              onChange={(starts_at) =>
-                setForm((current) => ({
-                  ...current,
-                  starts_at,
-                  ends_at: current.ends_at < starts_at ? starts_at : current.ends_at,
-                }))
-              }
-            />
-          </label>
-          <label>
-            Fecha de fin
-            <DateInput
-              required
-              min={form.starts_at}
-              value={form.ends_at}
-              onChange={(ends_at) => setForm((current) => ({ ...current, ends_at }))}
-            />
-          </label>
+
+          <section className="event-form__section">
+            <h3>
+              <AdminIcon name="calendar" />
+              Fechas
+            </h3>
+            <div className="event-form__pair">
+              <label>
+                Fecha de inicio
+                <DateInput
+                  required
+                  value={form.starts_at}
+                  onChange={(starts_at) =>
+                    setForm((current) => ({
+                      ...current,
+                      starts_at,
+                      ends_at: current.ends_at < starts_at ? starts_at : current.ends_at,
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Fecha de fin
+                <DateInput
+                  required
+                  min={form.starts_at}
+                  value={form.ends_at}
+                  onChange={(ends_at) => setForm((current) => ({ ...current, ends_at }))}
+                />
+              </label>
+            </div>
+          </section>
         </form>
         )}
       </CreateDrawer>
 
       <CreateDrawer
         open={Boolean(participantsFor)}
+        placement="bottom"
         title={participantsFor?.name || 'Participantes'}
         onClose={closeParticipants}
       >
@@ -690,12 +859,71 @@ export function EventsPage() {
             members={participants}
             services={participantServices}
             draft={participantDraft}
-            canEdit={canTakeAttendance}
+            canEdit={canTakeAttendance && !isEconomicParticipationLocked(participantsFor)}
+            canAbonar={canAbonar}
+            participationLocked={isEconomicParticipationLocked(participantsFor)}
             saving={savingParticipants}
+            payingId={payingId}
             onChange={setParticipa}
             onQty={setParticipantQty}
             onMarkAll={markAllParticipants}
+            onStartAbono={openParticipantAbono}
           />
+        ) : null}
+      </CreateDrawer>
+
+      <CreateDrawer
+        open={Boolean(abonoFor)}
+        stacked
+        placement="bottom"
+        title={abonoFor?.full_name || 'Registrar abono'}
+        subtitle="Recaudo"
+        avatar={resolveFileUrl(abonoFor?.foto_url)}
+        avatarFallback={abonoFor ? memberInitials(abonoFor.full_name) : 'AB'}
+        onClose={closeParticipantAbono}
+        footer={
+          <>
+            <button type="button" className="app-panel__btn--ghost" onClick={closeParticipantAbono}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="app-panel__btn--primary"
+              disabled={payingId === abonoFor?.persona_id || abonoPendiente <= 0}
+              onClick={() => void submitParticipantAbono()}
+            >
+              <AdminIcon name="wallet" />
+              Registrar abono
+            </button>
+          </>
+        }
+      >
+        {abonoFor ? (
+          <div className="abonos-detail">
+            <div className="abonos-deal__money">
+              <p className="event-countdown__cell">
+                <strong>{formatPrice(abonoMoney.recaudo)}</strong>
+                <span>Comprometido</span>
+              </p>
+              <p className="event-countdown__cell">
+                <strong>{formatPrice(abonoAbonado)}</strong>
+                <span>Abonado</span>
+              </p>
+              <p className="event-countdown__cell">
+                <strong>{formatPrice(abonoPendiente)}</strong>
+                <span>Pendiente</span>
+              </p>
+            </div>
+            <AbonoPayForm
+              id="participant-abono-form"
+              draft={abonoDraft}
+              pendiente={abonoPendiente}
+              saving={payingId === abonoFor.persona_id}
+              showSubmit={false}
+              onChange={setAbonoDraft}
+              onSubmit={(event) => void submitParticipantAbono(event)}
+            />
+          </div>
         ) : null}
       </CreateDrawer>
 
