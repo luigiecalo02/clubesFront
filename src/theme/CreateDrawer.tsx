@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { AppPanel } from './AppPanel'
 import './create-drawer.css'
 
@@ -50,7 +51,9 @@ export function CreateDrawer({
 
   if (!open) return null
 
-  return (
+  const host = document.querySelector('.admin-shell') ?? document.body
+
+  return createPortal(
     <div
       className={`create-drawer${placement === 'top' ? ' create-drawer--top' : ''}${placement === 'bottom' ? ' create-drawer--bottom' : ''}${size === 'half' ? ' create-drawer--half' : ''}${stacked ? ' create-drawer--stacked' : ''}`}
       role="dialog"
@@ -83,6 +86,7 @@ export function CreateDrawer({
         <div className="create-drawer__body">{children}</div>
         {footer ? <footer className="create-drawer__footer">{footer}</footer> : null}
       </AppPanel>
-    </div>
+    </div>,
+    host,
   )
 }

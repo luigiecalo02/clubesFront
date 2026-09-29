@@ -1,6 +1,6 @@
 import { api } from './client'
 import { notifyAttendanceChanged } from './attendanceLive'
-import type { ApiEnvelope, AttendanceEvent, AttendanceRanking, AttendanceRoster } from './types'
+import type { ApiEnvelope, AttendanceEvent, AttendanceMemberHistory, AttendanceRanking, AttendanceRoster } from './types'
 
 export const attendanceApi = {
   async events(): Promise<AttendanceEvent[]> {
@@ -10,11 +10,23 @@ export const attendanceApi = {
     return data.data ?? []
   },
 
-  async ranking(): Promise<AttendanceRanking> {
+  async ranking(range?: { desde?: string; hasta?: string }): Promise<AttendanceRanking> {
     const { data } = await api.get<ApiEnvelope<AttendanceRanking>>(
       '/api/v1/settings/clubes/asistencia/resumen',
+      { params: { desde: range?.desde || undefined, hasta: range?.hasta || undefined } },
     )
     return data.data ?? { eventos: 0, integrantes: [] }
+  },
+
+  async memberHistory(
+    personaId: number,
+    range?: { desde?: string; hasta?: string },
+  ): Promise<AttendanceMemberHistory> {
+    const { data } = await api.get<ApiEnvelope<AttendanceMemberHistory>>(
+      `/api/v1/settings/clubes/asistencia/integrante/${personaId}`,
+      { params: { desde: range?.desde || undefined, hasta: range?.hasta || undefined } },
+    )
+    return data.data
   },
 
   async roster(eventoId: number): Promise<AttendanceRoster> {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { resolveFileUrl } from '../../api/baseUrl'
 import type { AttendanceEstado, AttendanceMember } from '../../api/types'
 import { AppPanel } from '../../theme/AppPanel'
 import '../../theme/attendance-mark.css'
@@ -269,12 +270,16 @@ export function AttendanceMarkList({
       <div className="attendance-mark__list">
         {filtered.map((row, index) => {
           const selected = draft[row.persona_id] ?? ''
+          const photo = resolveFileUrl(row.foto_url)
           return (
             <article
               key={row.persona_id}
               className={`attendance-mark__card${selected ? ` is-${selected}` : ''}`}
               style={{ animationDelay: `${Math.min(index, 16) * 28}ms` }}
             >
+              <span className="attendance-mark__avatar" aria-hidden="true">
+                {photo ? <img src={photo} alt="" /> : memberInitials(row.full_name)}
+              </span>
               <p title={row.full_name}>{row.full_name}</p>
               <div className="attendance-mark__icons" role="group" aria-label={`Asistencia de ${row.full_name}`}>
                 {MARKS.map((mark) => (

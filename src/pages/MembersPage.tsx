@@ -2,9 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { personasApi } from '../api/personas'
 import { getApiErrorMessage } from '../api/client'
 import type { ClubPerson } from '../api/types'
-import { canCreateClubMember, canImpersonateClubMember, canUpdateClubMember } from '../admin/menu'
-import { MemberRow } from '../components/members/MemberActions'
+import {
+  canAccessClubAbonos,
+  canAccessClubAttendance,
+  canCreateClubMember,
+  canImpersonateClubMember,
+  canUpdateClubMember,
+} from '../admin/menu'
+import { MemberNameCell, MemberRow } from '../components/members/MemberActions'
 import { MemberDrawer, type MemberDrawerMode } from '../components/members/MemberDrawer'
+import { MemberInsightDrawer, type MemberInsightKind } from '../components/members/MemberInsightDrawer'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
 import { useNotice } from '../theme/NoticeProvider'
@@ -20,11 +27,15 @@ export function MembersPage() {
   const canCreate = canCreateClubMember(access)
   const canUpdate = canUpdateClubMember(access)
   const canImpersonate = canImpersonateClubMember(access)
+  const canViewSaldos = canAccessClubAbonos(access) || auth.can('abonos.view')
+  const canViewAttendance = canAccessClubAttendance(access) || auth.can('asistencia.view')
   const [members, setMembers] = useState<ClubPerson[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<MemberDrawerMode | null>(null)
   const [selected, setSelected] = useState<ClubPerson | null>(null)
+  const [insightKind, setInsightKind] = useState<MemberInsightKind | null>(null)
+  const [insightPersona, setInsightPersona] = useState<ClubPerson | null>(null)
   const notices = useNotice()
 
   const filtered = useMemo(() => {
@@ -66,14 +77,26 @@ export function MembersPage() {
     setSelected(null)
   }
 
+  function closeInsight() {
+    setInsightKind(null)
+    setInsightPersona(null)
+  }
+
   function openCreate() {
     setSelected(null)
     setMode('create')
   }
 
   function openMode(next: MemberDrawerMode, persona: ClubPerson) {
+    closeInsight()
     setSelected(persona)
     setMode(next)
+  }
+
+  function openInsight(persona: ClubPerson, kind: MemberInsightKind) {
+    closeDrawer()
+    setInsightPersona(persona)
+    setInsightKind(kind)
   }
 
   return (
@@ -98,6 +121,8 @@ export function MembersPage() {
         onCreated={() => void loadMembers()}
         onUpdated={() => void loadMembers()}
       />
+
+      <MemberInsightDrawer persona={insightPersona} kind={insightKind} onClose={closeInsight} />
 
       {loading ? <p className="admin-empty">Cargando integrantes…</p> : null}
 
@@ -148,12 +173,15 @@ export function MembersPage() {
                       persona={persona}
                       canUpdate={canUpdate}
                       canImpersonate={canImpersonate}
+                      canViewSaldos={canViewSaldos}
+                      canViewAttendance={canViewAttendance}
                       currentUserId={auth.user?.id}
                       onEdit={(row) => openMode('edit', row)}
                       onPassword={(row) => openMode('password', row)}
                       onImpersonate={(row) => openMode('impersonate', row)}
+                      onInsight={openInsight}
                     >
-                      <td>{persona.full_name}</td>
+                      <MemberNameCell persona={persona} />
                       <td>
                         {[persona.tipo_identificacion, persona.identificacion].filter(Boolean).join(' ') ||
                           '—'}

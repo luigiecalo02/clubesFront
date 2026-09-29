@@ -58,6 +58,19 @@ export function formatDateRange(start?: string | null, end?: string | null): str
   return `${from} – ${to}`
 }
 
+export function monthKey(value: Date = new Date()): string {
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}`
+}
+
+export function boundsForMonth(key: string): { from: string; to: string } {
+  const [year, month] = key.split('-').map(Number)
+  if (!year || !month) return { from: '', to: '' }
+  return {
+    from: toIsoParts(year, month, 1),
+    to: toIsoDate(new Date(year, month, 0)),
+  }
+}
+
 export function maskDateInput(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 8)
   const day = digits.slice(0, 2)

@@ -45,6 +45,7 @@ export function isSameRanking(current: AttendanceRanking | null, next: Attendanc
       row.presentes === other.presentes &&
       (row.puntuales ?? 0) === (other.puntuales ?? 0) &&
       row.justificados === other.justificados &&
+      (row.puntos ?? row.presentes) === (other.puntos ?? other.presentes) &&
       row.porcentaje === other.porcentaje
     )
   })

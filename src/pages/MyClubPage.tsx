@@ -12,14 +12,17 @@ import type {
   ClubesInviteLink,
 } from '../api/types'
 import {
+  canAccessClubAbonos,
+  canAccessClubAttendance,
   canCreateClubMember,
   canImpersonateClubMember,
   canManageClubDirectors,
   canUpdateClubMember,
   isClubDirectorRole,
 } from '../admin/menu'
-import { MemberRow } from '../components/members/MemberActions'
+import { MemberNameCell, MemberRow } from '../components/members/MemberActions'
 import { MemberDrawer, type MemberDrawerMode } from '../components/members/MemberDrawer'
+import { MemberInsightDrawer, type MemberInsightKind } from '../components/members/MemberInsightDrawer'
 import { PersonSearchSelect } from '../components/members/PersonSearchSelect'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
@@ -74,9 +77,13 @@ export function MyClubPage() {
   const canCreateMembers = canCreateClubMember(access)
   const canUpdateMembers = canUpdateClubMember(access)
   const canImpersonateMembers = canImpersonateClubMember(access)
+  const canViewSaldos = canAccessClubAbonos(access) || auth.can('abonos.view')
+  const canViewAttendance = canAccessClubAttendance(access) || auth.can('asistencia.view')
   const [clubTab, setClubTab] = useState<'directiva' | 'integrantes'>('directiva')
   const [memberMode, setMemberMode] = useState<MemberDrawerMode | null>(null)
   const [memberSelected, setMemberSelected] = useState<ClubPerson | null>(null)
+  const [insightKind, setInsightKind] = useState<MemberInsightKind | null>(null)
+  const [insightPersona, setInsightPersona] = useState<ClubPerson | null>(null)
   const notices = useNotice()
 
   useEffect(() => {
@@ -142,14 +149,29 @@ export function MyClubPage() {
   }
 
   function openCreateMember() {
+    closeInsight()
     setMemberSelected(null)
     setClubTab('integrantes')
     setMemberMode('create')
   }
 
   function openMember(mode: MemberDrawerMode, persona: ClubPerson) {
+    setInsightKind(null)
+    setInsightPersona(null)
     setMemberSelected(persona)
     setMemberMode(mode)
+  }
+
+  function closeInsight() {
+    setInsightKind(null)
+    setInsightPersona(null)
+  }
+
+  function openInsight(persona: ClubPerson, kind: MemberInsightKind) {
+    setMemberMode(null)
+    setMemberSelected(null)
+    setInsightPersona(persona)
+    setInsightKind(kind)
   }
 
   function applyMember(next: ClubPerson) {
@@ -214,6 +236,8 @@ export function MyClubPage() {
         onCreated={applyMember}
         onUpdated={applyMember}
       />
+
+      <MemberInsightDrawer persona={insightPersona} kind={insightKind} onClose={closeInsight} />
 
       {!loading && !club ? (
         <AppPanel>
@@ -382,12 +406,15 @@ export function MyClubPage() {
                           persona={persona}
                           canUpdate={canUpdateMembers}
                           canImpersonate={canImpersonateMembers}
+                          canViewSaldos={canViewSaldos}
+                          canViewAttendance={canViewAttendance}
                           currentUserId={auth.user?.id}
                           onEdit={(row) => openMember('edit', row)}
                           onPassword={(row) => openMember('password', row)}
                           onImpersonate={(row) => openMember('impersonate', row)}
+                          onInsight={openInsight}
                         >
-                          <td>{persona.full_name}</td>
+                          <MemberNameCell persona={persona} />
                           <td>{persona.identificacion || '—'}</td>
                           <td>{persona.correo || '—'}</td>
                           <td>{persona.telefono || '—'}</td>

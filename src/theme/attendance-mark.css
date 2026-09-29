@@ -17,6 +17,10 @@
   object-fit: cover;
 }
 
+.attendance-mark__avatar.is-square {
+  border-radius: 0.7rem;
+}
+
 .attendance-mark {
   display: flex;
   flex-direction: column;
@@ -170,7 +174,7 @@
 
 .attendance-mark__list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8.4rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(15.25rem, 1fr));
   gap: 0.5rem;
   align-content: start;
   flex: 1;
@@ -179,11 +183,36 @@
   padding-right: 0.1rem;
 }
 
+.attendance-mark__card:not(.attendance-mark__card--sales) {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.28rem;
+}
+
+.attendance-mark__card:not(.attendance-mark__card--sales) .attendance-mark__avatar {
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  width: 3.35rem;
+  height: auto;
+  min-height: 3.35rem;
+  border-radius: 0.85rem;
+}
+
+.attendance-mark__card:not(.attendance-mark__card--sales) > p {
+  grid-column: 2;
+}
+
+.attendance-mark__card:not(.attendance-mark__card--sales) .attendance-mark__icons {
+  grid-column: 2;
+  justify-content: flex-start;
+}
+
 .attendance-mark__card {
   display: grid;
   gap: 0.4rem;
-  justify-items: center;
-  padding: 0.65rem 0.45rem 0.55rem;
+  justify-items: stretch;
+  padding: 0.65rem 0.55rem 0.55rem;
   border-radius: var(--panel-input-radius);
   background: var(--panel-input-bg);
   border: 1.5px solid var(--panel-input-border);
@@ -399,12 +428,18 @@
 .attendance-mark__card p {
   margin: 0;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--panel-title);
   font-size: 0.88rem;
   text-align: center;
+}
+
+.attendance-mark__card:not(.attendance-mark__card--sales) > p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+  text-align: left;
 }
 
 .attendance-mark__icons {

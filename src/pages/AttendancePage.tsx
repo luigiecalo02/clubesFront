@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { attendanceApi } from '../api/attendance'
 import { isSameRanking, subscribeAttendanceChanged } from '../api/attendanceLive'
+import { resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
 import type {
   AttendanceEstado,
@@ -15,16 +16,22 @@ import {
   AttendanceMarkList,
   attendancePayloadFromDraft,
   emptyAttendanceDraft,
+  memberInitials,
 } from '../components/attendance/AttendanceMarkList'
 import { AttendanceRankList } from '../components/attendance/AttendanceRankList'
-import { AttendanceEventSelect } from '../components/attendance/AttendanceEventSelect'
+import { formatEventChipDate } from '../components/attendance/AttendanceEventSelect'
 import { isEconomicEvent } from '../components/events/EventCard'
+import { boundsForMonth, formatDateRange, monthKey } from '../theme/dates'
 import { AppPanel } from '../theme/AppPanel'
+import { CreateDrawer } from '../theme/CreateDrawer'
 import { useNotice } from '../theme/NoticeProvider'
 import '../theme/attendance-rank.css'
 import '../theme/attendance-mark.css'
 
 type AttendanceTab = 'resultados' | 'tomar'
+type EventFilter = 'pendientes' | 'tomados'
+
+const MOBILE_ATTENDANCE = '(max-width: 900px)'
 
 function hasTakenAttendance(item: AttendanceEvent): boolean {
   return (item.asistencias_count ?? 0) > 0 || (item.presentes_count ?? 0) > 0
@@ -48,7 +55,16 @@ export function AttendancePage() {
   const [loadingEvents, setLoadingEvents] = useState(true)
   const [loadingRoster, setLoadingRoster] = useState(false)
   const [loadingRanking, setLoadingRanking] = useState(true)
+  const monthStart = boundsForMonth(monthKey())
+  const [desde, setDesde] = useState(monthStart.from)
+  const [hasta, setHasta] = useState(monthStart.to)
   const [saving, setSaving] = useState(false)
+  const [query, setQuery] = useState('')
+  const [eventFilter, setEventFilter] = useState<EventFilter>('pendientes')
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(MOBILE_ATTENDANCE).matches : false,
+  )
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const notices = useNotice()
   const draftRef = useRef(draft)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -60,6 +76,16 @@ export function AttendancePage() {
     [attendanceEvents],
   )
   const takenEvents = useMemo(() => attendanceEvents.filter(hasTakenAttendance), [attendanceEvents])
+  const boardEvents = eventFilter === 'pendientes' ? pendingEvents : takenEvents
+  const filteredEvents = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    if (!needle) return boardEvents
+    return boardEvents.filter((item) => {
+      const haystack = `${item.name} ${formatEventChipDate(item.starts_at)}`.toLowerCase()
+      return haystack.includes(needle)
+    })
+  }, [boardEvents, query])
+  const selectedEvent = attendanceEvents.find((item) => item.id === eventoId) ?? null
 
   useEffect(() => {
     let cancelled = false
@@ -70,9 +96,8 @@ export function AttendancePage() {
         if (cancelled) return
         setEvents(next)
         setEventoId((current) => {
-          if (current) return current
-          const pending = next.find((item) => !hasTakenAttendance(item))
-          return pending?.id ?? next[0]?.id ?? null
+          if (!current) return null
+          return next.some((item) => item.id === current) ? current : null
         })
       })
       .catch((err) => {
@@ -93,7 +118,7 @@ export function AttendancePage() {
   function loadRanking(silent = false) {
     if (!silent) setLoadingRanking(true)
     attendanceApi
-      .ranking()
+      .ranking({ desde, hasta })
       .then((next) => applyRanking(next))
       .catch((err) => {
         if (!silent) notices.error(getApiErrorMessage(err, 'No se pudo cargar el resumen de asistencia'))
@@ -105,7 +130,18 @@ export function AttendancePage() {
 
   useEffect(() => {
     loadRanking()
-  }, [ctx?.organizacion_id])
+  }, [ctx?.organizacion_id, desde, hasta])
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_ATTENDANCE)
+    const sync = () => {
+      setIsMobile(media.matches)
+      if (!media.matches) setDrawerOpen(false)
+    }
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -113,7 +149,7 @@ export function AttendancePage() {
     function refresh() {
       if (cancelled || document.hidden) return
       attendanceApi
-        .ranking()
+        .ranking({ desde, hasta })
         .then((next) => {
           if (!cancelled) applyRanking(next)
         })
@@ -131,7 +167,7 @@ export function AttendancePage() {
       if (timer) window.clearInterval(timer)
       document.removeEventListener('visibilitychange', refresh)
     }
-  }, [tab, ctx?.organizacion_id])
+  }, [tab, ctx?.organizacion_id, desde, hasta])
 
   useEffect(() => {
     if (!eventoId) {
@@ -167,6 +203,22 @@ export function AttendancePage() {
       cancelled = true
     }
   }, [eventoId, notices])
+
+  function pickEvent(id: number) {
+    setEventoId(id)
+    if (isMobile) setDrawerOpen(true)
+  }
+
+  function closeAttendanceDrawer() {
+    setDrawerOpen(false)
+    if (isMobile) setEventoId(null)
+  }
+
+  function changeEventFilter(next: EventFilter) {
+    if (next === eventFilter) return
+    setEventFilter(next)
+    setQuery('')
+  }
 
   function setEstado(personaId: number, estado: AttendanceEstado | '') {
     const next = { ...draftRef.current, [personaId]: estado }
@@ -231,6 +283,54 @@ export function AttendancePage() {
     }
   }
 
+  const markContent = (
+    <>
+      {!selectedEvent ? (
+        <p className="app-panel__hint">Elige un evento para tomar asistencia.</p>
+      ) : null}
+
+      {selectedEvent ? (
+        <header className="attendance-detail__head">
+          <span className="attendance-mark__avatar is-square" aria-hidden="true">
+            {resolveFileUrl(selectedEvent.image_url) ? (
+              <img src={resolveFileUrl(selectedEvent.image_url)} alt="" />
+            ) : (
+              memberInitials(selectedEvent.name)
+            )}
+          </span>
+          <div>
+            <h3>{selectedEvent.name}</h3>
+            <p>{formatEventChipDate(selectedEvent.starts_at)}</p>
+          </div>
+          <p className="attendance-detail__total">
+            <strong>
+              {selectedEvent.presentes_count ?? 0}/{selectedEvent.integrantes_count ?? 0}
+            </strong>
+            <span>Asistieron</span>
+          </p>
+        </header>
+      ) : null}
+
+      {selectedEvent && loadingRoster ? <p className="app-panel__muted">Cargando integrantes…</p> : null}
+
+      {selectedEvent && !loadingRoster && members.length === 0 ? (
+        <p className="app-panel__muted">Este club todavía no tiene integrantes para marcar asistencia.</p>
+      ) : null}
+
+      {selectedEvent && !loadingRoster && members.length ? (
+        <AttendanceMarkList
+          members={members}
+          draft={draft}
+          canEdit={canEdit}
+          saving={saving}
+          onEstado={setEstado}
+          onMarkAll={markAll}
+          showSave={false}
+        />
+      ) : null}
+    </>
+  )
+
   return (
     <section className="admin-page admin-page--attendance">
       <div className="admin-event-tabs" role="tablist" aria-label="Asistencia">
@@ -262,11 +362,22 @@ export function AttendancePage() {
           <h2 className="app-panel__title">Asistencia del club</h2>
           <p className="app-panel__subtitle">
             Integrantes de mayor a menor. Si empatan en asistencias, gana quien tenga más
-            puntualidades. Se actualiza en vivo al marcar desde esta página, Eventos u otra
-            pestaña. Sobre {ranking?.eventos ?? 0} evento
-            {(ranking?.eventos ?? 0) === 1 ? '' : 's'} con asistencia registrada.
+            puntualidades. El ranking usa el mes actual y puedes cambiarlo a un rango de fechas.
+            Se actualiza en vivo al marcar desde esta página, Eventos u otra pestaña. {formatDateRange(desde, hasta)}
+            {' · '}
+            {ranking?.eventos ?? 0} evento
+            {(ranking?.eventos ?? 0) === 1 ? '' : 's'} con asistencia.
           </p>
-          <AttendanceRankList ranking={ranking} loading={loadingRanking} />
+          <AttendanceRankList
+            ranking={ranking}
+            loading={loadingRanking}
+            from={desde}
+            to={hasta}
+            onRangeChange={(nextFrom, nextTo) => {
+              setDesde(nextFrom)
+              setHasta(nextTo)
+            }}
+          />
         </AppPanel>
       ) : null}
 
@@ -283,47 +394,109 @@ export function AttendancePage() {
       ) : null}
 
       {tab === 'tomar' && attendanceEvents.length ? (
-        <AppPanel className="admin-attendance" shine={false}>
-          <p className="app-panel__kicker">Evento</p>
-          <h2 className="app-panel__title">Tomar asistencia</h2>
-          <p className="app-panel__subtitle">
-            Elige el evento. Marca asistió y, si llegó a tiempo, puntual; se guarda al instante. Si
-            no marcas nada, se asume que no asistió.
-          </p>
+        <>
+          <div className="attendance-workspace__grid">
+            <AppPanel shine={false} className="attendance-board">
+              <div className="admin-event-tabs" role="tablist" aria-label="Eventos de asistencia">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={eventFilter === 'pendientes'}
+                  className={`admin-events__view${eventFilter === 'pendientes' ? ' is-on' : ''}`}
+                  onClick={() => changeEventFilter('pendientes')}
+                >
+                  <AdminIcon name="calendar" />
+                  Por pasar lista
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={eventFilter === 'tomados'}
+                  className={`admin-events__view${eventFilter === 'tomados' ? ' is-on' : ''}`}
+                  onClick={() => changeEventFilter('tomados')}
+                >
+                  <AdminIcon name="check" />
+                  Ya pasaron lista
+                </button>
+              </div>
 
-          <div className="attendance-events-groups">
-            <AttendanceEventSelect
-              items={pendingEvents}
-              eventoId={eventoId}
-              label="Por pasar lista"
-              onSelect={setEventoId}
-            />
-            <AttendanceEventSelect
-              items={takenEvents}
-              eventoId={eventoId}
-              label="Ya pasaron lista"
-              onSelect={setEventoId}
-            />
+              <label className="attendance-search">
+                Buscar
+                <span className="app-panel__field">
+                  <AdminIcon name="calendar" />
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Buscar evento por nombre o fecha…"
+                  />
+                </span>
+              </label>
+
+              <p className="attendance-board__meta">
+                Se encontraron {filteredEvents.length} evento{filteredEvents.length === 1 ? '' : 's'}
+              </p>
+
+              {filteredEvents.length === 0 ? (
+                <p className="app-panel__hint">
+                  {boardEvents.length === 0
+                    ? eventFilter === 'pendientes'
+                      ? 'No hay eventos pendientes de pasar lista.'
+                      : 'Todavía no hay eventos con asistencia registrada.'
+                    : 'Ningún evento coincide con esa búsqueda.'}
+                </p>
+              ) : null}
+
+              <div className="attendance-picks">
+                {filteredEvents.map((item) => {
+                  const photo = resolveFileUrl(item.image_url)
+                  const presentes = item.presentes_count ?? 0
+                  const total = item.integrantes_count ?? 0
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`attendance-pick${item.id === eventoId ? ' is-on' : ''}`}
+                      onClick={() => pickEvent(item.id)}
+                    >
+                      <span className="attendance-mark__avatar is-square" aria-hidden="true">
+                        {photo ? <img src={photo} alt="" /> : memberInitials(item.name)}
+                      </span>
+                      <span className="attendance-pick__who">
+                        <strong>{item.name}</strong>
+                        <small>{formatEventChipDate(item.starts_at)}</small>
+                      </span>
+                      <span className="attendance-pick__count">
+                        <strong>
+                          {presentes}/{total}
+                        </strong>
+                        <small>Asistieron</small>
+                      </span>
+                      <AdminIcon name="chevronRight" />
+                    </button>
+                  )
+                })}
+              </div>
+            </AppPanel>
+
+            {!isMobile ? (
+              <AppPanel shine={false} className="attendance-detail">
+                {markContent}
+              </AppPanel>
+            ) : null}
           </div>
 
-          {loadingRoster ? <p className="app-panel__muted">Cargando integrantes…</p> : null}
-
-          {!loadingRoster && members.length === 0 ? (
-            <p className="app-panel__muted">Este club todavía no tiene integrantes para marcar asistencia.</p>
+          {isMobile ? (
+            <CreateDrawer
+              open={drawerOpen && Boolean(selectedEvent)}
+              title={selectedEvent?.name || 'Tomar asistencia'}
+              subtitle={selectedEvent ? formatEventChipDate(selectedEvent.starts_at) : 'Asistencia'}
+              placement="bottom"
+              onClose={closeAttendanceDrawer}
+            >
+              <div className="attendance-detail">{markContent}</div>
+            </CreateDrawer>
           ) : null}
-
-          {!loadingRoster && members.length ? (
-            <AttendanceMarkList
-              members={members}
-              draft={draft}
-              canEdit={canEdit}
-              saving={saving}
-              onEstado={setEstado}
-              onMarkAll={markAll}
-              showSave={false}
-            />
-          ) : null}
-        </AppPanel>
+        </>
       ) : null}
     </section>
   )

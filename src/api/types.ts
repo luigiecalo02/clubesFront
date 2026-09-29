@@ -355,6 +355,7 @@ export interface AttendanceMember {
   persona_id: number
   full_name: string
   identificacion?: string | null
+  foto_url?: string | null
   estado?: AttendanceEstado | null
   notas?: string | null
 }
@@ -389,8 +390,36 @@ export interface AttendanceRankRow {
   porcentaje: number
 }
 
+export interface AttendanceHistoryEvent {
+  id: number
+  name: string
+  starts_at?: string | null
+  image_url?: string | null
+  estado?: AttendanceEstado | null
+  puntos: number
+}
+
+export interface AttendanceMemberHistory {
+  persona_id: number
+  full_name: string
+  foto_url?: string | null
+  desde?: string | null
+  hasta?: string | null
+  presentes: number
+  puntuales: number
+  justificados: number
+  ausentes: number
+  sin_marcar: number
+  eventos: number
+  puntos: number
+  porcentaje: number
+  registros: AttendanceHistoryEvent[]
+}
+
 export interface AttendanceRanking {
   eventos: number
+  desde?: string | null
+  hasta?: string | null
   integrantes: AttendanceRankRow[]
 }
 
