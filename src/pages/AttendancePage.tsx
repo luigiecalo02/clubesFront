@@ -293,7 +293,7 @@ export function AttendancePage() {
         <header className="attendance-detail__head">
           <span className="attendance-mark__avatar is-square" aria-hidden="true">
             {resolveFileUrl(selectedEvent.image_url) ? (
-              <img src={resolveFileUrl(selectedEvent.image_url)} alt="" />
+              <img src={resolveFileUrl(selectedEvent.image_url) ?? undefined} alt="" />
             ) : (
               memberInitials(selectedEvent.name)
             )}

@@ -417,18 +417,32 @@
 
 .app-panel.presupuesto-kpi {
   display: grid;
-  gap: 0.25rem;
-  padding: 1rem 1.05rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.7rem;
+  row-gap: 0.08rem;
+  align-items: center;
+  justify-items: start;
+  align-content: center;
+  padding: 0.85rem 0.95rem;
 }
 
 .presupuesto-kpi__icon {
-  width: 2.15rem;
-  height: 2.15rem;
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  justify-self: start;
+  align-self: center;
+  width: 2.75rem;
+  height: 2.75rem;
   display: grid;
   place-items: center;
-  border-radius: 0.7rem;
+  border-radius: 0.75rem;
   background: color-mix(in srgb, var(--panel-gold) 16%, var(--panel-input-bg));
   color: var(--panel-gold);
+}
+
+.presupuesto-kpi__icon .admin-icon {
+  width: 1.35rem;
+  height: 1.35rem;
 }
 
 .presupuesto-kpi__icon[data-tone='ok'] {
@@ -446,6 +460,14 @@
   color: var(--panel-alert-text);
 }
 
+.presupuesto-kpi small,
+.presupuesto-kpi strong,
+.presupuesto-kpi .app-panel__link,
+.presupuesto-kpi__field {
+  grid-column: 2;
+  min-width: 0;
+}
+
 .presupuesto-kpi small {
   color: var(--panel-muted);
   font-size: 0.74rem;
@@ -453,7 +475,8 @@
 
 .presupuesto-kpi strong {
   color: var(--panel-title);
-  font-size: 1.25rem;
+  font-size: 1.2rem;
+  line-height: 1.15;
   font-weight: var(--panel-weight-strong);
 }
 
