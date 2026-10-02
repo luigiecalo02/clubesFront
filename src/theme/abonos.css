@@ -45,8 +45,160 @@
   overflow: hidden;
 }
 
-.abonos-board .admin-event-tabs {
+.abonos-board .admin-event-tabs,
+.abonos-deals .admin-event-tabs {
   margin: 0;
+}
+
+.abonos-status-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.abonos-status-tabs button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  min-height: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  color: var(--panel-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.abonos-status-tabs button > span {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.abonos-status-tabs button strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abonos-status-tabs button small {
+  overflow: hidden;
+  color: var(--panel-muted);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abonos-status-tabs button.is-on {
+  border-color: var(--panel-gold);
+  background: color-mix(in srgb, var(--panel-gold) 10%, var(--panel-input-bg));
+  color: var(--panel-title);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--panel-gold) 28%, transparent);
+}
+
+.abonos-status-tabs button.is-paid.is-on {
+  border-color: var(--panel-ok-text);
+  background: color-mix(in srgb, var(--panel-ok-text) 10%, var(--panel-input-bg));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--panel-ok-text) 28%, transparent);
+}
+
+.abonos-status-tabs button.is-on .abonos-status-board__icon {
+  color: var(--panel-gold);
+}
+
+.abonos-status-tabs button.is-paid.is-on .abonos-status-board__icon {
+  background: color-mix(in srgb, var(--panel-ok-text) 16%, var(--panel-input-bg));
+  color: var(--panel-ok-text);
+}
+
+.abonos-status-tabs button.is-paid.is-on .abonos-status-board__total strong {
+  color: var(--panel-ok-text);
+}
+
+.abonos-status-board {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.35rem 0;
+}
+
+.abonos-status-board__icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-gold) 16%, var(--panel-input-bg));
+  color: var(--panel-gold);
+}
+
+.abonos-status-board__total {
+  justify-items: end;
+  text-align: right;
+}
+
+.abonos-status-board__total strong {
+  color: var(--panel-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.abonos-status-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.55rem 0.7rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg-focus);
+  box-shadow: var(--panel-input-shadow);
+}
+
+.abonos-status-row.is-ok {
+  border-color: color-mix(in srgb, var(--panel-ok-text) 32%, var(--panel-input-border));
+  background: color-mix(in srgb, var(--panel-ok-text) 10%, var(--panel-input-bg-focus));
+}
+
+.abonos-status-row .abonos-avatar {
+  width: 2.15rem;
+  height: 2.15rem;
+  font-size: 0.62rem;
+}
+
+.abonos-status-row .abonos-deal__actions {
+  grid-column: 1 / -1;
+}
+
+.abonos-status-row__money {
+  display: grid;
+  justify-items: end;
+  gap: 0.08rem;
+}
+
+.abonos-status-row__money strong {
+  color: var(--panel-gold);
+  font-size: 0.88rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.abonos-status-row.is-ok .abonos-status-row__money strong {
+  color: var(--panel-ok-text);
+}
+
+.abonos-status-row__money small {
+  color: var(--panel-muted);
+  font-size: 0.68rem;
 }
 
 .abonos-search {
@@ -415,21 +567,67 @@
   padding-top: 0.2rem;
 }
 
+.abonos-pay__amount,
 .abonos-pay__amount-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.55rem;
-  align-items: center;
+}
+
+.abonos-pay__money {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  align-items: stretch;
+  overflow: hidden;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  box-shadow: var(--panel-input-shadow);
+}
+
+.abonos-pay__money:focus-within {
+  border-color: var(--panel-focus);
+  box-shadow: 0 0 0 4px var(--panel-focus-ring);
+}
+
+.abonos-pay__currency {
+  display: grid;
+  place-items: center;
+  border-radius: var(--panel-input-radius) 0 0 var(--panel-input-radius);
+  color: var(--panel-ok-text);
+  background: color-mix(in srgb, var(--panel-ok-text) 12%, var(--panel-input-bg));
+  border-right: 1px solid var(--panel-input-border);
+  pointer-events: none;
+}
+
+.abonos-pay__currency .admin-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.app-panel .abonos-pay__money input {
+  min-height: 4.15rem;
+  border: 0;
+  border-radius: 0 var(--panel-input-radius) var(--panel-input-radius) 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.7rem 1rem 0.7rem 0.9rem;
+  color: var(--panel-ok-text);
+  font-size: 1.55rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .abonos-pay__percents {
-  display: flex;
-  gap: 0.35rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
 }
 
 .abonos-pay__percents .app-panel__btn--ghost {
-  min-width: 3.4rem;
-  padding: 0.45rem 0.55rem;
+  width: 100%;
+  min-height: 3.05rem;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
 }
 
 .abonos-pay__meta {
@@ -475,9 +673,38 @@
 @media (max-width: 900px) {
   .admin-page--abonos {
     grid-template-rows: auto auto;
+    gap: 0.55rem;
+  }
+
+  .app-panel.abonos-workspace {
+    --panel-padding: 0.5rem 0.8rem 0.55rem;
+    --panel-radius: 0.9rem;
+    display: grid;
+    gap: 0.12rem;
+  }
+
+  .abonos-workspace .app-panel__kicker {
+    margin: 0;
+    font-size: 0.6rem;
+  }
+
+  .abonos-workspace .app-panel__title {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .abonos-workspace .app-panel__subtitle {
+    display: block;
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.25;
   }
 
   .abonos-workspace__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .abonos-status-tabs {
     grid-template-columns: 1fr;
   }
 
@@ -487,7 +714,6 @@
     overflow: visible;
   }
 
-  .abonos-pay__amount-row,
   .abonos-pay__meta {
     grid-template-columns: 1fr;
   }

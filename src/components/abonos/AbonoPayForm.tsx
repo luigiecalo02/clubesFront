@@ -67,33 +67,6 @@ export function AbonoPayForm({
   return (
     <form id={id} className="abonos-pay" onSubmit={onSubmit}>
       <h3>Registrar abono</h3>
-      <label className="abonos-pay__amount">
-        Valor recibido
-        <span className="abonos-pay__amount-row">
-          <input
-            type="number"
-            min={1}
-            step={1}
-            inputMode="numeric"
-            value={draft.monto}
-            disabled={locked}
-            onChange={(event) => onChange({ ...draft, monto: event.target.value })}
-          />
-          <span className="abonos-pay__percents" role="group" aria-label="Porcentaje del pendiente">
-            {[25, 50, 100].map((percent) => (
-              <button
-                key={percent}
-                type="button"
-                className="app-panel__btn--ghost"
-                disabled={locked}
-                onClick={() => applyPercent(percent)}
-              >
-                {percent}%
-              </button>
-            ))}
-          </span>
-        </span>
-      </label>
       <div className="abonos-pay__meta">
         <label>
           Método de pago
@@ -135,6 +108,36 @@ export function AbonoPayForm({
           disabled={saving}
           onChange={(event) => onChange({ ...draft, nota: event.target.value })}
         />
+      </label>
+      <label className="abonos-pay__amount">
+        Valor recibido
+        <span className="abonos-pay__money">
+          <span className="abonos-pay__currency" aria-hidden="true">
+            <AdminIcon name="wallet" />
+          </span>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            value={draft.monto}
+            disabled={locked}
+            onChange={(event) => onChange({ ...draft, monto: event.target.value })}
+          />
+        </span>
+        <span className="abonos-pay__percents" role="group" aria-label="Porcentaje del pendiente">
+          {[25, 50, 100].map((percent) => (
+            <button
+              key={percent}
+              type="button"
+              className="app-panel__btn--ghost"
+              disabled={locked}
+              onClick={() => applyPercent(percent)}
+            >
+              {percent}%
+            </button>
+          ))}
+        </span>
       </label>
       {showSubmit ? (
         <button type="submit" className="app-panel__btn--primary" disabled={locked || !draft.metodo}>

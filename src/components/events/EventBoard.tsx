@@ -11,6 +11,7 @@ type EventBoardProps = {
   now: number
   canTakeAttendance: boolean
   canJoin?: boolean
+  canManageInscriptions?: boolean
   canEdit: boolean
   canManageSubevents: boolean
   tipos: EventTipo[]
@@ -19,6 +20,7 @@ type EventBoardProps = {
   showActions?: boolean
   onAttendance: (item: EventSummary) => void
   onJoin?: (item: EventSummary) => void
+  onInscriptions?: (item: EventSummary) => void
   onEdit: (item: EventSummary) => void
 }
 
@@ -27,6 +29,7 @@ export function EventBoard({
   now,
   canTakeAttendance,
   canJoin = false,
+  canManageInscriptions = false,
   canEdit,
   canManageSubevents,
   tipos,
@@ -35,6 +38,7 @@ export function EventBoard({
   showActions = true,
   onAttendance,
   onJoin,
+  onInscriptions,
   onEdit,
 }: EventBoardProps) {
   const [tab, setTab] = useState<EventWorkspaceTab>('ficha')
@@ -72,9 +76,11 @@ export function EventBoard({
           showMedia={false}
           canTakeAttendance={canTakeAttendance}
           canJoin={canJoin}
+          canManageInscriptions={canManageInscriptions}
           canEdit={canEdit}
           onAttendance={onAttendance}
           onJoin={onJoin}
+          onInscriptions={onInscriptions}
           onEdit={onEdit}
         />
       ) : (

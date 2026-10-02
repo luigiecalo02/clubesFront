@@ -461,6 +461,7 @@ export interface EventoServicios {
     id: number
     name: string
     es_economica?: boolean
+    tiene_abonos?: boolean
   }
   catalogo: ClubServicio[]
   ofertas: EventoServicioOferta[]
@@ -549,6 +550,7 @@ export interface AbonoFila {
   evento_id?: number | null
   evento_name?: string | null
   image_url?: string | null
+  banner_url?: string | null
   starts_at?: string | null
   comprometido: number
   abonado: number
@@ -557,6 +559,28 @@ export interface AbonoFila {
   pendientes?: number
   pedidos?: AbonoPedido[]
   abonos?: AbonoMovimiento[]
+}
+
+export interface GananciaDistribucion {
+  id: number
+  organizacion_id: number
+  nombre: string
+  club: number
+  miembros: number
+  extras: number
+  es_predeterminada: boolean
+}
+
+export interface GananciaEclesiastica {
+  id: number
+  organizacion_id: number
+  nombre: string
+  diezmo: number
+  ofrenda: number
+  resto: number
+  distribucion_id: number
+  distribucion?: GananciaDistribucion | null
+  es_predeterminada: boolean
 }
 
 export interface AbonosBoard {
@@ -571,4 +595,57 @@ export interface AbonosBoard {
   opciones_integrantes: AbonoOption[]
   opciones_actividades: AbonoOption[]
   filas: AbonoFila[]
+}
+
+export type PresupuestoTipo = 'individual' | 'grupal'
+export type PresupuestoBloqueKey = 'miembros' | 'acompanantes'
+export type PresupuestoDestinatario = PresupuestoBloqueKey | 'ambos'
+
+export interface PresupuestoEvento {
+  id: number
+  name: string
+  starts_at?: string | null
+  lugar?: string | null
+  image_url?: string | null
+  banner_url?: string | null
+  tiene_presupuesto?: boolean
+  presupuestos_count?: number
+  miembros_count?: number
+  acompanantes_count?: number
+}
+
+export interface PresupuestoResumen {
+  id: number
+  nombre: string
+  activo: boolean
+}
+
+export interface PresupuestoItem {
+  id?: number
+  concepto: string
+  tipo: PresupuestoTipo
+  monto: number
+  destinatario: PresupuestoDestinatario
+  orden?: number
+  monto_total: number
+  por_persona: number | null
+}
+
+export interface PresupuestoBloque {
+  items: PresupuestoItem[]
+  total_por_persona: number
+  total: number
+}
+
+export interface PresupuestoDetalle {
+  evento: PresupuestoEvento
+  presupuesto_id?: number | null
+  nombre?: string | null
+  activo?: boolean
+  presupuestos?: PresupuestoResumen[]
+  acompanantes_count: number
+  acompanantes_inscritos: number
+  miembros_count: number
+  cantidades: Record<PresupuestoBloqueKey, number>
+  bloques: Record<PresupuestoBloqueKey, PresupuestoBloque>
 }

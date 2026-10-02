@@ -21,12 +21,16 @@ import {
   canAccessClubAttendance,
   canCreateClubEvent,
   canJoinClubEconomicEvent,
+  canJoinClubInscriptionEvent,
+  canManageClubInscriptions,
   canManageClubServices,
   canUpdateClubEvent,
 } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { EventBoard } from '../components/events/EventBoard'
-import { ESTADO_LABELS, EVENT_ESTADO_OPTIONS, isActivityEvent, isEconomicEvent, isEconomicParticipationLocked } from '../components/events/EventCard'
+import { ESTADO_LABELS, EVENT_ESTADO_OPTIONS, isActivityEvent, isEconomicEvent, isEconomicParticipationLocked, isInscribibleEvent, isInscriptionOpen } from '../components/events/EventCard'
+import { EventInscriptionJoin } from '../components/events/EventInscriptionJoin'
+import { EventInscriptionRoster } from '../components/events/EventInscriptionRoster'
 import { EventMemberJoin } from '../components/events/EventMemberJoin'
 import { EventServicesField } from '../components/events/EventServicesField'
 import { AbonoPayForm, composeAbonoNota, emptyAbonoPayDraft } from '../components/abonos/AbonoPayForm'
@@ -54,6 +58,8 @@ import { useNotice } from '../theme/NoticeProvider'
 import { CreateDrawer } from '../theme/CreateDrawer'
 import { ImageUpload } from '../theme/ImageUpload'
 import { EventsCalendar } from './CalendarPage'
+
+const MOBILE_EVENTS = '(max-width: 900px)'
 
 const emptyForm = () => ({
   name: '',
@@ -143,6 +149,12 @@ export function EventsPage() {
     organizacionId: ctx?.organizacion_id,
     personaId: auth.user?.persona_id,
   })
+  const canJoinInscription = canJoinClubInscriptionEvent({
+    organizacionId: ctx?.organizacion_id,
+    personaId: auth.user?.persona_id,
+  })
+  const canManageInscriptions = canManageClubInscriptions(eventAccess)
+  const canJoinEvent = canJoinEconomic || canJoinInscription
   const canAbonar =
     canAccessClubAbonos({
       rolName: ctx?.rol_name,
@@ -161,6 +173,7 @@ export function EventsPage() {
   const [attendanceFor, setAttendanceFor] = useState<EventSummary | null>(null)
   const [participantsFor, setParticipantsFor] = useState<EventSummary | null>(null)
   const [joinFor, setJoinFor] = useState<EventSummary | null>(null)
+  const [inscriptionsFor, setInscriptionsFor] = useState<EventSummary | null>(null)
   const [members, setMembers] = useState<AttendanceMember[]>([])
   const [participants, setParticipants] = useState<EventParticipant[]>([])
   const [participantServices, setParticipantServices] = useState<EventParticipantService[]>([])
@@ -168,6 +181,7 @@ export function EventsPage() {
   const [participantDraft, setParticipantDraft] = useState<ParticipantDraft>({})
   const [serviceCatalog, setServiceCatalog] = useState<ClubServicio[]>([])
   const [serviceIds, setServiceIds] = useState<number[]>([])
+  const [servicesLocked, setServicesLocked] = useState(false)
   const [loadingServices, setLoadingServices] = useState(false)
   const [loadingRoster, setLoadingRoster] = useState(false)
   const [loadingParticipants, setLoadingParticipants] = useState(false)
@@ -180,7 +194,11 @@ export function EventsPage() {
   const [filtersOpen, setFiltersOpen] = useState(hasListFilters)
   const [form, setForm] = useState(emptyForm)
   const [eventTab, setEventTab] = useState<EventWorkspaceTab>('ficha')
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(MOBILE_EVENTS).matches : false,
+  )
   const notices = useNotice()
+  const drawerPlacement = isMobile ? 'bottom' : 'end'
   const now = useNow()
   const draftRef = useRef(draft)
   const participantDraftRef = useRef(participantDraft)
@@ -220,6 +238,14 @@ export function EventsPage() {
     if (key === 'hasta') next.hasta = value || endOfMonthDate(desde)
     patchParams(next)
   }
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_EVENTS)
+    const sync = () => setIsMobile(media.matches)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -268,6 +294,7 @@ export function EventsPage() {
     closeAttendance()
     closeParticipants()
     closeJoin()
+    closeInscriptions()
     setEditing(null)
     setEventTab('ficha')
     setForm(emptyForm())
@@ -280,22 +307,52 @@ export function EventsPage() {
     setAttendanceFor(null)
     setParticipantsFor(null)
     setJoinFor(null)
+    setInscriptionsFor(null)
     setEditing(item)
     setEventTab('ficha')
     setForm(formFromEvent(item))
     setShowForm(true)
   }
 
+  function patchEvent(next: EventSummary) {
+    setEvents((current) => current.map((item) => (item.id === next.id ? { ...item, ...next } : item)))
+    setJoinFor((current) => (current?.id === next.id ? { ...current, ...next } : current))
+    setInscriptionsFor((current) => (current?.id === next.id ? { ...current, ...next } : current))
+  }
+
   function openJoin(item: EventSummary) {
-    if (!canJoinEconomic || !isEconomicEvent(item)) return
+    if (isEconomicEvent(item)) {
+      if (!canJoinEconomic) return
+      closeForm()
+      closeAttendance()
+      closeParticipants()
+      setInscriptionsFor(null)
+      setJoinFor(item)
+      return
+    }
+    if (!canJoinInscription || !isInscribibleEvent(item) || !isInscriptionOpen(item)) return
     closeForm()
     closeAttendance()
     closeParticipants()
+    setInscriptionsFor(null)
     setJoinFor(item)
   }
 
   function closeJoin() {
     setJoinFor(null)
+  }
+
+  function openInscriptions(item: EventSummary) {
+    if (!canManageInscriptions || !isInscribibleEvent(item) || !isInscriptionOpen(item)) return
+    closeForm()
+    closeAttendance()
+    closeParticipants()
+    setJoinFor(null)
+    setInscriptionsFor(item)
+  }
+
+  function closeInscriptions() {
+    setInscriptionsFor(null)
   }
 
   function openAttendance(item: EventSummary) {
@@ -335,7 +392,10 @@ export function EventsPage() {
 
   useEffect(() => {
     if (!showForm || !formIsEconomic) {
-      if (!formIsEconomic) setServiceIds([])
+      if (!formIsEconomic) {
+        setServiceIds([])
+        setServicesLocked(false)
+      }
       return undefined
     }
     let cancelled = false
@@ -347,6 +407,9 @@ export function EventsPage() {
         setServiceCatalog(catalog)
         if (eventServices) {
           setServiceIds(eventServices.ofertas.map((oferta) => oferta.producto_servicio_id))
+          setServicesLocked(Boolean(eventServices.evento.tiene_abonos))
+        } else {
+          setServicesLocked(false)
         }
       })
       .catch((err) => {
@@ -461,10 +524,15 @@ export function EventsPage() {
     queueParticipantSave(next)
   }
 
-  function markAllParticipants(participa: boolean | '') {
+  function markAllParticipants(participa: boolean | '', mode: 'all' | 'empty' = 'all') {
     const next = Object.fromEntries(
       participants.map((row) => {
         const current = participantDraftRef.current[row.persona_id] ?? { participa: '' as const, ventas: {} }
+        const hasQty = Object.values(current.ventas).some((qty) => Number(qty) > 0)
+        const hasData = current.participa !== '' || hasQty || (Number(row.abonado) || 0) > 0
+        if (mode === 'empty' && hasData) {
+          return [row.persona_id, current]
+        }
         return [row.persona_id, { ...current, participa, ventas: participa === true ? current.ventas : {} }]
       }),
     )
@@ -799,6 +867,7 @@ export function EventsPage() {
                 loading={loadingServices}
                 canCreate={canCreateServices}
                 hideLegend
+                lockRemovals={servicesLocked}
                 onChange={setServiceIds}
                 onCreated={(service) =>
                   setServiceCatalog((current) =>
@@ -846,8 +915,10 @@ export function EventsPage() {
 
       <CreateDrawer
         open={Boolean(participantsFor)}
-        placement="bottom"
+        placement={drawerPlacement}
         title={participantsFor?.name || 'Participantes'}
+        subtitle="Participantes"
+        cover={resolveFileUrl(participantsFor?.banner_url)}
         onClose={closeParticipants}
       >
         {loadingParticipants ? <p className="app-panel__muted">Cargando integrantes…</p> : null}
@@ -875,9 +946,10 @@ export function EventsPage() {
       <CreateDrawer
         open={Boolean(abonoFor)}
         stacked
-        placement="bottom"
+        placement={drawerPlacement}
         title={abonoFor?.full_name || 'Registrar abono'}
         subtitle="Recaudo"
+        cover={resolveFileUrl(participantsFor?.banner_url)}
         avatar={resolveFileUrl(abonoFor?.foto_url)}
         avatarFallback={abonoFor ? memberInitials(abonoFor.full_name) : 'AB'}
         onClose={closeParticipantAbono}
@@ -948,7 +1020,18 @@ export function EventsPage() {
         ) : null}
       </CreateDrawer>
 
-      {joinFor ? <EventMemberJoin event={joinFor} onClose={closeJoin} /> : null}
+      {joinFor && isEconomicEvent(joinFor) ? <EventMemberJoin event={joinFor} onClose={closeJoin} /> : null}
+      {joinFor && isInscribibleEvent(joinFor) ? (
+        <EventInscriptionJoin event={joinFor} onClose={closeJoin} onChanged={patchEvent} />
+      ) : null}
+      {inscriptionsFor ? (
+        <EventInscriptionRoster
+          event={inscriptionsFor}
+          canEdit={canManageInscriptions && isInscriptionOpen(inscriptionsFor)}
+          onClose={closeInscriptions}
+          onChanged={patchEvent}
+        />
+      ) : null}
 
       <div className="admin-events__toolbar">
         <EventsViewToggle
@@ -995,12 +1078,14 @@ export function EventsPage() {
           loading={loading}
           now={now}
           canTakeAttendance={canTakeAttendance}
-          canJoin={canJoinEconomic}
+          canJoin={canJoinEvent}
+          canManageInscriptions={canManageInscriptions}
           canCreate={canEditEvents}
           tipos={tipos}
           organizacionId={ctx?.organizacion_id}
           onAttendance={openAttendance}
           onJoin={openJoin}
+          onInscriptions={openInscriptions}
           onEdit={openEdit}
         />
       ) : null}
@@ -1014,11 +1099,13 @@ export function EventsPage() {
               now={now}
               tipos={tipos}
               canTakeAttendance={canTakeAttendance}
-              canJoin={canJoinEconomic}
+              canJoin={canJoinEvent}
+              canManageInscriptions={canManageInscriptions}
               canEdit={canEditEvents && item.organizacion?.id === ctx?.organizacion_id}
               canManageSubevents={canEditEvents && item.organizacion?.id === ctx?.organizacion_id}
               onAttendance={openAttendance}
               onJoin={openJoin}
+              onInscriptions={openInscriptions}
               onEdit={openEdit}
             />
           ))}

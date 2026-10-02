@@ -17,6 +17,7 @@ type EventServicesFieldProps = {
   loading?: boolean
   canCreate?: boolean
   hideLegend?: boolean
+  lockRemovals?: boolean
   onChange: (ids: number[]) => void
   onCreated?: (service: ClubServicio) => void
 }
@@ -27,6 +28,7 @@ export function EventServicesField({
   loading = false,
   canCreate = false,
   hideLegend = false,
+  lockRemovals = false,
   onChange,
   onCreated,
 }: EventServicesFieldProps) {
@@ -79,6 +81,10 @@ export function EventServicesField({
   }
 
   function remove(id: number) {
+    if (lockRemovals) {
+      notices.warning('Ya hay un abono en esta actividad. No se pueden quitar servicios.')
+      return
+    }
     onChange(selectedIds.filter((item) => item !== id))
   }
 
@@ -129,15 +135,20 @@ export function EventServicesField({
                 {item.nombre}
                 <small>{formatPrice(item.precio)}</small>
               </span>
-              <button type="button" aria-label={`Quitar ${item.nombre}`} onClick={() => remove(item.id)}>
-                ×
-              </button>
+              {lockRemovals ? null : (
+                <button type="button" aria-label={`Quitar ${item.nombre}`} onClick={() => remove(item.id)}>
+                  ×
+                </button>
+              )}
             </li>
           ))}
         </ul>
       ) : (
         <p className="app-panel__muted">Todavía no hay servicios en este evento.</p>
       )}
+      {lockRemovals && selected.length ? (
+        <p className="app-panel__hint">Ya hay un abono en esta actividad. Puedes agregar servicios, pero no quitarlos.</p>
+      ) : null}
 
       <div
         className={`admin-search-select${open ? ' is-open' : ''}`}

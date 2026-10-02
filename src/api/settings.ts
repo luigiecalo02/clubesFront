@@ -9,6 +9,8 @@ import type {
   ClubesInvitePreview,
   ClubesRegisterPayload,
   ClubesSettings,
+  GananciaDistribucion,
+  GananciaEclesiastica,
   MailSettings,
   PublicOrgBrowse,
 } from './types'
@@ -116,6 +118,78 @@ export const settingsApi = {
 
   async testMail(to: string): Promise<void> {
     await api.post('/api/v1/settings/mail/test', { to })
+  },
+
+  async ganancias(): Promise<GananciaDistribucion[]> {
+    const { data } = await api.get<ApiEnvelope<GananciaDistribucion[]>>(
+      '/api/v1/settings/clubes/ganancias',
+    )
+    return data.data ?? []
+  },
+
+  async createGanancia(payload: Omit<GananciaDistribucion, 'id' | 'organizacion_id'>): Promise<GananciaDistribucion> {
+    const { data } = await api.post<ApiEnvelope<GananciaDistribucion>>(
+      '/api/v1/settings/clubes/ganancias',
+      payload,
+    )
+    return data.data
+  },
+
+  async updateGanancia(
+    id: number,
+    payload: Omit<GananciaDistribucion, 'id' | 'organizacion_id'>,
+  ): Promise<GananciaDistribucion> {
+    const { data } = await api.put<ApiEnvelope<GananciaDistribucion>>(
+      `/api/v1/settings/clubes/ganancias/${id}`,
+      payload,
+    )
+    return data.data
+  },
+
+  async deleteGanancia(id: number): Promise<void> {
+    await api.delete(`/api/v1/settings/clubes/ganancias/${id}`)
+  },
+
+  async eclesiasticas(): Promise<GananciaEclesiastica[]> {
+    const { data } = await api.get<ApiEnvelope<GananciaEclesiastica[]>>(
+      '/api/v1/settings/clubes/ganancias/eclesiasticas',
+    )
+    return data.data ?? []
+  },
+
+  async createEclesiastica(payload: {
+    nombre: string
+    diezmo: number
+    ofrenda: number
+    distribucion_id: number
+    es_predeterminada: boolean
+  }): Promise<GananciaEclesiastica> {
+    const { data } = await api.post<ApiEnvelope<GananciaEclesiastica>>(
+      '/api/v1/settings/clubes/ganancias/eclesiasticas',
+      payload,
+    )
+    return data.data
+  },
+
+  async updateEclesiastica(
+    id: number,
+    payload: {
+      nombre: string
+      diezmo: number
+      ofrenda: number
+      distribucion_id: number
+      es_predeterminada: boolean
+    },
+  ): Promise<GananciaEclesiastica> {
+    const { data } = await api.put<ApiEnvelope<GananciaEclesiastica>>(
+      `/api/v1/settings/clubes/ganancias/eclesiasticas/${id}`,
+      payload,
+    )
+    return data.data
+  },
+
+  async deleteEclesiastica(id: number): Promise<void> {
+    await api.delete(`/api/v1/settings/clubes/ganancias/eclesiasticas/${id}`)
   },
 
   async resetAsset(asset: ClubesAssetKey): Promise<ClubesSettings> {

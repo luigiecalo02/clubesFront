@@ -43,11 +43,13 @@ type EventsCalendarProps = {
   now: number
   canTakeAttendance: boolean
   canJoin?: boolean
+  canManageInscriptions?: boolean
   canCreate: boolean
   tipos: EventTipo[]
   organizacionId?: number | null
   onAttendance: (item: EventSummary) => void
   onJoin?: (item: EventSummary) => void
+  onInscriptions?: (item: EventSummary) => void
   onEdit: (item: EventSummary) => void
 }
 
@@ -57,11 +59,13 @@ export function EventsCalendar({
   now,
   canTakeAttendance,
   canJoin = false,
+  canManageInscriptions = false,
   canCreate,
   tipos,
   organizacionId,
   onAttendance,
   onJoin,
+  onInscriptions,
   onEdit,
 }: EventsCalendarProps) {
   const today = new Date()
@@ -230,6 +234,7 @@ export function EventsCalendar({
               item={selected}
               canTakeAttendance={canTakeAttendance}
               canJoin={canJoin}
+              canManageInscriptions={canManageInscriptions}
               canEdit={canEditSelected}
               onAttendance={(item) => {
                 closeEvent()
@@ -240,6 +245,14 @@ export function EventsCalendar({
                   ? (item) => {
                       closeEvent()
                       onJoin(item)
+                    }
+                  : undefined
+              }
+              onInscriptions={
+                onInscriptions
+                  ? (item) => {
+                      closeEvent()
+                      onInscriptions(item)
                     }
                   : undefined
               }
@@ -261,10 +274,12 @@ export function EventsCalendar({
             showActions={false}
             canTakeAttendance={canTakeAttendance}
             canJoin={canJoin}
+            canManageInscriptions={canManageInscriptions}
             canEdit={canEditSelected}
             canManageSubevents={canEditSelected}
             onAttendance={onAttendance}
             onJoin={onJoin}
+            onInscriptions={onInscriptions}
             onEdit={onEdit}
           />
         ) : null}

@@ -343,7 +343,7 @@ export function MyClubPage() {
                 <>
                   <p className="app-panel__subtitle">
                     {canAssignBoard
-                      ? 'Asigna director, subdirector, secretari@ y tesorer@ entre los integrantes.'
+                      ? 'Solo el director puede asignar estos cargos entre los integrantes.'
                       : 'Estos son los cargos de la directiva de este club.'}
                   </p>
                   <ul className="admin-club__people">

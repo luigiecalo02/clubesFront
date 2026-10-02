@@ -30,6 +30,9 @@ const VISIBILIDAD_LABELS: Record<string, string> = {
 
 export const ECONOMIC_EVENT_SLUG = 'actividad-economica'
 
+const INSCRIPCION_SLUGS = ['campamento', 'especialidad', 'clase', 'investidura']
+const INSCRIPCION_NOMBRES = ['campamento', 'especialidad', 'investidura']
+
 export function isActivityEvent(item: EventSummary): boolean {
   const slug = item.tipo_evento?.slug?.toLowerCase() ?? ''
   const name = item.tipo_evento?.nombre?.toLowerCase() ?? ''
@@ -39,6 +42,24 @@ export function isActivityEvent(item: EventSummary): boolean {
 export function isEconomicParticipationLocked(item?: { estado?: string | null } | null): boolean {
   const estado = item?.estado ?? ''
   return estado === 'en_proceso' || estado === 'cerrado'
+}
+
+export function isInscribibleEvent(
+  item?: {
+    tipo_evento?: { slug?: string | null; nombre?: string | null } | null
+    slug?: string | null
+    nombre?: string | null
+  } | null,
+): boolean {
+  if (!item) return false
+  const tipo = item.tipo_evento ?? item
+  const slug = tipo.slug?.toLowerCase() ?? ''
+  const name = tipo.nombre?.toLowerCase() ?? ''
+  return INSCRIPCION_SLUGS.includes(slug) || INSCRIPCION_NOMBRES.includes(name)
+}
+
+export function isInscriptionOpen(item?: { estado?: string | null } | null): boolean {
+  return item?.estado === 'publicado'
 }
 
 export function isEconomicEvent(
@@ -76,9 +97,11 @@ type EventCardActionsProps = {
   item: EventSummary
   canTakeAttendance: boolean
   canJoin?: boolean
+  canManageInscriptions?: boolean
   canEdit: boolean
   onAttendance: (item: EventSummary) => void
   onJoin?: (item: EventSummary) => void
+  onInscriptions?: (item: EventSummary) => void
   onEdit: (item: EventSummary) => void
 }
 
@@ -86,18 +109,24 @@ export function EventCardActions({
   item,
   canTakeAttendance,
   canJoin = false,
+  canManageInscriptions = false,
   canEdit,
   onAttendance,
   onJoin,
+  onInscriptions,
   onEdit,
 }: EventCardActionsProps) {
   const showAttendance = canTakeAttendance && isActivityEvent(item)
   const showParticipants = canTakeAttendance && isEconomicEvent(item)
+  const inscriptionOpen = isInscribibleEvent(item) && isInscriptionOpen(item)
   const joinLocked = isEconomicParticipationLocked(item)
-  const showJoin = canJoin && Boolean(onJoin) && isEconomicEvent(item) && item.estado !== 'cancelado'
-  if (!showAttendance && !showParticipants && !showJoin && !canEdit) return null
+  const showJoinEconomic = canJoin && Boolean(onJoin) && isEconomicEvent(item) && item.estado !== 'cancelado'
+  const showJoinInscription = canJoin && Boolean(onJoin) && inscriptionOpen
+  const showInscriptions = canManageInscriptions && Boolean(onInscriptions) && inscriptionOpen
+  const showJoin = showJoinEconomic || showJoinInscription
+  if (!showAttendance && !showParticipants && !showJoin && !showInscriptions && !canEdit) return null
 
-  const hasPrimary = showAttendance || showParticipants || showJoin
+  const hasPrimary = showAttendance || showParticipants || showJoin || showInscriptions
 
   return (
     <>
@@ -113,7 +142,18 @@ export function EventCardActions({
       ) : null}
       {showJoin && onJoin ? (
         <button type="button" className="app-panel__btn--primary" onClick={() => onJoin(item)}>
-          {joinLocked ? 'Ver' : 'Participar'}
+          {showJoinInscription
+            ? item.inscrito
+              ? 'Mi inscripción'
+              : 'Inscribirme'
+            : joinLocked
+              ? 'Ver'
+              : 'Participar'}
+        </button>
+      ) : null}
+      {showInscriptions && onInscriptions ? (
+        <button type="button" className="app-panel__btn--ghost" onClick={() => onInscriptions(item)}>
+          Inscritos
         </button>
       ) : null}
       {canEdit ? (
@@ -142,9 +182,11 @@ export function EventCard({
   now,
   canTakeAttendance,
   canJoin = false,
+  canManageInscriptions = false,
   canEdit,
   onAttendance,
   onJoin,
+  onInscriptions,
   onEdit,
   framed = true,
   showHeading = true,
@@ -216,9 +258,11 @@ export function EventCard({
             item={item}
             canTakeAttendance={canTakeAttendance}
             canJoin={canJoin}
+            canManageInscriptions={canManageInscriptions}
             canEdit={canEdit}
             onAttendance={onAttendance}
             onJoin={onJoin}
+            onInscriptions={onInscriptions}
             onEdit={onEdit}
           />
         </div>

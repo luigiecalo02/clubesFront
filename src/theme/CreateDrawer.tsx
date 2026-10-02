@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { AppPanel } from './AppPanel'
+import { lockBodyScroll, unlockBodyScroll } from './bodyScrollLock'
 import './create-drawer.css'
 
 type CreateDrawerProps = {
@@ -34,8 +35,7 @@ export function CreateDrawer({
 }: CreateDrawerProps) {
   useEffect(() => {
     if (!open) return undefined
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    lockBodyScroll()
 
     function onKey(event: KeyboardEvent) {
       if (event.key !== 'Escape') return
@@ -44,7 +44,7 @@ export function CreateDrawer({
     }
     window.addEventListener('keydown', onKey, stacked)
     return () => {
-      document.body.style.overflow = previous
+      unlockBodyScroll()
       window.removeEventListener('keydown', onKey, stacked)
     }
   }, [onClose, open, stacked])

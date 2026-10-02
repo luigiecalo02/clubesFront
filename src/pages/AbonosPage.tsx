@@ -18,6 +18,7 @@ import '../theme/abonos.css'
 const MOBILE_ABONOS = '(max-width: 900px)'
 
 type PayFilter = 'pendientes' | 'todos'
+type DealTab = 'abonar' | 'pagados'
 
 function formatPrice(value: number | string): string {
   const amount = Number(value)
@@ -51,6 +52,50 @@ function countLabel(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`
 }
 
+
+function DealStatusRow({
+  row,
+  title,
+  photo,
+  square = false,
+  paid,
+  canPay = false,
+  onPay,
+  onDetails,
+}: {
+  row: AbonoFila
+  title: string
+  photo?: string | null
+  square?: boolean
+  paid: boolean
+  canPay?: boolean
+  onPay?: () => void
+  onDetails: () => void
+}) {
+  return (
+    <article className={`abonos-status-row${paid ? ' is-ok' : ''}`}>
+      <AbonosAvatar name={title || '?'} photo={photo} square={square} />
+      <span className="abonos-deal__who">
+        <strong>{title || 'Sin nombre'}</strong>
+        <small>{row.starts_at ? formatDate(row.starts_at) : '—'}</small>
+      </span>
+      <span className="abonos-status-row__money">
+        <strong>{formatPrice(paid ? row.abonado : row.pendiente)}</strong>
+        <small>{paid ? 'Pagado' : 'Pendiente'}</small>
+      </span>
+      <div className="abonos-deal__actions">
+        {canPay ? (
+          <button type="button" className="app-panel__btn--primary" onClick={onPay}>
+            Abonar
+          </button>
+        ) : null}
+        <button type="button" className="app-panel__btn--ghost" onClick={onDetails}>
+          Ver detalles
+        </button>
+      </div>
+    </article>
+  )
+}
 
 function AbonosAvatar({
   name,
@@ -90,6 +135,7 @@ export function AbonosPage() {
   const [filter, setFilter] = useState<PayFilter>('pendientes')
   const [detailsKey, setDetailsKey] = useState<string | null>(null)
   const [detailsTab, setDetailsTab] = useState<'servicios' | 'abonos'>('servicios')
+  const [dealTab, setDealTab] = useState<DealTab>('abonar')
   const [payKey, setPayKey] = useState<string | null>(null)
   const [draft, setDraft] = useState<AbonoPayDraft>(emptyDraft)
   const [isMobile, setIsMobile] = useState(() =>
@@ -103,6 +149,13 @@ export function AbonosPage() {
   )
   const selectedName =
     modo === 'integrante' ? selectedRow?.full_name : selectedRow?.evento_name
+  const pendingDeals = detail.filas.filter((row) => row.pendiente > 0)
+  const paidDeals = detail.filas.filter((row) => row.pendiente <= 0)
+  const pendingTotal = pendingDeals.reduce((sum, row) => sum + Number(row.pendiente || 0), 0)
+  const paidTotal = paidDeals.reduce((sum, row) => sum + Number(row.abonado || 0), 0)
+  const pendingHint =
+    modo === 'integrante' ? 'Actividades con saldo pendiente' : 'Integrantes con saldo pendiente'
+  const paidHint = modo === 'integrante' ? 'Actividades ya pagadas' : 'Integrantes que ya pagaron'
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -116,10 +169,11 @@ export function AbonosPage() {
 
   const payRow = detail.filas.find((row) => pickKey(row) === payKey) ?? null
   const payTitle = modo === 'integrante' ? payRow?.evento_name : payRow?.full_name
-  const payPhoto = modo === 'integrante' ? payRow?.image_url : payRow?.foto_url
+  const payPersonName = payRow?.full_name || selectedRow?.full_name
+  const payPhoto = payRow?.foto_url || selectedRow?.foto_url
   const detailsRow = detail.filas.find((row) => pickKey(row) === detailsKey) ?? null
   const detailsTitle = modo === 'integrante' ? detailsRow?.evento_name : detailsRow?.full_name
-  const detailsPhoto = modo === 'integrante' ? detailsRow?.image_url : detailsRow?.foto_url
+  const detailsPhoto = detailsRow?.foto_url || selectedRow?.foto_url
   const drawerPlacement = isMobile ? 'bottom' : 'end'
 
   useEffect(() => {
@@ -190,6 +244,10 @@ export function AbonosPage() {
       cancelled = true
     }
   }, [eventoId, modo, notices, personaId, selected])
+
+  useEffect(() => {
+    setDealTab('abonar')
+  }, [modo, selected])
 
   function changeModo(next: AbonosModo) {
     if (next === modo) return
@@ -317,47 +375,81 @@ export function AbonosPage() {
       {selected && !loadingDetail && detail.filas.length ? (
         <>
           <section className="abonos-deals">
-            <h3>Compromisos</h3>
-            {detail.filas.map((row, index) => {
-              const title = modo === 'integrante' ? row.evento_name : row.full_name
-              const paid = row.pendiente <= 0
-              return (
-                <article key={rowKey(row, index)} className="abonos-deal">
-                  <div className="abonos-deal__toggle">
-                    <AbonosAvatar
-                      name={title || '?'}
+            <div className="abonos-status-tabs" role="tablist" aria-label="Estado de los compromisos">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={dealTab === 'abonar'}
+                className={dealTab === 'abonar' ? 'is-on' : ''}
+                onClick={() => setDealTab('abonar')}
+              >
+                <span className="abonos-status-board__icon" aria-hidden="true">
+                  <AdminIcon name="hourglass" />
+                </span>
+                <span>
+                  <strong>Por abonar ({pendingDeals.length})</strong>
+                  <small>{pendingHint}</small>
+                </span>
+                <span className="abonos-status-board__total">
+                  <strong>{formatPrice(pendingTotal)}</strong>
+                  <small>Total pendiente</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={dealTab === 'pagados'}
+                className={`is-paid${dealTab === 'pagados' ? ' is-on' : ''}`}
+                onClick={() => setDealTab('pagados')}
+              >
+                <span className="abonos-status-board__icon" aria-hidden="true">
+                  <AdminIcon name="check" />
+                </span>
+                <span>
+                  <strong>Pagados ({paidDeals.length})</strong>
+                  <small>{paidHint}</small>
+                </span>
+                <span className="abonos-status-board__total">
+                  <strong>{formatPrice(paidTotal)}</strong>
+                  <small>Total pagado</small>
+                </span>
+              </button>
+            </div>
+            <div className="abonos-status-board is-on">
+              {dealTab === 'abonar' ? (
+                pendingDeals.length ? (
+                  pendingDeals.map((row, index) => (
+                    <DealStatusRow
+                      key={rowKey(row, index)}
+                      row={row}
+                      title={(modo === 'integrante' ? row.evento_name : row.full_name) || 'Sin nombre'}
                       photo={modo === 'integrante' ? row.image_url : row.foto_url}
                       square={modo === 'integrante'}
+                      paid={false}
+                      canPay={canEdit}
+                      onPay={() => startPay(row)}
+                      onDetails={() => openDetails(row)}
                     />
-                    <span className="abonos-deal__who">
-                      <strong>{title || 'Sin nombre'}</strong>
-                      <small>{row.starts_at ? formatDate(row.starts_at) : ctx?.organizacion_nombre}</small>
-                    </span>
-                    <span className={`abonos-deal__badge${paid ? ' is-ok' : ''}`}>
-                      {paid ? 'Pagado' : formatPrice(row.pendiente)}
-                    </span>
-                    <div className="abonos-deal__actions">
-                      {canEdit && !paid ? (
-                        <button
-                          type="button"
-                          className="app-panel__btn--primary"
-                          onClick={() => startPay(row)}
-                        >
-                          Abonar
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="app-panel__btn--ghost"
-                        onClick={() => openDetails(row)}
-                      >
-                        Ver detalles
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              )
-            })}
+                  ))
+                ) : (
+                  <p className="app-panel__muted">No hay compromisos por abonar.</p>
+                )
+              ) : paidDeals.length ? (
+                paidDeals.map((row, index) => (
+                  <DealStatusRow
+                    key={rowKey(row, index)}
+                    row={row}
+                    title={(modo === 'integrante' ? row.evento_name : row.full_name) || 'Sin nombre'}
+                    photo={modo === 'integrante' ? row.image_url : row.foto_url}
+                    square={modo === 'integrante'}
+                    paid
+                    onDetails={() => openDetails(row)}
+                  />
+                ))
+              ) : (
+                <p className="app-panel__muted">Todavía no hay compromisos pagados.</p>
+              )}
+            </div>
           </section>
 
         </>
@@ -497,8 +589,9 @@ export function AbonosPage() {
         placement={drawerPlacement}
         title={detailsTitle || 'Detalle'}
         subtitle="Pedidos y abonos"
+        cover={resolveFileUrl(detailsRow?.banner_url)}
         avatar={resolveFileUrl(detailsPhoto)}
-        avatarFallback={detailsRow ? memberInitials(detailsTitle || detailsRow.full_name || 'AB') : 'AB'}
+        avatarFallback={memberInitials(detailsRow?.full_name || selectedRow?.full_name || detailsTitle || 'AB')}
         onClose={closeDetails}
       >
         {detailsRow ? (
@@ -590,8 +683,9 @@ export function AbonosPage() {
         placement={drawerPlacement}
         title={payTitle || 'Registrar abono'}
         subtitle="Recaudo"
+        cover={resolveFileUrl(payRow?.banner_url)}
         avatar={resolveFileUrl(payPhoto)}
-        avatarFallback={payRow ? memberInitials(payTitle || payRow.full_name || 'AB') : 'AB'}
+        avatarFallback={memberInitials(payPersonName || payTitle || 'AB')}
         onClose={closePay}
         footer={
           <>

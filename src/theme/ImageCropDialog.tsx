@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { createPortal } from 'react-dom'
 import { useSceneTheme } from './sceneTheme'
 import { AppPanel } from './AppPanel'
+import { lockBodyScroll, unlockBodyScroll } from './bodyScrollLock'
 import {
   clampOffset,
   containZoom,
@@ -105,11 +106,10 @@ export function ImageCropDialog({ file, variant, onCancel, onConfirm }: ImageCro
       if (event.key === 'Escape' && !saving) onCancel()
     }
     window.addEventListener('keydown', onKey)
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    lockBodyScroll()
     return () => {
       window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = previous
+      unlockBodyScroll()
     }
   }, [onCancel, saving])
 

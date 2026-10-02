@@ -363,7 +363,9 @@
 
 .app-panel__btn,
 .app-panel__btn--primary,
-.app-panel__btn--ghost {
+.app-panel__btn--ghost,
+.app-panel__btn--danger,
+.app-panel__btn--ok {
   width: 100%;
   display: inline-flex;
   align-items: center;
@@ -392,6 +394,18 @@
   border: 1px solid var(--panel-ghost-border);
   background: var(--panel-ghost-bg);
   color: var(--panel-ghost-text);
+}
+
+.app-panel__btn--danger {
+  border: 1px solid var(--panel-alert-border);
+  background: var(--panel-alert-bg);
+  color: var(--panel-alert-text);
+}
+
+.app-panel__btn--ok {
+  border: 1px solid color-mix(in srgb, var(--panel-ok-text) 35%, var(--panel-ghost-border));
+  background: color-mix(in srgb, var(--panel-ok-text) 16%, var(--panel-input-bg));
+  color: var(--panel-ok-text);
 }
 
 .app-panel__link {

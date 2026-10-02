@@ -14,6 +14,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { ModulePage } from './pages/ModulePage'
 import { AbonosPage } from './pages/AbonosPage'
 import { AttendancePage } from './pages/AttendancePage'
+import { PresupuestoPage } from './pages/PresupuestoPage'
 import { EventsPage } from './pages/EventsPage'
 import { MembersPage } from './pages/MembersPage'
 import { MyClubPage } from './pages/MyClubPage'
@@ -90,6 +91,14 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/presupuesto"
+                  element={
+                    <RequirePermission permission="presupuesto.view" requirePresupuesto>
+                      <PresupuestoPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
                   path="/integrantes"
                   element={
                     <RequirePermission permission="integrantes.view">
@@ -113,6 +122,7 @@ export default function App() {
                     item.path !== '/eventos' &&
                     item.path !== '/asistencia' &&
                     item.path !== '/abonos' &&
+                    item.path !== '/presupuesto' &&
                     item.path !== '/integrantes' &&
                     item.path !== '/servicios',
                 ).map(

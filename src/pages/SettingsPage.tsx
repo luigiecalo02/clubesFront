@@ -8,6 +8,8 @@ import { ImageUpload, type ImageUploadVariant } from '../theme/ImageUpload'
 import { BackgroundStylePicker } from '../theme/BackgroundStylePicker'
 import { parseBackgroundStyle } from '../theme/backgroundStyle'
 import { useNotice } from '../theme/NoticeProvider'
+import { EclesiasticaSettingsPanel } from '../components/settings/EclesiasticaSettingsPanel'
+import { GananciasSettingsPanel } from '../components/settings/GananciasSettingsPanel'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
 import type { ClubesAppConfig, ClubesAssetKey, ClubesBackgroundStyle, MailSettings } from '../api/types'
 
@@ -76,7 +78,7 @@ const APP_BACKGROUNDS: ClubAssetItem[] = [
   { key: 'background_day', label: 'Fondo claro', hint: 'Panel en modo día. Si la cargas, se omiten las animaciones y la app arranca más ligera.' },
 ]
 
-type SettingsTab = 'apariencia' | 'imagenes' | 'correo'
+type SettingsTab = 'apariencia' | 'imagenes' | 'correo' | 'ganancias' | 'eclesiastica'
 
 function assetVariant(key: ClubesAssetKey): ImageUploadVariant {
   return key === 'logo' ? 'logo' : 'banner'
@@ -320,6 +322,24 @@ export function SettingsPage() {
           onClick={() => setTab('correo')}
         >
           Correo
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'ganancias'}
+          className={`admin-events__view${tab === 'ganancias' ? ' is-on' : ''}`}
+          onClick={() => setTab('ganancias')}
+        >
+          Ganancias
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'eclesiastica'}
+          className={`admin-events__view${tab === 'eclesiastica' ? ' is-on' : ''}`}
+          onClick={() => setTab('eclesiastica')}
+        >
+          Eclesiástica
         </button>
       </div>
 
@@ -631,6 +651,10 @@ export function SettingsPage() {
         </div>
       </form>
       ) : null}
+
+      {tab === 'ganancias' ? <GananciasSettingsPanel canUpdate={canUpdate} /> : null}
+
+      {tab === 'eclesiastica' ? <EclesiasticaSettingsPanel canUpdate={canUpdate} /> : null}
     </section>
   )
 }
