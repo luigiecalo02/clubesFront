@@ -320,29 +320,35 @@
   min-width: 0;
 }
 
-.presupuesto-version-tab__edit {
-  width: 1.45rem;
-  height: 1.45rem;
-  min-height: 0;
-  flex: none;
-  display: grid;
+.abonos-status-tabs .presupuesto-version-tab__edit {
+  display: inline-grid;
+  grid-template-columns: none;
   place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  min-width: 1.7rem;
+  min-height: 1.7rem;
+  flex: none;
+  align-self: center;
+  margin: 0;
   padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--panel-muted);
+  border: 1px solid var(--panel-ghost-border);
+  border-radius: 0.45rem;
+  background: var(--panel-ghost-bg);
+  color: var(--panel-title);
+  box-shadow: none;
   cursor: pointer;
 }
 
-.presupuesto-version-tab__edit:hover {
+.abonos-status-tabs .presupuesto-version-tab__edit:hover {
+  border-color: color-mix(in srgb, var(--panel-gold) 55%, var(--panel-ghost-border));
+  background: color-mix(in srgb, var(--panel-gold) 16%, var(--panel-ghost-bg));
   color: var(--panel-title);
-  background: color-mix(in srgb, var(--panel-gold) 16%, transparent);
 }
 
-.presupuesto-version-tab__edit .admin-icon {
-  width: 0.85rem;
-  height: 0.85rem;
+.abonos-status-tabs .presupuesto-version-tab__edit .admin-icon {
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 .app-panel .presupuesto-versions .abonos-status-tabs input.presupuesto-tab-name,
@@ -669,6 +675,13 @@
 
 .create-drawer .presupuesto-studio .app-panel {
   --panel-padding: 0.9rem 0.8rem;
+  --panel-radius: 0.85rem;
+  border-radius: 0.85rem;
+  overflow: hidden;
+}
+
+.create-drawer .presupuesto-version-tab {
+  border-radius: 0.85rem;
 }
 
 .create-drawer .presupuesto-hero__tools {
@@ -684,9 +697,72 @@
   min-width: 0;
 }
 
-.create-drawer .presupuesto-versions .abonos-status-tabs,
+.create-drawer .presupuesto-versions .abonos-status-tabs {
+  display: flex;
+  grid-template-columns: none;
+  gap: 0.4rem;
+  overflow-x: auto;
+}
+
+.create-drawer .presupuesto-versions .presupuesto-version-tab {
+  flex: 1 0 7.2rem;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  min-width: 0;
+  padding: 0.55rem 0.45rem;
+  text-align: center;
+}
+
+.create-drawer .presupuesto-versions .abonos-status-board__icon,
+.create-drawer .presupuesto-versions .abonos-status-board__total,
+.create-drawer .presupuesto-versions .presupuesto-version-tab small {
+  display: none;
+}
+
+.create-drawer .presupuesto-versions .presupuesto-version-tab__title {
+  justify-content: center;
+  width: 100%;
+}
+
+.create-drawer .presupuesto-versions .presupuesto-version-tab strong,
+.create-drawer .presupuesto-versions input.presupuesto-tab-name {
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.create-drawer .presupuesto-concepts .presupuesto-block__head {
+  margin-bottom: 0.85rem;
+}
+
 .create-drawer .presupuesto-filters {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.create-drawer .presupuesto-filters .presupuesto-version-tab {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  padding: 0.55rem 0.3rem;
+  text-align: center;
+}
+
+.create-drawer .presupuesto-filters .abonos-status-board__icon,
+.create-drawer .presupuesto-filters .abonos-status-board__total,
+.create-drawer .presupuesto-filters small {
+  display: none;
+}
+
+.create-drawer .presupuesto-filters .presupuesto-version-tab strong {
+  overflow: visible;
+  white-space: normal;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.15;
 }
 
 .create-drawer .presupuesto-version-tab {
@@ -695,10 +771,45 @@
 
 .create-drawer .presupuesto-kpis {
   grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
 }
 
-.create-drawer .presupuesto-kpis .presupuesto-kpi:last-child {
-  grid-column: 1 / -1;
+.create-drawer .app-panel.presupuesto-kpi {
+  --panel-radius: 0.85rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.55rem;
+  row-gap: 0.02rem;
+  align-items: center;
+  padding: 0.6rem 0.65rem;
+  border-radius: 0.85rem;
+  overflow: hidden;
+}
+
+.create-drawer .presupuesto-kpi__icon {
+  grid-row: 1 / span 3;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.55rem;
+}
+
+.create-drawer .presupuesto-kpi small {
+  font-size: 0.68rem;
+}
+
+.create-drawer .presupuesto-kpi strong {
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.create-drawer .presupuesto-kpi .app-panel__link {
+  font-size: 0.7rem;
+}
+
+.create-drawer .presupuesto-kpi__field input {
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.55rem;
 }
 
 .create-drawer .presupuesto-block__head {
@@ -727,6 +838,19 @@
   gap: 0.2rem 0.65rem;
   padding: 0.7rem 0;
   border-bottom: 1px solid var(--panel-divider);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.create-drawer .presupuesto-table__row:hover td,
+.create-drawer .presupuesto-table__row:focus td,
+.create-drawer .presupuesto-table__row:focus-visible td {
+  background: transparent;
+  color: var(--panel-text);
+}
+
+.create-drawer .presupuesto-table__row:focus,
+.create-drawer .presupuesto-table__row:focus-visible {
+  outline: none;
 }
 
 .create-drawer .presupuesto-table td {
@@ -784,7 +908,8 @@
 }
 
 .create-drawer .presupuesto-row-actions {
-  justify-content: flex-start;
+  justify-content: flex-end;
+  margin-top: 0.35rem;
 }
 
 .create-drawer .presupuesto-help {
