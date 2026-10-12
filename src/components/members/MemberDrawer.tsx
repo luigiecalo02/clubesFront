@@ -10,6 +10,7 @@ import {
   canImpersonateClubMember,
   canManageMemberPhotos,
   canUpdateClubMember,
+  SESSION_HOME,
 } from '../../admin/menu'
 import { useAuth } from '../../auth/AuthProvider'
 import { CreateDrawer } from '../../theme/CreateDrawer'
@@ -284,7 +285,7 @@ export function MemberDrawer({
     try {
       await auth.impersonate(userId)
       closeAndReset()
-      navigate('/')
+      navigate(SESSION_HOME)
     } catch (err) {
       notices.error(getApiErrorMessage(err, 'No se pudo entrar como este usuario'))
       onError?.(getApiErrorMessage(err, 'No se pudo entrar como este usuario'))

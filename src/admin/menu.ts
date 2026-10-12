@@ -33,12 +33,17 @@ export type AdminIconName =
   | 'compass'
   | 'star'
   | 'eye'
+  | 'eyeOff'
   | 'wallet'
   | 'hourglass'
   | 'chevronLeft'
   | 'chevronRight'
   | 'filter'
   | 'pencil'
+  | 'x'
+  | 'pulse'
+
+export const SESSION_HOME = '/mi-actividad'
 
 export const ADMIN_MENU: AdminMenuItem[] = [
   {
@@ -47,6 +52,13 @@ export const ADMIN_MENU: AdminMenuItem[] = [
     permission: 'dashboard.view',
     icon: 'home',
     description: 'Resumen de tu sesión y accesos según el rol asignado.',
+  },
+  {
+    path: SESSION_HOME,
+    label: 'Mi actividad',
+    permission: 'dashboard.view',
+    icon: 'pulse',
+    description: 'Tu foto, el porcentaje de asistencias, el saldo y las actividades.',
   },
   {
     path: '/usuarios',
@@ -337,6 +349,7 @@ export function visibleMenu(
   options?: { rolName?: string | null; organizacionId?: number | null },
 ): AdminMenuItem[] {
   return ADMIN_MENU.filter((item) => {
+    if (item.path === SESSION_HOME) return true
     if (item.path === '/configuracion') {
       return canAccessClubSettings(options)
     }

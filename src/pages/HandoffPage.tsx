@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { authApi } from '../api/auth'
 import { getApiErrorMessage } from '../api/client'
+import { SESSION_HOME } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { AdventureScene } from '../components/login/AdventureScene'
 import { LoginCardEmblem } from '../components/login/LoginCardEmblem'
@@ -37,7 +38,7 @@ export function HandoffPage() {
       })
       .then((user) => {
         if (cancelled || !user) return
-        window.location.replace(user.requires_context ? '/contexto' : '/')
+        window.location.replace(user.requires_context ? '/contexto' : SESSION_HOME)
       })
       .catch((err) => {
         if (!cancelled) {

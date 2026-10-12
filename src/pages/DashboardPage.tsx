@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { resolveFileUrl } from '../api/baseUrl'
 import { AdminIcon } from '../admin/AdminIcon'
-import { visibleMenu } from '../admin/menu'
+import { SESSION_HOME, visibleMenu } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
 
@@ -14,7 +14,7 @@ export function DashboardPage() {
   const modules = visibleMenu(auth.can, {
     rolName: ctx?.rol_name,
     organizacionId: ctx?.organizacion_id,
-  }).filter((item) => item.path !== '/')
+  }).filter((item) => item.path !== '/' && item.path !== SESSION_HOME)
 
   const banner = resolveFileUrl(copy?.banner_url)
 
@@ -41,14 +41,6 @@ export function DashboardPage() {
         <article>
           <small>Contexto</small>
           <strong>{ctx?.organizacion_nombre || 'Plataforma'}</strong>
-        </article>
-        <article>
-          <small>Rol</small>
-          <strong>{ctx?.rol_display_name || user.roles.join(', ') || '—'}</strong>
-        </article>
-        <article>
-          <small>Módulos visibles</small>
-          <strong>{modules.length}</strong>
         </article>
       </div>
 

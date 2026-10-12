@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { authApi } from '../api/auth'
 import { getApiErrorMessage } from '../api/client'
 import type { AuthContextOption } from '../api/types'
+import { SESSION_HOME } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
 import { useNotice } from '../theme/NoticeProvider'
@@ -26,7 +27,7 @@ export function ContextPage() {
         if (cancelled) return
         setOptions(result.options)
         if (result.options.length <= 1) {
-          navigate('/', { replace: true })
+          navigate(SESSION_HOME, { replace: true })
         }
       })
       .catch((err) => {
@@ -56,7 +57,7 @@ export function ContextPage() {
         rol_id: option.rol_id,
       })
       auth.applyUser(user)
-      navigate('/', { replace: true })
+      navigate(SESSION_HOME, { replace: true })
     } catch (err) {
       notices.error(getApiErrorMessage(err))
     } finally {

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi } from '../api/auth'
 import { getApiErrorMessage } from '../api/client'
+import { SESSION_HOME } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { AdventureScene } from '../components/login/AdventureScene'
 import { LoginCardEmblem } from '../components/login/LoginCardEmblem'
@@ -44,7 +45,7 @@ export function ResetPasswordPage() {
       })
       if (issued?.token) {
         await auth.applySession(issued.token)
-        navigate('/', { replace: true })
+        navigate(SESSION_HOME, { replace: true })
         return
       }
       navigate('/login', { replace: true })

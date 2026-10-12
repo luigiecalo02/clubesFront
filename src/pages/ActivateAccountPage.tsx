@@ -3,6 +3,7 @@ import { Navigate, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getApiErrorMessage } from '../api/client'
 import { settingsApi } from '../api/settings'
 import type { ClubesInviteLookup, ClubesInvitePreview } from '../api/types'
+import { SESSION_HOME } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { AdventureScene } from '../components/login/AdventureScene'
 import { LoginCardEmblem } from '../components/login/LoginCardEmblem'
@@ -56,7 +57,7 @@ export function ActivateAccountPage() {
   }, [token])
 
   if (auth.user && !auth.loading) {
-    return <Navigate to={auth.requiresContext ? '/contexto' : '/'} replace />
+    return <Navigate to={auth.requiresContext ? '/contexto' : SESSION_HOME} replace />
   }
 
   async function onLookup(event: FormEvent) {
@@ -110,7 +111,7 @@ export function ActivateAccountPage() {
         ...(password ? { password, password_confirmation: confirmation } : {}),
       })
       await auth.applySession(issued.token)
-      navigate('/', { replace: true })
+      navigate(SESSION_HOME, { replace: true })
     } catch (err) {
       setError(getApiErrorMessage(err, lookup.has_user ? 'No se pudieron guardar los datos' : 'No se pudo activar la cuenta'))
     } finally {

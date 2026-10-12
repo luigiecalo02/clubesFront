@@ -4,24 +4,62 @@
   gap: 0.85rem;
 }
 
+.presupuesto-workspace {
+  --panel-padding: 0.55rem 0.9rem;
+}
+
+.presupuesto-workspace__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.presupuesto-workspace__copy {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex: none;
+}
+
 .presupuesto-workspace .app-panel__kicker,
 .presupuesto-workspace .app-panel__title,
-.presupuesto-workspace .app-panel__subtitle,
 .presupuesto-picker .app-panel__kicker {
   text-align: left;
 }
 
-.presupuesto-workspace .app-panel__subtitle {
-  margin-bottom: 0;
+.presupuesto-workspace .app-panel__kicker,
+.presupuesto-workspace .app-panel__title {
+  margin: 0;
+}
+
+.presupuesto-workspace .app-panel__title {
+  font-size: 1.05rem;
 }
 
 .presupuesto-picker {
-  margin-top: 0.85rem;
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  max-width: 28rem;
+  margin-left: auto;
 }
 
 .presupuesto-picker .attendance-events__group {
-  display: grid;
-  gap: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.presupuesto-picker .admin-search-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.presupuesto-picker .admin-search-select__trigger,
+.presupuesto-picker .admin-search-select__input {
+  min-height: 2.35rem;
+  padding: 0.35rem 2rem 0.35rem 0.75rem;
 }
 
 .presupuesto-picker .admin-search-select__trigger small,
@@ -30,6 +68,12 @@
   margin-top: 0.15rem;
   color: var(--panel-muted);
   font-size: 0.78rem;
+}
+
+.presupuesto-picker .admin-search-select__trigger small {
+  display: inline;
+  margin-top: 0;
+  margin-left: 0.35rem;
 }
 
 .presupuesto-picker .admin-search-select__option {

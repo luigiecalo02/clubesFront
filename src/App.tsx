@@ -1,11 +1,12 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AdminLayout } from './admin/AdminLayout'
-import { ADMIN_MENU } from './admin/menu'
+import { ADMIN_MENU, SESSION_HOME } from './admin/menu'
 import { RequireAuth } from './admin/RequireAuth'
 import { RequirePermission } from './admin/RequirePermission'
 import { AuthProvider } from './auth/AuthProvider'
 import { ContextPage } from './pages/ContextPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { MyActivityPage } from './pages/MyActivityPage'
 import { ActivateAccountPage } from './pages/ActivateAccountPage'
 import { ConfirmAccountPage } from './pages/ConfirmAccountPage'
 import { HandoffPage } from './pages/HandoffPage'
@@ -48,6 +49,7 @@ export default function App() {
             <Route element={<RequireAuth />}>
               <Route element={<AdminLayout />}>
                 <Route path="/" element={<DashboardPage />} />
+                <Route path={SESSION_HOME} element={<MyActivityPage />} />
                 <Route path="/perfil" element={<ProfilePage />} />
                 <Route
                   path="/configuracion"
@@ -117,6 +119,7 @@ export default function App() {
                 {ADMIN_MENU.filter(
                   (item) =>
                     item.path !== '/' &&
+                    item.path !== SESSION_HOME &&
                     item.path !== '/configuracion' &&
                     item.path !== '/mi-club' &&
                     item.path !== '/eventos' &&

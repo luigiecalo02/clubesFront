@@ -403,22 +403,22 @@ export function PresupuestoPage() {
   return (
     <section className="admin-page admin-page--presupuesto">
       <AppPanel shine={false} className="presupuesto-workspace">
-        <p className="app-panel__kicker">Planeación</p>
-        <h2 className="app-panel__title">Presupuesto</h2>
-        <p className="app-panel__subtitle">
-          Elige un campamento y arma los costos de integrantes y acompañantes. El individual se multiplica
-          por persona; el grupal se divide. Esto no genera cobros ni ventas.
-        </p>
-        {events.length > 0 && !isMobile ? (
-          <div className="presupuesto-picker">
-            <AttendanceEventSelect
-              items={asAttendanceEvents(events)}
-              eventoId={eventoId}
-              label="Campamento"
-              onSelect={pickEvent}
-            />
+        <div className="presupuesto-workspace__bar">
+          <div className="presupuesto-workspace__copy">
+            <p className="app-panel__kicker">Planeación</p>
+            <h2 className="app-panel__title">Presupuesto</h2>
           </div>
-        ) : null}
+          {events.length > 0 && !isMobile ? (
+            <div className="presupuesto-picker">
+              <AttendanceEventSelect
+                items={asAttendanceEvents(events)}
+                eventoId={eventoId}
+                label="Campamento"
+                onSelect={pickEvent}
+              />
+            </div>
+          ) : null}
+        </div>
       </AppPanel>
 
       {loadingEvents ? <p className="app-panel__muted">Cargando campamentos…</p> : null}

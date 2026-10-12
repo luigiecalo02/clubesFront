@@ -4,6 +4,7 @@ import { resolveClubRootId, resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
 import { settingsApi } from '../api/settings'
 import { DEFAULT_LOGIN_BRANDING, type ClubesPublicBranding } from '../api/types'
+import { SESSION_HOME } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { AdventureScene } from '../components/login/AdventureScene'
 import { parseBackgroundStyle } from '../theme/backgroundStyle'
@@ -34,7 +35,7 @@ export function LoginPage() {
   const redirectTo =
     typeof (location.state as { from?: string } | null)?.from === 'string'
       ? (location.state as { from: string }).from
-      : '/'
+      : SESSION_HOME
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
   const [email, setEmail] = useState('')

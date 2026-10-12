@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { resolveFileUrl } from '../../api/baseUrl'
 import { getApiErrorMessage } from '../../api/client'
 import { serviciosApi } from '../../api/servicios'
 import type { AbonoMovimiento, EventParticipantService, EventSummary } from '../../api/types'
 import { AdminIcon } from '../../admin/AdminIcon'
 import { isEconomicParticipationLocked } from './EventCard'
+import { AppPanel } from '../../theme/AppPanel'
 import { CreateDrawer } from '../../theme/CreateDrawer'
 import { formatDate } from '../../theme/dates'
 import { useNotice } from '../../theme/NoticeProvider'
@@ -69,7 +71,10 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
   const [abonado, setAbonado] = useState(0)
   const [abonos, setAbonos] = useState<AbonoMovimiento[]>([])
   const [tab, setTab] = useState<'servicios' | 'historial'>('servicios')
+  const [padId, setPadId] = useState<number | null>(null)
+  const [padDraft, setPadDraft] = useState('')
   const totals = useMemo(() => saleTotals(services, ventas), [services, ventas])
+  const padService = services.find((service) => service.id === padId) ?? null
   const faltante = totals.recaudo - abonado
   const locked = isEconomicParticipationLocked(event)
 
@@ -104,6 +109,29 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
   function setQty(productoServicioId: number, cantidad: number) {
     const qty = Number.isFinite(cantidad) ? Math.max(0, Math.floor(cantidad)) : 0
     setVentas((current) => ({ ...current, [productoServicioId]: qty }))
+    if (padId === productoServicioId) setPadDraft(String(qty))
+  }
+
+  function openPad(productoServicioId: number, cantidad: number) {
+    if (saving || locked) return
+    setPadId(productoServicioId)
+    setPadDraft(String(cantidad))
+  }
+
+  function typeDigit(digit: string) {
+    setPadDraft((current) => {
+      const next = current === '0' ? digit : `${current}${digit}`
+      return next.slice(0, 4)
+    })
+  }
+
+  function clearPad() {
+    setPadDraft('0')
+  }
+
+  function confirmPad(productoServicioId: number) {
+    setQty(productoServicioId, Number(padDraft) || 0)
+    setPadId(null)
   }
 
   async function persist(participa: boolean) {
@@ -214,23 +242,44 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
                   <li key={service.id} className="attendance-mark__sale">
                     <span className="attendance-mark__sale-name">
                       <ServiceThumb item={service} />
-                      {service.nombre}
+                      <span className="attendance-mark__sale-title">
+                        {service.nombre}
+                        <small>{formatPrice(servicePrice(service))}</small>
+                      </span>
                     </span>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      aria-label={`Cantidad de ${service.nombre}`}
-                      disabled={saving || locked}
-                      readOnly={locked}
-                      value={cantidad}
-                      onChange={(event) => setQty(service.id, Number(event.target.value))}
-                    />
                     <span className="attendance-mark__sale-price">
-                      <small>{formatPrice(servicePrice(service))}</small>
+                      <small>Total</small>
                       <strong>{formatPrice(cantidad * servicePrice(service))}</strong>
                     </span>
+                    <div className="attendance-mark__qty">
+                      <button
+                        type="button"
+                        aria-label={`Quitar una unidad de ${service.nombre}`}
+                        disabled={saving || locked || cantidad <= 0}
+                        onClick={() => setQty(service.id, cantidad - 1)}
+                      >
+                        −
+                      </button>
+                      <button
+                        type="button"
+                        className="attendance-mark__qty-value"
+                        aria-label={`Editar cantidad de ${service.nombre}`}
+                        aria-expanded={padId === service.id}
+                        disabled={saving || locked}
+                        onClick={() => openPad(service.id, cantidad)}
+                      >
+                        <span>Cantidad</span>
+                        <strong>{padId === service.id ? padDraft || '0' : cantidad}</strong>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Agregar una unidad de ${service.nombre}`}
+                        disabled={saving || locked}
+                        onClick={() => setQty(service.id, cantidad + 1)}
+                      >
+                        +
+                      </button>
+                    </div>
                   </li>
                 )
               })}
@@ -255,6 +304,34 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
           {saving ? <p className="app-panel__muted">Guardando…</p> : null}
         </div>
       ) : null}
+      {padService
+        ? createPortal(
+            <div className="attendance-mark__pad-modal" role="dialog" aria-modal="true" aria-label={`Cantidad de ${padService.nombre}`}>
+              <button type="button" className="attendance-mark__pad-backdrop" aria-label="Cerrar" onClick={() => setPadId(null)} />
+              <AppPanel shine={false} className="attendance-mark__pad">
+                <p className="app-panel__kicker">{padService.nombre}</p>
+                <strong className="attendance-mark__pad-readout">{padDraft || '0'}</strong>
+                <div className="attendance-mark__pad-keys">
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                    <button key={digit} type="button" onClick={() => typeDigit(digit)}>
+                      {digit}
+                    </button>
+                  ))}
+                  <button type="button" className="is-clear" onClick={clearPad}>
+                    Borrar
+                  </button>
+                  <button type="button" onClick={() => typeDigit('0')}>
+                    0
+                  </button>
+                  <button type="button" className="is-enter" onClick={() => confirmPad(padService.id)}>
+                    Enter
+                  </button>
+                </div>
+              </AppPanel>
+            </div>,
+            document.querySelector('.admin-shell') ?? document.body,
+          )
+        : null}
     </CreateDrawer>
   )
 }

@@ -10,11 +10,18 @@ import { parseBackgroundStyle } from '../theme/backgroundStyle'
 import { useSceneTheme } from '../theme/sceneTheme'
 import { AdminIcon } from './AdminIcon'
 import { UserMenu } from './UserMenu'
-import { resolveAdminPage, visibleMenu } from './menu'
+import { resolveAdminPage, SESSION_HOME, visibleMenu, type AdminIconName } from './menu'
 import './admin.css'
 
 const SIDEBAR_KEY = 'clubes_sidebar_collapsed'
 const MOBILE_NAV = '(max-width: 900px)'
+
+const MOBILE_TABS: { path: string; label: string; icon: AdminIconName }[] = [
+  { path: '/', label: 'Inicio', icon: 'home' },
+  { path: '/eventos', label: 'Eventos', icon: 'calendar' },
+  { path: '/abonos', label: 'Abonos', icon: 'wallet' },
+  { path: SESSION_HOME, label: 'Mi actividad', icon: 'pulse' },
+]
 
 function readSidebarCollapsed(): boolean {
   try {
@@ -205,6 +212,20 @@ export function AdminLayout() {
           <Outlet />
         </div>
       </div>
+
+      <nav className="admin-tabbar" aria-label="Menú móvil">
+        {MOBILE_TABS.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            end
+            className={({ isActive }) => `admin-tabbar__link${isActive ? ' is-active' : ''}`}
+          >
+            <AdminIcon name={item.icon} />
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
   )
 }
