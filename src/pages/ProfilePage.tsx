@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import axios from 'axios'
+import { canEditOwnProfilePhoto } from '../admin/menu'
 import { resolveFileUrl } from '../api/baseUrl'
 import { authApi } from '../api/auth'
 import { getApiErrorMessage } from '../api/client'
@@ -100,6 +101,7 @@ export function ProfilePage() {
 
   if (!user) return null
 
+  const canEditPhoto = canEditOwnProfilePhoto(user.contexto?.rol_name)
   const userId = user.id
   const currentName = user.name
   const currentEmail = user.email
@@ -130,7 +132,7 @@ export function ProfilePage() {
           sexo: form.sexo,
         },
       })
-      if (photoFile) {
+      if (canEditPhoto && photoFile) {
         const uploaded = await usersApi.uploadAvatar(userId, photoFile)
         setPhotoFile(null)
         setPhotoPreview(resolveFileUrl(uploaded.avatar_url))
@@ -177,11 +179,16 @@ export function ProfilePage() {
         <form className="admin-form admin-profile__fields" onSubmit={(event) => void onSaveProfile(event)}>
           <ImageUpload
             label="Foto"
-            hint="Se muestra en tu menú de cuenta. JPG, PNG o WebP."
+            hint={
+              canEditPhoto
+                ? 'Se muestra en tu menú de cuenta. JPG, PNG o WebP.'
+                : 'Solo la directiva puede cambiar tu foto.'
+            }
             variant="avatar"
             file={photoFile}
             previewUrl={photoPreview}
             emptyText="Sin foto"
+            readOnly={!canEditPhoto}
             onSelect={setPhotoFile}
           />
           <label>

@@ -330,6 +330,10 @@ export function canImpersonateClubMember(options?: {
   return Boolean(options?.organizacionId) && isClubDirectorRole(options?.rolName)
 }
 
+export function canEditOwnProfilePhoto(rolName?: string | null): boolean {
+  return rolName !== 'miembro'
+}
+
 export function canManageMemberPhotos(options?: {
   can?: (permission: string) => boolean
   rolName?: string | null

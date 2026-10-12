@@ -89,6 +89,15 @@
   opacity: 0.6;
 }
 
+.image-upload--readonly .image-upload__drop,
+.image-upload--readonly .image-upload__drop:hover,
+.image-upload--readonly .image-upload__drop:focus-within {
+  cursor: default;
+  border-color: var(--panel-input-border);
+  background: var(--panel-input-bg);
+  box-shadow: none;
+}
+
 .image-upload__drop input {
   position: absolute;
   width: 1px;

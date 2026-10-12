@@ -17,6 +17,7 @@ type ImageUploadProps = {
   emptyText?: string
   actionLabel?: string
   disabled?: boolean
+  readOnly?: boolean
   onSelect: (file: File) => void
   onClear?: () => void
 }
@@ -45,6 +46,7 @@ export function ImageUpload({
   emptyText,
   actionLabel,
   disabled = false,
+  readOnly = false,
   onSelect,
   onClear,
 }: ImageUploadProps) {
@@ -60,7 +62,7 @@ export function ImageUpload({
   const action = shown ? actionLabel || 'Cambiar' : 'Elegir imagen'
 
   function take(file: File | undefined | null) {
-    if (!file || disabled) return
+    if (!file || disabled || readOnly) return
     if (!isAllowedImage(file)) {
       setError('Usa una imagen JPG, PNG o WebP.')
       return
@@ -80,19 +82,19 @@ export function ImageUpload({
   }
 
   return (
-    <div className={`image-upload image-upload--${variant}`}>
+    <div className={`image-upload image-upload--${variant}${readOnly ? ' image-upload--readonly' : ''}`}>
       <span className="image-upload__label">{label}</span>
       <div className="image-upload__frame">
       <label
-        htmlFor={inputId}
+        htmlFor={readOnly ? undefined : inputId}
         className={`image-upload__drop${over ? ' is-over' : ''}${shown ? ' has-file' : ''}`}
         onDragEnter={(event) => {
           event.preventDefault()
-          if (!disabled) setOver(true)
+          if (!disabled && !readOnly) setOver(true)
         }}
         onDragOver={(event) => {
           event.preventDefault()
-          if (!disabled) setOver(true)
+          if (!disabled && !readOnly) setOver(true)
         }}
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
@@ -112,27 +114,29 @@ export function ImageUpload({
               />
             </svg>
             <strong>{empty}</strong>
-            <em>Arrastra o haz clic</em>
+            {readOnly ? null : <em>Arrastra o haz clic</em>}
           </span>
         )}
-        {shown ? (
+        {shown && !readOnly ? (
           <span className="image-upload__overlay">
             <strong>{action}</strong>
           </span>
         ) : null}
-        <input
-          ref={inputRef}
-          id={inputId}
-          type="file"
-          accept={ACCEPT}
-          disabled={disabled}
-          onChange={(event) => {
-            take(event.target.files?.[0] ?? null)
-            event.target.value = ''
-          }}
-        />
+        {readOnly ? null : (
+          <input
+            ref={inputRef}
+            id={inputId}
+            type="file"
+            accept={ACCEPT}
+            disabled={disabled}
+            onChange={(event) => {
+              take(event.target.files?.[0] ?? null)
+              event.target.value = ''
+            }}
+          />
+        )}
       </label>
-      {shown && onClear && !disabled ? (
+      {shown && onClear && !disabled && !readOnly ? (
         <button
           type="button"
           className="app-panel__btn--ghost image-upload__clear"
