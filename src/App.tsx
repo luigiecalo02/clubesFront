@@ -1,6 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AdminLayout } from './admin/AdminLayout'
-import { ADMIN_MENU, SESSION_HOME } from './admin/menu'
+import { ADMIN_MENU, MY_ABONOS, SESSION_HOME } from './admin/menu'
 import { RequireAuth } from './admin/RequireAuth'
 import { RequirePermission } from './admin/RequirePermission'
 import { AuthProvider } from './auth/AuthProvider'
@@ -14,6 +14,7 @@ import { LoginPage } from './pages/LoginPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { ModulePage } from './pages/ModulePage'
 import { AbonosPage } from './pages/AbonosPage'
+import { MyAbonosPage } from './pages/MyAbonosPage'
 import { AttendancePage } from './pages/AttendancePage'
 import { PresupuestoPage } from './pages/PresupuestoPage'
 import { EventsPage } from './pages/EventsPage'
@@ -87,8 +88,16 @@ export default function App() {
                 <Route
                   path="/abonos"
                   element={
-                    <RequirePermission permission="abonos.view" requireAbonos>
+                    <RequirePermission permission="abonos.view">
                       <AbonosPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path={MY_ABONOS}
+                  element={
+                    <RequirePermission permission="mis_abonos.view">
+                      <MyAbonosPage />
                     </RequirePermission>
                   }
                 />
@@ -111,7 +120,7 @@ export default function App() {
                 <Route
                   path="/servicios"
                   element={
-                    <RequirePermission permission="productos_servicios.view">
+                    <RequirePermission permission="productos_servicios.view" requireServices>
                       <ServicesPage />
                     </RequirePermission>
                   }
@@ -125,6 +134,7 @@ export default function App() {
                     item.path !== '/eventos' &&
                     item.path !== '/asistencia' &&
                     item.path !== '/abonos' &&
+                    item.path !== MY_ABONOS &&
                     item.path !== '/presupuesto' &&
                     item.path !== '/integrantes' &&
                     item.path !== '/servicios',

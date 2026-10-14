@@ -284,9 +284,89 @@
   color: var(--panel-muted);
 }
 
+.presupuesto-sheet {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.presupuesto-sheet.has-sheet {
+  gap: 0;
+}
+
 .presupuesto-versions {
   display: grid;
   gap: 0.65rem;
+}
+
+.presupuesto-sheet.has-sheet .presupuesto-versions .abonos-status-tabs {
+  align-items: end;
+  margin-bottom: -1.5px;
+  position: relative;
+  z-index: 2;
+}
+
+.presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab {
+  position: relative;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--panel-hint-text) 7%, var(--panel-input-bg));
+}
+
+.presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab:not(.is-on) {
+  margin-bottom: 0.7rem;
+}
+
+.presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab.is-on,
+.presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab.is-paid.is-on {
+  z-index: 1;
+  margin-bottom: -1.5px;
+  padding-bottom: calc(0.95rem + 1.5px);
+  border-color: var(--panel-gold);
+  border-bottom-width: 0;
+  border-radius: 1rem 1rem 0 0;
+  background: color-mix(in srgb, var(--panel-gold) 9%, var(--panel-bg));
+  color: var(--panel-title);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--panel-gold) 9%, var(--panel-bg));
+}
+
+.presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab.is-on::after {
+  content: none;
+}
+
+.presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab.is-on .abonos-status-board__icon,
+.presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab.is-paid.is-on .abonos-status-board__icon {
+  background: color-mix(in srgb, var(--panel-gold) 16%, var(--panel-input-bg));
+  color: var(--panel-gold);
+}
+
+.presupuesto-sheet.has-sheet .presupuesto-sheet__body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.9rem;
+  padding: 0.9rem;
+  border: 1.5px solid var(--panel-gold);
+  border-radius: 1.05rem;
+  background: color-mix(in srgb, var(--panel-gold) 9%, var(--panel-bg));
+}
+
+.presupuesto-sheet.has-sheet:has(.presupuesto-version-tab:first-child.is-on) .presupuesto-sheet__body {
+  border-top-left-radius: 0;
+}
+
+.presupuesto-sheet.has-sheet:has(.presupuesto-version-tab:last-child.is-on) .presupuesto-sheet__body {
+  border-top-right-radius: 0;
+}
+
+.presupuesto-sheet__body.is-busy {
+  pointer-events: none;
+}
+
+.presupuesto-sheet__body.is-busy::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--panel-bg) 42%, transparent);
 }
 
 .presupuesto-versions .abonos-status-tabs {
@@ -747,6 +827,48 @@
   overflow: hidden;
 }
 
+.create-drawer .presupuesto-sheet.has-sheet {
+  gap: 0.65rem;
+}
+
+.create-drawer .presupuesto-sheet.has-sheet .presupuesto-versions .abonos-status-tabs {
+  align-items: start;
+  margin-bottom: 0;
+}
+
+.create-drawer .presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab,
+.create-drawer .presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab.is-on,
+.create-drawer .presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab.is-paid.is-on {
+  order: 0;
+  margin-bottom: 0;
+  padding: 0.55rem 0.45rem;
+  border-bottom-color: var(--panel-input-border);
+  border-radius: 0.85rem;
+}
+
+.create-drawer .presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab.is-on,
+.create-drawer .presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab.is-paid.is-on {
+  padding: 0.78rem 0.6rem;
+  border-bottom-color: var(--panel-gold);
+}
+
+.create-drawer .presupuesto-versions .presupuesto-version-tab.is-on strong,
+.create-drawer .presupuesto-versions .presupuesto-version-tab.is-paid.is-on strong {
+  font-size: 0.84rem;
+}
+
+.create-drawer .presupuesto-sheet.has-sheet .presupuesto-versions .presupuesto-version-tab.is-on::after {
+  display: none;
+}
+
+.create-drawer .presupuesto-sheet.has-sheet .presupuesto-sheet__body {
+  gap: 0.7rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .create-drawer .presupuesto-version-tab {
   border-radius: 0.85rem;
 }
@@ -765,17 +887,19 @@
 }
 
 .create-drawer .presupuesto-versions .abonos-status-tabs {
-  display: flex;
-  grid-template-columns: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
   gap: 0.4rem;
-  overflow-x: auto;
+  align-items: start;
+  overflow: visible;
 }
 
 .create-drawer .presupuesto-versions .presupuesto-version-tab {
-  flex: 1 0 7.2rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   grid-template-columns: minmax(0, 1fr);
   justify-items: center;
-  min-width: 0;
   padding: 0.55rem 0.45rem;
   text-align: center;
 }
@@ -796,10 +920,22 @@
   min-width: 0;
   overflow: hidden;
   text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 0.72rem;
   line-height: 1.15;
+}
+
+.create-drawer .presupuesto-versions .presupuesto-version-tab strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.create-drawer .presupuesto-versions input.presupuesto-tab-name {
+  width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .create-drawer .presupuesto-concepts .presupuesto-block__head {

@@ -1,8 +1,14 @@
-import type { FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { AdminIcon } from '../../admin/AdminIcon'
+import { compressReceiptImage } from '../../theme/cropImage'
 import { DateInput } from '../../theme/DateInput'
 import { formatDate, toIsoDate } from '../../theme/dates'
+import { NumberPadInput } from '../../theme/NumberPad'
 import '../../theme/abonos.css'
+
+function formatMoney(value: number): string {
+  return value.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
+}
 
 export const ABONO_PAY_METHODS = ['Efectivo', 'Transferencia', 'Nequi', 'Daviplata', 'Otro'] as const
 
@@ -11,6 +17,7 @@ export type AbonoPayDraft = {
   nota: string
   metodo: (typeof ABONO_PAY_METHODS)[number] | ''
   fecha: string
+  comprobante: File | null
 }
 
 type AbonoPayFormProps = {
@@ -24,7 +31,7 @@ type AbonoPayFormProps = {
 }
 
 export function emptyAbonoPayDraft(): AbonoPayDraft {
-  return { monto: '', nota: '', metodo: '', fecha: toIsoDate(new Date()) }
+  return { monto: '', nota: '', metodo: '', fecha: toIsoDate(new Date()), comprobante: null }
 }
 
 export function composeAbonoNota(draft: AbonoPayDraft): string | undefined {
@@ -55,6 +62,33 @@ export function AbonoPayForm({
   onSubmit,
 }: AbonoPayFormProps) {
   const locked = saving || pendiente <= 0
+  const [preparing, setPreparing] = useState(false)
+  const [preview, setPreview] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!draft.comprobante) {
+      setPreview(null)
+      return undefined
+    }
+    const url = URL.createObjectURL(draft.comprobante)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [draft.comprobante])
+
+  async function pickComprobante(file: File | null) {
+    if (!file) {
+      onChange({ ...draft, comprobante: null })
+      return
+    }
+    setPreparing(true)
+    try {
+      onChange({ ...draft, comprobante: await compressReceiptImage(file) })
+    } catch {
+      onChange({ ...draft, comprobante: file })
+    } finally {
+      setPreparing(false)
+    }
+  }
 
   function applyPercent(percent: number) {
     if (pendiente <= 0) return
@@ -109,20 +143,44 @@ export function AbonoPayForm({
           onChange={(event) => onChange({ ...draft, nota: event.target.value })}
         />
       </label>
+      <label>
+        Comprobante
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          disabled={saving || preparing}
+          onChange={(event) => void pickComprobante(event.target.files?.[0] ?? null)}
+        />
+        <small className="app-panel__muted">Opcional. Sube el pantallazo si lo tienes.</small>
+      </label>
+      {preview ? (
+        <div className="abonos-pay__shot">
+          <img className="abono-proof__shot" src={preview} alt="Comprobante listo para enviar" />
+          <button
+            type="button"
+            className="app-panel__btn--ghost"
+            disabled={saving}
+            onClick={() => onChange({ ...draft, comprobante: null })}
+          >
+            <AdminIcon name="x" />
+            Quitar comprobante
+          </button>
+        </div>
+      ) : null}
       <label className="abonos-pay__amount">
         Valor recibido
         <span className="abonos-pay__money">
           <span className="abonos-pay__currency" aria-hidden="true">
             <AdminIcon name="wallet" />
           </span>
-          <input
-            type="number"
+          <NumberPadInput
+            title="Valor recibido"
             min={1}
-            step={1}
-            inputMode="numeric"
+            maxDigits={9}
+            format={formatMoney}
             value={draft.monto}
             disabled={locked}
-            onChange={(event) => onChange({ ...draft, monto: event.target.value })}
+            onChange={(monto) => onChange({ ...draft, monto })}
           />
         </span>
         <span className="abonos-pay__percents" role="group" aria-label="Porcentaje del pendiente">

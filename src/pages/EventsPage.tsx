@@ -6,6 +6,7 @@ import { resolveFileUrl } from '../api/baseUrl'
 import { buildEventListQuery, defaultEventDateRange, endOfMonthDate, eventsApi } from '../api/events'
 import { getApiErrorMessage } from '../api/client'
 import { serviciosApi } from '../api/servicios'
+import { settingsApi } from '../api/settings'
 import type {
   AttendanceEstado,
   AttendanceMember,
@@ -21,6 +22,7 @@ import {
   canAccessClubAttendance,
   canCreateClubEvent,
   canJoinClubEconomicEvent,
+  canViewClubEventGanancias,
   canJoinClubInscriptionEvent,
   canManageClubInscriptions,
   canManageClubServices,
@@ -37,10 +39,15 @@ import { AbonoPayForm, composeAbonoNota, emptyAbonoPayDraft } from '../component
 import {
   emptyParticipantsDraft,
   participantsPayloadFromDraft,
+  ParticipantEventStats,
   ParticipantsMarkList,
+  PendingProofsPanel,
+  pendingProofs,
   saleTotals,
   type ParticipantDraft,
 } from '../components/events/ParticipantsMarkList'
+import { EventActivitySummary } from '../components/events/EventActivitySummary'
+import { EventGananciasPanel } from '../components/events/EventGananciasPanel'
 import { EventSubeventsPanel } from '../components/events/EventSubeventsPanel'
 import { EventTabs, type EventWorkspaceTab } from '../components/events/EventTabs'
 import { EventsFilters } from '../components/events/EventsFilters'
@@ -53,6 +60,7 @@ import {
   memberInitials,
 } from '../components/attendance/AttendanceMarkList'
 import { AppPanel } from '../theme/AppPanel'
+import { AppTabs } from '../theme/AppTabs'
 import { DateInput } from '../theme/DateInput'
 import { useNotice } from '../theme/NoticeProvider'
 import { CreateDrawer } from '../theme/CreateDrawer'
@@ -69,6 +77,8 @@ const emptyForm = () => ({
   ends_at: defaultStart(),
   tipo_evento_id: '',
   estado: 'publicado',
+  ganancia_eclesiastica_id: '',
+  capital: '',
   logo: null as File | null,
   banner: null as File | null,
   removeLogo: false,
@@ -78,6 +88,13 @@ const emptyForm = () => ({
 function toDateInput(value: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
+}
+
+function moneyInput(value?: number | string | null): string {
+  if (value == null || value === '') return ''
+  const amount = Number(value)
+  if (!Number.isFinite(amount) || amount <= 0) return ''
+  return String(Math.round(amount))
 }
 
 function formatPrice(value: number | string): string {
@@ -112,6 +129,8 @@ function formFromEvent(item: EventSummary) {
     ends_at: dateFromApi(item.ends_at),
     tipo_evento_id: item.tipo_evento?.id ? String(item.tipo_evento.id) : '',
     estado: item.estado && item.estado in ESTADO_LABELS ? item.estado : 'publicado',
+    ganancia_eclesiastica_id: item.ganancia_eclesiastica_id ? String(item.ganancia_eclesiastica_id) : '',
+    capital: moneyInput(item.capital),
     logo: null as File | null,
     banner: null as File | null,
     removeLogo: false,
@@ -140,6 +159,10 @@ export function EventsPage() {
   }
   const canCreate = canCreateClubEvent(eventAccess)
   const canEditEvents = canUpdateClubEvent(eventAccess)
+  const canViewGanancias = canViewClubEventGanancias({
+    rolName: ctx?.rol_name,
+    organizacionId: ctx?.organizacion_id,
+  })
   const canTakeAttendance =
     canAccessClubAttendance({
       rolName: ctx?.rol_name,
@@ -172,6 +195,7 @@ export function EventsPage() {
   const [editing, setEditing] = useState<EventSummary | null>(null)
   const [attendanceFor, setAttendanceFor] = useState<EventSummary | null>(null)
   const [participantsFor, setParticipantsFor] = useState<EventSummary | null>(null)
+  const [participantTab, setParticipantTab] = useState<'participantes' | 'ganancias' | 'comprobantes'>('participantes')
   const [joinFor, setJoinFor] = useState<EventSummary | null>(null)
   const [inscriptionsFor, setInscriptionsFor] = useState<EventSummary | null>(null)
   const [members, setMembers] = useState<AttendanceMember[]>([])
@@ -181,6 +205,7 @@ export function EventsPage() {
   const [participantDraft, setParticipantDraft] = useState<ParticipantDraft>({})
   const [serviceCatalog, setServiceCatalog] = useState<ClubServicio[]>([])
   const [serviceIds, setServiceIds] = useState<number[]>([])
+  const [projectedQty, setProjectedQty] = useState<Record<number, string>>({})
   const [servicesLocked, setServicesLocked] = useState(false)
   const [loadingServices, setLoadingServices] = useState(false)
   const [loadingRoster, setLoadingRoster] = useState(false)
@@ -210,6 +235,30 @@ export function EventsPage() {
   participantDraftRef.current = participantDraft
   const selectedTipo = tipos.find((item) => String(item.id) === form.tipo_evento_id)
   const formIsEconomic = isEconomicEvent(selectedTipo)
+
+  useEffect(() => {
+    if ((!formIsEconomic || !canViewGanancias) && eventTab === 'ganancias') setEventTab('ficha')
+  }, [canViewGanancias, eventTab, formIsEconomic])
+
+  useEffect(() => {
+    if (!canViewGanancias || !showForm || !formIsEconomic || form.ganancia_eclesiastica_id) return undefined
+    let cancelled = false
+    settingsApi
+      .eclesiasticas()
+      .then((items) => {
+        if (cancelled || items.length === 0) return
+        const preferred = items.find((item) => item.es_predeterminada) ?? items[0]
+        setForm((current) =>
+          current.ganancia_eclesiastica_id
+            ? current
+            : { ...current, ganancia_eclesiastica_id: String(preferred.id) },
+        )
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [canViewGanancias, showForm, formIsEconomic, form.ganancia_eclesiastica_id])
 
   async function loadEvents() {
     const next = await eventsApi.list(eventQuery)
@@ -287,6 +336,7 @@ export function EventsPage() {
     setEventTab('ficha')
     setForm(emptyForm())
     setServiceIds([])
+    setProjectedQty({})
     setServiceCatalog([])
   }
 
@@ -299,6 +349,7 @@ export function EventsPage() {
     setEventTab('ficha')
     setForm(emptyForm())
     setServiceIds([])
+    setProjectedQty({})
     setShowForm(true)
   }
 
@@ -312,6 +363,16 @@ export function EventsPage() {
     setEventTab('ficha')
     setForm(formFromEvent(item))
     setShowForm(true)
+  }
+
+  async function changeEventEstado(item: EventSummary, estado: string) {
+    try {
+      patchEvent(await eventsApi.changeEstado(item.id, estado))
+      notices.success('Estado actualizado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo cambiar el estado'))
+      throw err
+    }
   }
 
   function patchEvent(next: EventSummary) {
@@ -361,6 +422,7 @@ export function EventsPage() {
       closeForm()
       closeAttendance()
       closeJoin()
+      setParticipantTab('participantes')
       setParticipantsFor(item)
       return
     }
@@ -379,6 +441,7 @@ export function EventsPage() {
 
   function closeParticipants() {
     setParticipantsFor(null)
+    setParticipantTab('participantes')
     setParticipants([])
     setParticipantDraft({})
     setPayingId(null)
@@ -407,6 +470,14 @@ export function EventsPage() {
         setServiceCatalog(catalog)
         if (eventServices) {
           setServiceIds(eventServices.ofertas.map((oferta) => oferta.producto_servicio_id))
+          setProjectedQty(
+            Object.fromEntries(
+              eventServices.ofertas.map((oferta) => [
+                oferta.producto_servicio_id,
+                String(oferta.cantidad_proyectada ?? 0),
+              ]),
+            ),
+          )
           setServicesLocked(Boolean(eventServices.evento.tiene_abonos))
         } else {
           setServicesLocked(false)
@@ -614,6 +685,7 @@ export function EventsPage() {
         monto,
         nota: composeAbonoNota(abonoDraft),
         modo: 'actividad',
+        comprobante: abonoDraft.comprobante,
       })
       setParticipants((current) =>
         current.map((row) => {
@@ -632,6 +704,35 @@ export function EventsPage() {
       notices.error(getApiErrorMessage(err, 'No se pudo registrar el abono'))
     } finally {
       setPayingId(null)
+    }
+  }
+
+  async function reviewParticipantAbono(
+    abono: { id: number },
+    estado: 'aprobado' | 'rechazado',
+    monto?: number,
+  ) {
+    if (!canAbonar) return
+    if (estado === 'aprobado' && (!monto || monto <= 0)) {
+      notices.warning('Escribe el valor que se ve en el pantallazo.')
+      return
+    }
+    try {
+      const next = await abonosApi.review(abono.id, { estado, monto })
+      setParticipants((current) =>
+        current.map((row) => {
+          if (row.persona_id !== next.persona_id) return row
+          return {
+            ...row,
+            abonado: next.abonado,
+            abonos: (row.abonos ?? []).map((item) => (item.id === next.abono.id ? next.abono : item)),
+          }
+        }),
+      )
+      notices.success(estado === 'aprobado' ? 'Abono aprobado.' : 'Abono rechazado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo revisar el abono'))
+      throw err
     }
   }
 
@@ -674,6 +775,14 @@ export function EventsPage() {
       ends_at: toIsoFromDate(form.ends_at, true),
       tipo_evento_id: form.tipo_evento_id ? Number(form.tipo_evento_id) : undefined,
       estado: form.estado,
+      ...(formIsEconomic && canViewGanancias
+        ? {
+            ganancia_eclesiastica_id: form.ganancia_eclesiastica_id
+              ? Number(form.ganancia_eclesiastica_id)
+              : null,
+            capital: Math.max(0, Math.round(Number(form.capital) || 0)),
+          }
+        : {}),
       logo: form.logo,
       banner: form.banner,
       remove_logo: form.removeLogo,
@@ -702,6 +811,54 @@ export function EventsPage() {
     : { unidades: 0, recaudo: 0 }
   const abonoAbonado = Number(abonoFor?.abonado) || 0
   const abonoPendiente = abonoMoney.recaudo - abonoAbonado
+  const pendingProofCount = pendingProofs(participants).length
+  const participantBody = participantTab === 'comprobantes' ? (
+    loadingParticipants ? (
+      <p className="app-panel__muted">Cargando comprobantes…</p>
+    ) : (
+      <PendingProofsPanel
+        members={participants}
+        canReview={canAbonar}
+        onReview={reviewParticipantAbono}
+      />
+    )
+  ) : participantTab === 'ganancias' && canViewGanancias ? (
+    loadingParticipants ? (
+      <p className="app-panel__muted">Cargando integrantes…</p>
+    ) : (
+      <EventActivitySummary
+        members={participants}
+        services={participantServices}
+        draft={participantDraft}
+        capital={Number(participantsFor?.capital) || 0}
+        eventName={participantsFor?.name}
+      />
+    )
+  ) : (
+    <>
+      {loadingParticipants ? <p className="app-panel__muted">Cargando integrantes…</p> : null}
+      {!loadingParticipants && participants.length === 0 ? (
+        <p className="app-panel__muted">Este club todavía no tiene integrantes para marcar participantes.</p>
+      ) : null}
+      {!loadingParticipants && participants.length ? (
+        <ParticipantsMarkList
+          members={participants}
+          services={participantServices}
+          draft={participantDraft}
+          canEdit={canTakeAttendance && !isEconomicParticipationLocked(participantsFor)}
+          canAbonar={canAbonar}
+          participationLocked={isEconomicParticipationLocked(participantsFor)}
+          saving={savingParticipants}
+          payingId={payingId}
+          onChange={setParticipa}
+          onQty={setParticipantQty}
+          onMarkAll={markAllParticipants}
+          onStartAbono={openParticipantAbono}
+          onReviewAbono={reviewParticipantAbono}
+        />
+      ) : null}
+    </>
+  )
 
   return (
     <section className="admin-page admin-page--events">
@@ -727,7 +884,7 @@ export function EventsPage() {
         }
         onClose={closeForm}
         footer={
-          !editing || eventTab === 'ficha' ? (
+          !editing || eventTab === 'ficha' || eventTab === 'ganancias' ? (
             <>
               <button type="button" className="app-panel__btn--ghost" onClick={closeForm}>
                 Cancelar
@@ -739,11 +896,42 @@ export function EventsPage() {
           ) : null
         }
       >
-        {editing ? <EventTabs tab={eventTab} onChange={setEventTab} /> : null}
+        <div className={editing || formIsEconomic ? 'app-tabs has-sheet' : undefined}>
+        {editing || formIsEconomic ? (
+          <EventTabs
+            tab={eventTab}
+            showSubeventos={Boolean(editing)}
+            showGanancias={formIsEconomic && canViewGanancias}
+            onChange={setEventTab}
+          />
+        ) : null}
+        <div className={editing || formIsEconomic ? 'app-tabs__body' : undefined}>
         {editing && eventTab === 'subeventos' ? (
           <EventSubeventsPanel parent={editing} tipos={tipos} canCreate={canCreate} />
         ) : (
         <form id="event-form" className="admin-form event-form" onSubmit={onSave}>
+          {eventTab === 'ganancias' && formIsEconomic && canViewGanancias ? (
+            <EventGananciasPanel
+              value={form.ganancia_eclesiastica_id}
+              services={serviceIds.flatMap((id) => {
+                const service = serviceCatalog.find((item) => item.id === id)
+                if (!service) return []
+                return [{ id: service.id, nombre: service.nombre, precio: Number(service.precio) || 0 }]
+              })}
+              cantidades={projectedQty}
+              capital={form.capital}
+              loadingServices={loadingServices}
+              onChange={(ganancia_eclesiastica_id) =>
+                setForm((current) =>
+                  current.ganancia_eclesiastica_id === ganancia_eclesiastica_id
+                    ? current
+                    : { ...current, ganancia_eclesiastica_id },
+                )
+              }
+              onCapital={(capital) => setForm((current) => ({ ...current, capital }))}
+            />
+          ) : (
+          <>
           <section className="event-form__section">
             <h3>
               <AdminIcon name="eye" />
@@ -909,38 +1097,48 @@ export function EventsPage() {
               </label>
             </div>
           </section>
+          </>
+          )}
         </form>
         )}
+        </div>
+        </div>
       </CreateDrawer>
 
       <CreateDrawer
         open={Boolean(participantsFor)}
         placement={drawerPlacement}
-        title={participantsFor?.name || 'Participantes'}
-        subtitle="Participantes"
+        title={participantsFor?.name || 'Ver evento'}
+        subtitle="Ver evento"
         cover={resolveFileUrl(participantsFor?.banner_url)}
         onClose={closeParticipants}
       >
-        {loadingParticipants ? <p className="app-panel__muted">Cargando integrantes…</p> : null}
-        {!loadingParticipants && participants.length === 0 ? (
-          <p className="app-panel__muted">Este club todavía no tiene integrantes para marcar participantes.</p>
-        ) : null}
-        {!loadingParticipants && participants.length ? (
-          <ParticipantsMarkList
+        {!loadingParticipants ? (
+          <ParticipantEventStats
             members={participants}
             services={participantServices}
             draft={participantDraft}
-            canEdit={canTakeAttendance && !isEconomicParticipationLocked(participantsFor)}
-            canAbonar={canAbonar}
-            participationLocked={isEconomicParticipationLocked(participantsFor)}
-            saving={savingParticipants}
-            payingId={payingId}
-            onChange={setParticipa}
-            onQty={setParticipantQty}
-            onMarkAll={markAllParticipants}
-            onStartAbono={openParticipantAbono}
           />
         ) : null}
+        {canViewGanancias || canAbonar ? (
+          <AppTabs
+            label="Ver evento"
+            value={participantTab}
+            onChange={setParticipantTab}
+            tabs={[
+              { id: 'participantes', label: 'Participantes' },
+              ...(canViewGanancias ? [{ id: 'ganancias' as const, label: 'Ganancias' }] : []),
+              {
+                id: 'comprobantes' as const,
+                label: pendingProofCount ? `Por confirmar (${pendingProofCount})` : 'Por confirmar',
+              },
+            ]}
+          >
+            {participantBody}
+          </AppTabs>
+        ) : (
+          participantBody
+        )}
       </CreateDrawer>
 
       <CreateDrawer
@@ -1033,37 +1231,33 @@ export function EventsPage() {
         />
       ) : null}
 
-      <div className="admin-events__toolbar">
-        <EventsViewToggle
-          view={view}
-          filtersOpen={filtersOpen}
-          onChange={setView}
-          onToggleFilters={() => setFiltersOpen((open) => !open)}
-        >
-          {filtersOpen ? (
-            <EventsFilters
-              estado={estado}
-              tipo={tipo}
-              tipos={tipos}
-              desde={desde}
-              hasta={hasta}
-              onEstado={(value) => setFilter('estado', value)}
-              onTipo={(value) => setFilter('tipo', value)}
-              onDesde={(value) => setFilter('desde', value)}
-              onHasta={(value) => setFilter('hasta', value)}
-            />
-          ) : null}
-        </EventsViewToggle>
-      </div>
-
-      {loading ? <p className="admin-empty">Cargando eventos…</p> : null}
+      <EventsViewToggle
+        view={view}
+        filtersOpen={filtersOpen}
+        onChange={setView}
+        onToggleFilters={() => setFiltersOpen((open) => !open)}
+        filters={
+          <EventsFilters
+            estado={estado}
+            tipo={tipo}
+            tipos={tipos}
+            desde={desde}
+            hasta={hasta}
+            onEstado={(value) => setFilter('estado', value)}
+            onTipo={(value) => setFilter('tipo', value)}
+            onDesde={(value) => setFilter('desde', value)}
+            onHasta={(value) => setFilter('hasta', value)}
+          />
+        }
+      >
+        {loading ? <p className="admin-empty">Cargando eventos…</p> : null}
 
       {!loading && events.length === 0 ? (
         <AppPanel className="admin-events__empty" narrow>
           <p className="app-panel__kicker">Agenda</p>
           <h2 className="app-panel__title">No hay eventos</h2>
           <p className="app-panel__subtitle">
-            {hasListFilters
+            {view === 'cuadricula' && hasListFilters
               ? 'Prueba otro estado, tipo o rango de fechas.'
               : canCreate
                 ? 'Crea el primero para tu club.'
@@ -1087,6 +1281,8 @@ export function EventsPage() {
           onJoin={openJoin}
           onInscriptions={openInscriptions}
           onEdit={openEdit}
+          canChangeEstado={canViewGanancias}
+          onEstadoChange={changeEventEstado}
         />
       ) : null}
 
@@ -1107,10 +1303,13 @@ export function EventsPage() {
               onJoin={openJoin}
               onInscriptions={openInscriptions}
               onEdit={openEdit}
+              canChangeEstado={canViewGanancias && item.organizacion?.id === ctx?.organizacion_id}
+              onEstadoChange={changeEventEstado}
             />
           ))}
         </div>
       ) : null}
+      </EventsViewToggle>
     </section>
   )
 }

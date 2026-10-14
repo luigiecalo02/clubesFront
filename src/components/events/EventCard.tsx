@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AdminIcon } from '../../admin/AdminIcon'
 import { resolveFileUrl } from '../../api/baseUrl'
 import type { EventSummary } from '../../api/types'
@@ -76,21 +77,23 @@ export function isEconomicEvent(
   return slug === ECONOMIC_EVENT_SLUG || name === 'actividad económica' || name === 'actividad economica'
 }
 
+function eventRosterFact(item: EventSummary): { total: number; label: string } {
+  if (isInscribibleEvent(item)) {
+    return { total: item.inscritos_count ?? 0, label: 'Inscritos' }
+  }
+  if (isEconomicEvent(item)) {
+    return { total: item.participantes_count ?? 0, label: 'Participantes' }
+  }
+  return { total: item.asistentes_count ?? 0, label: 'Asistentes' }
+}
+
 export function formatEventRange(start?: string | null, end?: string | null): string {
   return formatDateRange(start, end)
 }
 
 function EventCardKicker({ item }: { item: EventSummary }) {
   const tipo = item.tipo_evento?.nombre || 'Evento'
-  const estado = eventEstadoLabel(item.estado)
-  return (
-    <p className="app-panel__kicker admin-event-card__kicker">
-      <span>{tipo}</span>
-      {estado ? (
-        <span className={`admin-event-card__estado is-${item.estado ?? ''}`}>{estado}</span>
-      ) : null}
-    </p>
-  )
+  return <p className="app-panel__kicker admin-event-card__kicker">{tipo}</p>
 }
 
 type EventCardActionsProps = {
@@ -137,7 +140,7 @@ export function EventCardActions({
       ) : null}
       {showParticipants ? (
         <button type="button" className="app-panel__btn--primary" onClick={() => onAttendance(item)}>
-          Participantes
+          Ver evento
         </button>
       ) : null}
       {showJoin && onJoin ? (
@@ -175,6 +178,8 @@ type EventCardProps = EventCardActionsProps & {
   showHeading?: boolean
   showActions?: boolean
   showMedia?: boolean
+  canChangeEstado?: boolean
+  onEstadoChange?: (item: EventSummary, estado: string) => Promise<void> | void
 }
 
 export function EventCard({
@@ -192,9 +197,24 @@ export function EventCard({
   showHeading = true,
   showActions = true,
   showMedia = true,
+  canChangeEstado = false,
+  onEstadoChange,
 }: EventCardProps) {
+  const [savingEstado, setSavingEstado] = useState(false)
+  const estadoValue = item.estado && item.estado in ESTADO_LABELS ? item.estado : 'publicado'
+
+  async function changeEstado(estado: string) {
+    if (!onEstadoChange || estado === item.estado || savingEstado) return
+    setSavingEstado(true)
+    try {
+      await onEstadoChange(item, estado)
+    } finally {
+      setSavingEstado(false)
+    }
+  }
   const banner = showMedia ? resolveFileUrl(item.banner_url) : null
   const logo = showMedia ? resolveFileUrl(item.image_url) : null
+  const roster = eventRosterFact(item)
   const body = (
     <>
       {banner || logo ? (
@@ -236,12 +256,28 @@ export function EventCard({
         ) : null}
       </div>
       <div className="admin-event-card__facts">
-        <p className="admin-event-card__fact">
-          <strong>{item.inscritos_count ?? 0}</strong>
-          <span>Inscritos</span>
+        <p className="admin-event-card__fact admin-event-card__fact--count">
+          <strong>{roster.total}</strong>
+          <span>{roster.label}</span>
         </p>
-        <p className="admin-event-card__fact">
-          <strong>{eventEstadoLabel(item.estado) || '—'}</strong>
+        <p className={`admin-event-card__fact admin-event-card__fact--estado is-${item.estado ?? ''}`}>
+          {canChangeEstado && onEstadoChange ? (
+            <select
+              className="admin-event-card__estado-select"
+              value={estadoValue}
+              disabled={savingEstado}
+              aria-label="Estado del evento"
+              onChange={(event) => void changeEstado(event.target.value)}
+            >
+              {EVENT_ESTADO_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <strong>{eventEstadoLabel(item.estado) || '—'}</strong>
+          )}
           <span>Estado</span>
         </p>
         {item.visibilidad ? (

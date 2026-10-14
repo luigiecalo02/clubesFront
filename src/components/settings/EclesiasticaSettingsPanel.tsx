@@ -66,7 +66,7 @@ export function EclesiasticaSettingsPanel({ canUpdate }: EclesiasticaSettingsPan
         setDistribuciones(nextDist)
       })
       .catch((err) => {
-        if (!cancelled) notices.error(getApiErrorMessage(err, 'No se pudo cargar la configuración eclesiástica'))
+        if (!cancelled) notices.error(getApiErrorMessage(err, 'No se pudo cargar la distribución de ganancias'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -118,15 +118,15 @@ export function EclesiasticaSettingsPanel({ canUpdate }: EclesiasticaSettingsPan
     try {
       if (editing) {
         await settingsApi.updateEclesiastica(editing.id, payload)
-        notices.success('Configuración eclesiástica actualizada.')
+        notices.success('Distribución de ganancias actualizada.')
       } else {
         await settingsApi.createEclesiastica(payload)
-        notices.success('Configuración eclesiástica creada.')
+        notices.success('Distribución de ganancias creada.')
       }
       await loadAll()
       closeDrawer()
     } catch (err) {
-      notices.error(getApiErrorMessage(err, 'No se pudo guardar la configuración eclesiástica'))
+      notices.error(getApiErrorMessage(err, 'No se pudo guardar la distribución de ganancias'))
     } finally {
       setSubmitting(false)
     }
@@ -137,11 +137,11 @@ export function EclesiasticaSettingsPanel({ canUpdate }: EclesiasticaSettingsPan
     if (!window.confirm(`¿Borrar “${item.nombre}”?`)) return
     try {
       await settingsApi.deleteEclesiastica(item.id)
-      notices.success('Configuración eclesiástica eliminada.')
+      notices.success('Distribución de ganancias eliminada.')
       await loadAll()
       if (editing?.id === item.id) closeDrawer()
     } catch (err) {
-      notices.error(getApiErrorMessage(err, 'No se pudo borrar la configuración eclesiástica'))
+      notices.error(getApiErrorMessage(err, 'No se pudo borrar la distribución de ganancias'))
     }
   }
 
@@ -151,8 +151,8 @@ export function EclesiasticaSettingsPanel({ canUpdate }: EclesiasticaSettingsPan
         <button
           type="button"
           className={`admin-fab${open ? ' is-open' : ''}`}
-          aria-label={open ? 'Cerrar formulario' : 'Crear configuración eclesiástica'}
-          title={open ? 'Cerrar formulario' : 'Crear configuración eclesiástica'}
+          aria-label={open ? 'Cerrar formulario' : 'Crear distribución de ganancias'}
+          title={open ? 'Cerrar formulario' : 'Crear distribución de ganancias'}
           onClick={() => (open ? closeDrawer() : openCreate())}
         >
           <span aria-hidden="true">{open ? '×' : '+'}</span>
@@ -162,7 +162,7 @@ export function EclesiasticaSettingsPanel({ canUpdate }: EclesiasticaSettingsPan
       <CreateDrawer
         open={open}
         title={editing ? editing.nombre : 'Nueva configuración'}
-        subtitle="Eclesiástica"
+        subtitle="Distribución de ganancias"
         onClose={closeDrawer}
         footer={
           canUpdate ? (
@@ -234,7 +234,7 @@ export function EclesiasticaSettingsPanel({ canUpdate }: EclesiasticaSettingsPan
                 {distribuciones.map((row) => (
                   <option key={row.id} value={row.id}>
                     {row.nombre}
-                    {row.es_predeterminada ? ' · predeterminada' : ''}
+                    {row.es_predeterminada ? ' · por defecto' : ''}
                   </option>
                 ))}
               </select>
@@ -255,17 +255,17 @@ export function EclesiasticaSettingsPanel({ canUpdate }: EclesiasticaSettingsPan
                   setForm((current) => ({ ...current, es_predeterminada: event.target.checked }))
                 }
               />
-              <span>Predeterminada del club</span>
+              <span>Por defecto del club</span>
             </label>
           </form>
         )}
       </CreateDrawer>
 
-      {loading ? <p className="admin-empty">Cargando configuración eclesiástica…</p> : null}
+      {loading ? <p className="admin-empty">Cargando distribución de ganancias…</p> : null}
 
       {!loading && items.length === 0 ? (
         <AppPanel className="admin-events__empty" narrow>
-          <p className="app-panel__kicker">Eclesiástica</p>
+          <p className="app-panel__kicker">Distribución de ganancias</p>
           <h2 className="app-panel__title">No hay configuraciones</h2>
           <p className="app-panel__subtitle">
             {distribuciones.length === 0
@@ -279,7 +279,7 @@ export function EclesiasticaSettingsPanel({ canUpdate }: EclesiasticaSettingsPan
 
       {!loading && items.length ? (
         <AppPanel shine={false}>
-          <p className="app-panel__kicker">Eclesiástica</p>
+          <p className="app-panel__kicker">Distribución de ganancias</p>
           <h2 className="app-panel__title">Configuración financiera</h2>
           <p className="app-panel__subtitle">
             Diezmo y ofrenda salen del total. El resto se reparte con la distribución elegida.
@@ -305,7 +305,7 @@ export function EclesiasticaSettingsPanel({ canUpdate }: EclesiasticaSettingsPan
                     <td>{formatPercent(item.ofrenda)}</td>
                     <td>{formatPercent(item.resto)}</td>
                     <td>{item.distribucion?.nombre || '—'}</td>
-                    <td>{item.es_predeterminada ? 'Predeterminada' : '—'}</td>
+                    <td>{item.es_predeterminada ? 'Por defecto' : '—'}</td>
                     {canUpdate ? (
                       <td>
                         <div className="admin-service-actions">

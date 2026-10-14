@@ -6,12 +6,12 @@ import { resolveFileUrl } from '../../api/baseUrl'
 import { eventsApi } from '../../api/events'
 import type { AbonosBoard, AttendanceEstado, AttendanceMemberHistory, EventSummary } from '../../api/types'
 import { AdminIcon } from '../../admin/AdminIcon'
-import type { AdminIconName } from '../../admin/menu'
-import { canAccessClubAbonos } from '../../admin/menu'
+import { MY_ABONOS, MY_ABONOS_REGISTER_PERMISSION, type AdminIconName } from '../../admin/menu'
 import { useAuth } from '../../auth/AuthProvider'
 import { memberInitials } from '../attendance/AttendanceMarkList'
 import { formatMoney } from '../presupuesto/presupuestoView'
 import { AppPanel } from '../../theme/AppPanel'
+import { AppTabs } from '../../theme/AppTabs'
 import { formatDate } from '../../theme/dates'
 import '../../theme/home-start.css'
 
@@ -117,10 +117,7 @@ export function HomeStartCard() {
   const user = auth.user
   const ctx = user?.contexto
   const personaId = user?.persona_id ?? null
-  const canOpenAbonos = auth.can('abonos.view') || canAccessClubAbonos({
-    rolName: ctx?.rol_name,
-    organizacionId: ctx?.organizacion_id,
-  })
+  const canOpenMyAbonos = auth.can('mis_abonos.view') && auth.can(MY_ABONOS_REGISTER_PERMISSION)
   const canOpenEvents = auth.can('events.view')
   const [tab, setTab] = useState<ActivityTab>('recientes')
   const [hideSaldo, setHideSaldo] = useState(false)
@@ -188,21 +185,31 @@ export function HomeStartCard() {
       </span>
       <span>
         <small>Mi saldo</small>
-        <strong>{hideSaldo ? '***' : formatMoney(saldo)}</strong>
+        {saldo <= 0 ? (
+          <strong className="home-start__paid">
+            <AdminIcon name="check" />
+            Al día
+          </strong>
+        ) : (
+          <strong>{hideSaldo ? '***' : formatMoney(saldo)}</strong>
+        )}
       </span>
       <span className="home-start__action-tools">
-        <button
-          type="button"
-          className="home-start__eye"
-          aria-pressed={hideSaldo}
-          aria-label={hideSaldo ? 'Mostrar saldo' : 'Ocultar saldo'}
-          onClick={() => setHideSaldo((current) => !current)}
-        >
-          <AdminIcon name={hideSaldo ? 'eyeOff' : 'eye'} />
-        </button>
-        {canOpenAbonos ? (
-          <Link to="/abonos" aria-label="Ver abonos">
-            <AdminIcon name="chevronRight" />
+        {saldo > 0 ? (
+          <button
+            type="button"
+            className="home-start__eye"
+            aria-pressed={hideSaldo}
+            aria-label={hideSaldo ? 'Mostrar saldo' : 'Ocultar saldo'}
+            onClick={() => setHideSaldo((current) => !current)}
+          >
+            <AdminIcon name={hideSaldo ? 'eyeOff' : 'eye'} />
+          </button>
+        ) : null}
+        {saldo > 0 && canOpenMyAbonos ? (
+          <Link className="app-panel__btn--primary home-start__pay" to={MY_ABONOS}>
+            <AdminIcon name="wallet" />
+            Abonar
           </Link>
         ) : null}
       </span>
@@ -285,22 +292,15 @@ export function HomeStartCard() {
           ) : null}
         </header>
 
-        <div className="home-start__tabs" role="tablist" aria-label="Actividades">
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.id}
-              className={tab === item.id ? 'is-on' : undefined}
-              onClick={() => setTab(item.id)}
-            >
-              <AdminIcon name={item.icon} />
-              {item.label}
-            </button>
-          ))}
-        </div>
-
+        <AppTabs
+          label="Actividades"
+          value={tab}
+          onChange={setTab}
+          tabs={TABS.map((item) => ({
+            id: item.id,
+            label: <><AdminIcon name={item.icon} /> {item.label}</>,
+          }))}
+        >
         {loading ? <p className="app-panel__muted">Cargando tu resumen…</p> : null}
 
         {!loading && visible.length === 0 ? (
@@ -341,6 +341,7 @@ export function HomeStartCard() {
             })}
           </ul>
         ) : null}
+        </AppTabs>
       </AppPanel>
     </section>
   )

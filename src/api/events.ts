@@ -9,6 +9,8 @@ export type CreateEventPayload = {
   ends_at: string
   tipo_evento_id?: number | null
   estado?: string
+  ganancia_eclesiastica_id?: number | null
+  capital?: number | null
   evento_padre_id?: number | null
   logo?: File | null
   banner?: File | null
@@ -25,6 +27,13 @@ function eventFormData(payload: CreateEventPayload): FormData {
   body.append('ends_at', payload.ends_at)
   if (payload.tipo_evento_id) body.append('tipo_evento_id', String(payload.tipo_evento_id))
   if (payload.estado) body.append('estado', payload.estado)
+  if (payload.ganancia_eclesiastica_id !== undefined) {
+    body.append(
+      'ganancia_eclesiastica_id',
+      payload.ganancia_eclesiastica_id ? String(payload.ganancia_eclesiastica_id) : '',
+    )
+  }
+  if (payload.capital != null) body.append('capital', String(payload.capital))
   if (payload.evento_padre_id) body.append('evento_padre_id', String(payload.evento_padre_id))
   if (payload.logo) body.append('logo', payload.logo)
   if (payload.banner) body.append('banner', payload.banner)
@@ -79,12 +88,10 @@ export function buildEventListQuery(filters: {
   const tipo = Number(filters.tipo)
   const desde = filters.desde?.trim() || defaults.desde
   const hasta = filters.hasta?.trim() || defaults.hasta
-  const hasEstado = estado !== '' && estado !== 'vigentes'
   const query: EventListQuery = { desde, hasta }
 
-  if (hasEstado && estado !== 'todos') query.estado = estado
+  if (estado && estado !== 'todos' && estado !== 'vigentes') query.estado = estado
   if (Number.isInteger(tipo) && tipo > 0) query.tipo_evento_id = tipo
-  if (!hasEstado) query.proximos = true
 
   return query
 }
@@ -136,6 +143,14 @@ export const eventsApi = {
       `/api/v1/settings/clubes/events/${id}`,
       eventFormData(payload),
       formDataRequest,
+    )
+    return data.data
+  },
+
+  async changeEstado(id: number, estado: string): Promise<EventSummary> {
+    const { data } = await api.patch<ApiEnvelope<EventSummary>>(
+      `/api/v1/settings/clubes/events/${id}/estado`,
+      { estado },
     )
     return data.data
   },

@@ -3,7 +3,6 @@ import { personasApi } from '../api/personas'
 import { getApiErrorMessage } from '../api/client'
 import type { ClubPerson } from '../api/types'
 import {
-  canAccessClubAbonos,
   canAccessClubAttendance,
   canCreateClubMember,
   canImpersonateClubMember,
@@ -27,7 +26,7 @@ export function MembersPage() {
   const canCreate = canCreateClubMember(access)
   const canUpdate = canUpdateClubMember(access)
   const canImpersonate = canImpersonateClubMember(access)
-  const canViewSaldos = canAccessClubAbonos(access) || auth.can('abonos.view')
+  const canViewSaldos = auth.can('abonos.view')
   const canViewAttendance = canAccessClubAttendance(access) || auth.can('asistencia.view')
   const [members, setMembers] = useState<ClubPerson[]>([])
   const [query, setQuery] = useState('')

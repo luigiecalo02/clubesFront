@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { resolveFileUrl } from '../../api/baseUrl'
 import type { EventSummary, EventTipo } from '../../api/types'
 import { AppPanel } from '../../theme/AppPanel'
@@ -22,6 +22,8 @@ type EventBoardProps = {
   onJoin?: (item: EventSummary) => void
   onInscriptions?: (item: EventSummary) => void
   onEdit: (item: EventSummary) => void
+  canChangeEstado?: boolean
+  onEstadoChange?: (item: EventSummary, estado: string) => Promise<void> | void
 }
 
 export function EventBoard({
@@ -40,11 +42,18 @@ export function EventBoard({
   onJoin,
   onInscriptions,
   onEdit,
+  canChangeEstado = false,
+  onEstadoChange,
 }: EventBoardProps) {
   const [tab, setTab] = useState<EventWorkspaceTab>('ficha')
   const [count, setCount] = useState(item.hijos_count ?? 0)
-  const banner = resolveFileUrl(item.banner_url)
-  const logo = resolveFileUrl(item.image_url)
+  const showSubeventos = count > 0 || canManageSubevents
+
+  useEffect(() => {
+    if (!showSubeventos && tab === 'subeventos') setTab('ficha')
+  }, [showSubeventos, tab])
+  const banner = framed ? resolveFileUrl(item.banner_url) : null
+  const logo = framed ? resolveFileUrl(item.image_url) : null
   const headClass = [
     'admin-event-card__head-bar',
     banner ? 'has-banner' : '',
@@ -62,9 +71,11 @@ export function EventBoard({
             {logo ? <img src={logo} alt="" className="admin-event-card__logo" /> : null}
           </div>
         ) : null}
-        <div className={headClass}>
-          <EventTabs tab={tab} count={count} onChange={setTab} />
-        </div>
+        {showSubeventos ? (
+          <div className={headClass}>
+            <EventTabs tab={tab} count={count} showSubeventos onChange={setTab} />
+          </div>
+        ) : null}
       </div>
       {tab === 'ficha' ? (
         <EventCard
@@ -82,6 +93,8 @@ export function EventBoard({
           onJoin={onJoin}
           onInscriptions={onInscriptions}
           onEdit={onEdit}
+          canChangeEstado={canChangeEstado}
+          onEstadoChange={onEstadoChange}
         />
       ) : (
         <EventSubeventsPanel

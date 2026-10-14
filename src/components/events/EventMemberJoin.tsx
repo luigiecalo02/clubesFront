@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { abonosApi } from '../../api/abonos'
 import { resolveFileUrl } from '../../api/baseUrl'
 import { getApiErrorMessage } from '../../api/client'
 import { serviciosApi } from '../../api/servicios'
 import type { AbonoMovimiento, EventParticipantService, EventSummary } from '../../api/types'
 import { AdminIcon } from '../../admin/AdminIcon'
+import { MY_ABONOS_REGISTER_PERMISSION } from '../../admin/menu'
+import { useAuth } from '../../auth/AuthProvider'
+import { AbonoProofReview, AbonoShotButton, abonoEstadoLabel } from '../abonos/AbonoProofReview'
 import { isEconomicParticipationLocked } from './EventCard'
-import { AppPanel } from '../../theme/AppPanel'
+import { compressReceiptImage } from '../../theme/cropImage'
+import { AppTabs } from '../../theme/AppTabs'
 import { CreateDrawer } from '../../theme/CreateDrawer'
 import { formatDate } from '../../theme/dates'
 import { useNotice } from '../../theme/NoticeProvider'
+import { NumberPadDialog } from '../../theme/NumberPad'
 import { ServiceThumb } from '../services/ServiceVisual'
+import { ProgressBar, SummaryDonut, SummaryKpi, summaryPercent } from './SummaryCards'
 import '../../theme/attendance-mark.css'
 
 type EventMemberJoinProps = {
@@ -27,6 +33,15 @@ function formatPrice(value: number | string): string {
 function servicePrice(service: EventParticipantService): number {
   const amount = Number(service.precio)
   return Number.isFinite(amount) ? amount : 0
+}
+
+function memberGanancia(recaudo: number, abonado: number, capital: number, otros: number) {
+  const venta = Math.max(0, recaudo)
+  const total = Math.max(0, otros) + venta
+  if (total <= 0 || venta <= 0) return { ganada: 0, proyectada: 0 }
+  const proyectada = ((total - capital) * venta) / total
+  const cubierto = Math.min(Math.max(0, abonado), venta)
+  return { ganada: (proyectada * cubierto) / venta, proyectada }
 }
 
 function saleTotals(services: EventParticipantService[], ventas: Record<number, number>) {
@@ -63,6 +78,8 @@ function ventasPayload(ventas: Record<number, number>) {
 
 export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
   const notices = useNotice()
+  const auth = useAuth()
+  const canRegisterAbono = auth.can(MY_ABONOS_REGISTER_PERMISSION)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [services, setServices] = useState<EventParticipantService[]>([])
@@ -70,13 +87,19 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
   const [already, setAlready] = useState(false)
   const [abonado, setAbonado] = useState(0)
   const [abonos, setAbonos] = useState<AbonoMovimiento[]>([])
+  const [capital, setCapital] = useState(0)
+  const [proyeccionOtros, setProyeccionOtros] = useState(0)
   const [tab, setTab] = useState<'servicios' | 'historial'>('servicios')
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [proofPreview, setProofPreview] = useState<string | null>(null)
+  const [sendingProof, setSendingProof] = useState(false)
   const [padId, setPadId] = useState<number | null>(null)
-  const [padDraft, setPadDraft] = useState('')
   const totals = useMemo(() => saleTotals(services, ventas), [services, ventas])
   const padService = services.find((service) => service.id === padId) ?? null
   const faltante = totals.recaudo - abonado
+  const ganancia = memberGanancia(totals.recaudo, abonado, capital, proyeccionOtros)
   const locked = isEconomicParticipationLocked(event)
+  const canSendProof = canRegisterAbono && event.estado === 'en_proceso' && already && !loading
 
   useEffect(() => {
     let cancelled = false
@@ -92,6 +115,8 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
         )
         setAbonado(Number(data.recaudo?.abonado) || 0)
         setAbonos(data.recaudo?.abonos ?? [])
+        setCapital(Number(data.ganancia?.capital) || 0)
+        setProyeccionOtros(Number(data.ganancia?.proyeccion_otros) || 0)
       })
       .catch((err) => {
         if (cancelled) return
@@ -109,29 +134,43 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
   function setQty(productoServicioId: number, cantidad: number) {
     const qty = Number.isFinite(cantidad) ? Math.max(0, Math.floor(cantidad)) : 0
     setVentas((current) => ({ ...current, [productoServicioId]: qty }))
-    if (padId === productoServicioId) setPadDraft(String(qty))
   }
 
-  function openPad(productoServicioId: number, cantidad: number) {
+  function openPad(productoServicioId: number) {
     if (saving || locked) return
     setPadId(productoServicioId)
-    setPadDraft(String(cantidad))
   }
 
-  function typeDigit(digit: string) {
-    setPadDraft((current) => {
-      const next = current === '0' ? digit : `${current}${digit}`
-      return next.slice(0, 4)
-    })
+  async function pickProof(file: File | null) {
+    if (proofPreview) URL.revokeObjectURL(proofPreview)
+    setProofFile(null)
+    setProofPreview(null)
+    if (!file) return
+    try {
+      const compact = await compressReceiptImage(file)
+      setProofFile(compact)
+      setProofPreview(URL.createObjectURL(compact))
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo preparar el pantallazo'))
+    }
   }
 
-  function clearPad() {
-    setPadDraft('0')
-  }
-
-  function confirmPad(productoServicioId: number) {
-    setQty(productoServicioId, Number(padDraft) || 0)
-    setPadId(null)
+  async function submitProof() {
+    if (!canSendProof || !proofFile || sendingProof) return
+    setSendingProof(true)
+    try {
+      const next = await abonosApi.submitComprobante(event.id, proofFile)
+      setAbonado(Number(next.abonado) || 0)
+      setAbonos(next.abonos ?? [])
+      if (proofPreview) URL.revokeObjectURL(proofPreview)
+      setProofFile(null)
+      setProofPreview(null)
+      notices.success('Abono enviado. Queda pendiente hasta que la directiva lo apruebe.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo enviar el abono'))
+    } finally {
+      setSendingProof(false)
+    }
   }
 
   async function persist(participa: boolean) {
@@ -161,13 +200,8 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
       footer={
         loading || locked ? null : (
           <>
-            <button
-              type="button"
-              className="app-panel__btn--ghost"
-              disabled={saving}
-              onClick={() => void persist(false)}
-            >
-              No participo
+            <button type="button" className="app-panel__btn--ghost" onClick={onClose}>
+              Cerrar
             </button>
             <button
               type="button"
@@ -185,52 +219,81 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
       {!loading ? (
         <div className="attendance-mark attendance-mark--join">
           <p className="app-panel__subtitle">
-            {locked
-              ? 'La actividad ya no admite inscripciones. Aquí solo puedes consultar tus cantidades, el recaudo y los abonos.'
-              : 'Elige cuántas unidades vas a vender. Quedas marcado como participante, igual que si la directiva te inscribiera.'}
+            {canSendProof && faltante <= 0
+              ? 'La actividad está en proceso. Ya no tienes saldo pendiente en esta actividad.'
+              : canSendProof
+                ? 'La actividad está en proceso. Puedes enviar el pantallazo de tu abono. Queda pendiente hasta que la directiva lo apruebe.'
+                : locked
+                  ? 'La actividad ya no admite inscripciones. Aquí solo puedes consultar tus cantidades, el recaudo y los abonos.'
+                  : 'Elige cuántas unidades vas a vender. Quedas marcado como participante, igual que si la directiva te inscribiera.'}
           </p>
           <div className="attendance-mark__toolbar">
-            <div className="attendance-mark__stats" aria-live="polite">
-              <p className="attendance-mark__stat attendance-mark__stat--puntual">
-                <strong>{totals.unidades}</strong>
-                <span>A vender</span>
-              </p>
-              <p className="attendance-mark__stat attendance-mark__stat--puntual">
-                <strong>{formatPrice(totals.recaudo)}</strong>
-                <span>Recaudo</span>
-              </p>
-              <p className="attendance-mark__stat attendance-mark__stat--presente">
-                <strong>{formatPrice(abonado)}</strong>
-                <span>Abonado</span>
-              </p>
-              <p className="attendance-mark__stat attendance-mark__stat--ausente">
-                <strong>{formatPrice(faltante)}</strong>
-                <span>Faltante</span>
-              </p>
+            <div className="event-stats" aria-live="polite">
+              <SummaryKpi icon="box" tone="gold" label="A vender" value={totals.unidades}>
+                <small>Unidades en total</small>
+              </SummaryKpi>
+              <SummaryKpi icon="calculator" tone="info" label="Recaudo" value={formatPrice(totals.recaudo)}>
+                <ProgressBar value={totals.recaudo > 0 ? 100 : 0} tone="info" />
+                <small>Lo que vas a vender</small>
+              </SummaryKpi>
+              <SummaryKpi
+                icon="coins"
+                tone={ganancia.ganada < 0 ? 'danger' : 'ok'}
+                label="Ganancia real"
+                value={formatPrice(ganancia.ganada)}
+              >
+                <ProgressBar value={summaryPercent(ganancia.ganada, ganancia.proyectada)} />
+                <small>Según lo ya abonado</small>
+              </SummaryKpi>
+              <SummaryKpi
+                icon="trendUp"
+                tone={ganancia.proyectada < 0 ? 'danger' : 'gold'}
+                label="Ganancia proyectada"
+                value={formatPrice(ganancia.proyectada)}
+              >
+                <small>Si vendes todo</small>
+              </SummaryKpi>
+              <SummaryKpi
+                icon="wallet"
+                tone="ok"
+                label="Ingresado en abonos"
+                value={formatPrice(abonado)}
+                className="is-paid is-wide"
+              >
+                <SummaryDonut value={summaryPercent(abonado, totals.recaudo)} label="del total" tone="ok" />
+              </SummaryKpi>
+              <SummaryKpi
+                icon="target"
+                tone="danger"
+                label="Falta por cobrar"
+                value={formatPrice(Math.max(0, faltante))}
+                className="is-debt is-wide"
+              >
+                <SummaryDonut value={summaryPercent(Math.max(0, faltante), totals.recaudo)} label="del total" />
+              </SummaryKpi>
             </div>
+            {canSendProof && faltante > 0 ? (
+              <button type="button" className="app-panel__btn--primary" onClick={() => setTab('historial')}>
+                <AdminIcon name="wallet" />
+                Abonar
+              </button>
+            ) : null}
+            {canSendProof && faltante <= 0 ? (
+              <span className="attendance-mark__paid">
+                <AdminIcon name="check" />
+                Al día
+              </span>
+            ) : null}
           </div>
-          <div className="admin-events__view-tabs" role="tablist" aria-label="Detalle de tu venta">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'servicios'}
-              className={`admin-events__view${tab === 'servicios' ? ' is-on' : ''}`}
-              onClick={() => setTab('servicios')}
-            >
-              <AdminIcon name="box" />
-              Servicios
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'historial'}
-              className={`admin-events__view${tab === 'historial' ? ' is-on' : ''}`}
-              onClick={() => setTab('historial')}
-            >
-              <AdminIcon name="wallet" />
-              Historial
-            </button>
-          </div>
+          <AppTabs
+            label="Detalle de tu venta"
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { id: 'servicios', label: <><AdminIcon name="box" /> Servicios</> },
+              { id: 'historial', label: <><AdminIcon name="wallet" /> Historial</> },
+            ]}
+          >
           {tab === 'servicios' && services.length === 0 ? (
             <p className="app-panel__hint">Esta actividad todavía no tiene servicios asociados.</p>
           ) : null}
@@ -266,10 +329,10 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
                         aria-label={`Editar cantidad de ${service.nombre}`}
                         aria-expanded={padId === service.id}
                         disabled={saving || locked}
-                        onClick={() => openPad(service.id, cantidad)}
+                        onClick={() => openPad(service.id)}
                       >
                         <span>Cantidad</span>
-                        <strong>{padId === service.id ? padDraft || '0' : cantidad}</strong>
+                        <strong>{cantidad}</strong>
                       </button>
                       <button
                         type="button"
@@ -285,6 +348,29 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
               })}
             </ul>
           ) : null}
+          {tab === 'historial' && canSendProof && faltante > 0 ? (
+            <form
+              className="abono-proof-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void submitProof()
+              }}
+            >
+              <label>
+                Pantallazo del abono
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={sendingProof}
+                  onChange={(event) => void pickProof(event.target.files?.[0] ?? null)}
+                />
+              </label>
+              {proofPreview ? <img className="abono-proof__shot" src={proofPreview} alt="Pantallazo listo para enviar" /> : null}
+              <button type="submit" className="app-panel__btn--primary" disabled={sendingProof || !proofFile}>
+                {sendingProof ? 'Enviando…' : 'Enviar abono'}
+              </button>
+            </form>
+          ) : null}
           {tab === 'historial' && abonos.length === 0 ? (
             <p className="app-panel__hint">Todavía no hay abonos registrados en esta actividad.</p>
           ) : null}
@@ -296,42 +382,30 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
                     {formatAbonoWhen(abono.created_at)}
                     {abono.nota ? ` · ${abono.nota}` : ''}
                   </span>
-                  <strong>{formatPrice(abono.monto)}</strong>
+                  <span className="attendance-mark__abono-end">
+                    <AbonoShotButton abono={abono} />
+                    <strong>{abonoEstadoLabel(abono) ?? formatPrice(abono.monto)}</strong>
+                  </span>
+                  <AbonoProofReview abono={abono} hideShot />
                 </li>
               ))}
             </ul>
           ) : null}
           {saving ? <p className="app-panel__muted">Guardando…</p> : null}
+          </AppTabs>
         </div>
       ) : null}
-      {padService
-        ? createPortal(
-            <div className="attendance-mark__pad-modal" role="dialog" aria-modal="true" aria-label={`Cantidad de ${padService.nombre}`}>
-              <button type="button" className="attendance-mark__pad-backdrop" aria-label="Cerrar" onClick={() => setPadId(null)} />
-              <AppPanel shine={false} className="attendance-mark__pad">
-                <p className="app-panel__kicker">{padService.nombre}</p>
-                <strong className="attendance-mark__pad-readout">{padDraft || '0'}</strong>
-                <div className="attendance-mark__pad-keys">
-                  {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
-                    <button key={digit} type="button" onClick={() => typeDigit(digit)}>
-                      {digit}
-                    </button>
-                  ))}
-                  <button type="button" className="is-clear" onClick={clearPad}>
-                    Borrar
-                  </button>
-                  <button type="button" onClick={() => typeDigit('0')}>
-                    0
-                  </button>
-                  <button type="button" className="is-enter" onClick={() => confirmPad(padService.id)}>
-                    Enter
-                  </button>
-                </div>
-              </AppPanel>
-            </div>,
-            document.querySelector('.admin-shell') ?? document.body,
-          )
-        : null}
+      {padService ? (
+        <NumberPadDialog
+          title={padService.nombre}
+          value={ventas[padService.id] ?? 0}
+          onClose={() => setPadId(null)}
+          onConfirm={(cantidad) => {
+            setQty(padService.id, cantidad)
+            setPadId(null)
+          }}
+        />
+      ) : null}
     </CreateDrawer>
   )
 }

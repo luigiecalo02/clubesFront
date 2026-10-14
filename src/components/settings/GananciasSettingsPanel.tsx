@@ -230,7 +230,7 @@ export function GananciasSettingsPanel({ canUpdate }: GananciasSettingsPanelProp
                 setForm((current) => ({ ...current, es_predeterminada: event.target.checked }))
               }
             />
-            <span>Predeterminada del club</span>
+            <span>Por defecto del club</span>
           </label>
         </form>
       </CreateDrawer>
@@ -275,7 +275,7 @@ export function GananciasSettingsPanel({ canUpdate }: GananciasSettingsPanelProp
                     <td>{formatPercent(item.club)}</td>
                     <td>{formatPercent(item.miembros)}</td>
                     <td>{formatPercent(item.extras)}</td>
-                    <td>{item.es_predeterminada ? 'Predeterminada' : '—'}</td>
+                    <td>{item.es_predeterminada ? 'Por defecto' : '—'}</td>
                     {canUpdate ? (
                       <td>
                         <div className="admin-service-actions">

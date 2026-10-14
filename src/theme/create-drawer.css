@@ -1,21 +1,26 @@
 .create-drawer {
   position: fixed;
-  top: var(--admin-topbar-height, calc(4.65rem + env(safe-area-inset-top, 0px)));
+  top: 0;
   right: 0;
   bottom: 0;
   left: var(--admin-sidebar-width, 16.5rem);
-  z-index: 14;
+  z-index: 20;
   display: grid;
+  overflow: visible;
+  overscroll-behavior: contain;
+  border-radius: 0;
   transition: left 0.22s ease;
 }
 
 .create-drawer--stacked {
-  z-index: 18;
+  z-index: 24;
 }
 
 .create-drawer--half .app-panel.create-drawer__panel {
+  left: auto;
   width: 50%;
   --panel-width: 50%;
+  --panel-radius: 1.4rem 0 0 1.4rem;
 }
 
 .create-drawer__backdrop {
@@ -35,12 +40,12 @@
   top: 0;
   right: 0;
   bottom: 0;
-  left: auto;
+  left: 0.75rem;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  width: 90%;
-  --panel-width: 90%;
+  width: auto;
+  --panel-width: auto;
   --panel-max-width: none;
   --panel-radius: 1.4rem 0 0 1.4rem;
   overflow: hidden;
@@ -49,6 +54,27 @@
 
 .admin-shell--day .app-panel.create-drawer__panel {
   --panel-bg: rgb(255 255 255 / 0.66);
+}
+
+@media (min-width: 901px) {
+  .admin-main:has(> .create-drawer) {
+    z-index: 17;
+  }
+
+  .app-panel.create-drawer__panel {
+    left: -0.85rem;
+    --panel-shadow:
+      -26px 0 48px -10px rgb(0 0 0 / 0.5),
+      -4px 0 12px rgb(0 0 0 / 0.22),
+      inset 1px 0 0 rgb(255 255 255 / 0.16);
+  }
+
+  .admin-shell--day .app-panel.create-drawer__panel {
+    --panel-shadow:
+      -26px 0 48px -10px rgb(15 23 42 / 0.32),
+      -4px 0 12px rgb(15 23 42 / 0.16),
+      inset 1px 0 0 rgb(255 255 255 / 0.5);
+  }
 }
 
 .create-drawer__head {
@@ -114,7 +140,9 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: end;
-  min-height: 12rem;
+  flex: none;
+  height: 9.5rem;
+  min-height: 9.5rem;
   margin: -0.85rem -1.1rem 0;
   padding: 0;
   overflow: hidden;
@@ -131,6 +159,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
 }
 
 .create-drawer__cover-fade {
@@ -184,8 +213,9 @@
   align-self: start;
   z-index: 2;
   margin: 0.65rem 0.75rem 0 0;
-  background: rgb(8 14 24 / 0.55);
-  color: #fff;
+  background: var(--panel-btn-bg);
+  color: var(--panel-btn-text);
+  box-shadow: var(--panel-btn-shadow);
 }
 
 .create-drawer__close {
@@ -216,6 +246,7 @@
   gap: 0.85rem;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
   padding: 0.85rem 0.35rem 0.85rem 0;
 }
 
@@ -286,15 +317,27 @@
 }
 
 .create-drawer--bottom .app-panel.create-drawer__panel {
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  --panel-width: 100%;
+  top: 0.85rem;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  left: 0.85rem;
+  width: auto;
+  --panel-width: auto;
   max-height: none;
-  --panel-radius: 1.4rem 1.4rem 0 0;
+  --panel-radius: 1.4rem;
   animation-name: create-drawer-up;
+}
+
+.create-drawer.is-closing {
+  overflow: hidden;
+}
+
+.create-drawer.is-closing .app-panel.create-drawer__panel {
+  animation: create-drawer-out 0.32s ease forwards;
+}
+
+.create-drawer.is-closing.create-drawer--bottom .app-panel.create-drawer__panel {
+  animation-name: create-drawer-down-out;
 }
 
 @keyframes create-drawer-in {
@@ -306,12 +349,39 @@
   }
 }
 
+@keyframes create-drawer-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
 @keyframes create-drawer-up {
   from {
     transform: translateY(100%);
   }
   to {
     transform: translateY(0);
+  }
+}
+
+@keyframes create-drawer-down-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes create-drawer-up-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
   }
 }
 
@@ -325,22 +395,44 @@
 }
 
 @media (max-width: 900px) {
-  .create-drawer {
+  .admin-main:has(> .create-drawer) {
+    z-index: 16;
+  }
+
+  .create-drawer,
+  .create-drawer.is-closing {
+    top: var(--admin-topbar-height, calc(4.65rem + env(safe-area-inset-top, 0px)));
+    right: 0;
+    bottom: calc(var(--admin-tabbar-height, calc(3.55rem + env(safe-area-inset-bottom, 0px))) - 1px);
     left: 0;
+    overflow: visible;
   }
 
   .app-panel.create-drawer__panel,
   .create-drawer--bottom .app-panel.create-drawer__panel,
   .create-drawer--half .app-panel.create-drawer__panel {
-    top: 0;
-    left: 0;
+    top: -0.85rem;
     right: 0;
     bottom: 0;
-    width: 100%;
-    --panel-width: 100%;
+    left: 0;
+    width: auto;
+    --panel-width: auto;
     max-height: none;
     --panel-radius: 1.4rem 1.4rem 0 0;
+    --panel-shadow:
+      0 -26px 48px -10px rgb(0 0 0 / 0.5),
+      0 -4px 12px rgb(0 0 0 / 0.22),
+      inset 0 1px 0 rgb(255 255 255 / 0.16);
     animation-name: create-drawer-up;
+  }
+
+  .admin-shell--day .app-panel.create-drawer__panel,
+  .admin-shell--day .create-drawer--bottom .app-panel.create-drawer__panel,
+  .admin-shell--day .create-drawer--half .app-panel.create-drawer__panel {
+    --panel-shadow:
+      0 -26px 48px -10px rgb(15 23 42 / 0.32),
+      0 -4px 12px rgb(15 23 42 / 0.16),
+      inset 0 1px 0 rgb(255 255 255 / 0.5);
   }
 
   .create-drawer--top .app-panel.create-drawer__panel {
@@ -348,5 +440,15 @@
     bottom: auto;
     --panel-radius: 0 0 1.4rem 1.4rem;
     animation-name: create-drawer-down;
+  }
+
+  .create-drawer.is-closing .app-panel.create-drawer__panel,
+  .create-drawer.is-closing.create-drawer--bottom .app-panel.create-drawer__panel,
+  .create-drawer.is-closing.create-drawer--half .app-panel.create-drawer__panel {
+    animation-name: create-drawer-down-out;
+  }
+
+  .create-drawer.is-closing.create-drawer--top .app-panel.create-drawer__panel {
+    animation-name: create-drawer-up-out;
   }
 }

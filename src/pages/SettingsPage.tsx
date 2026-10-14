@@ -11,6 +11,7 @@ import { useNotice } from '../theme/NoticeProvider'
 import { EclesiasticaSettingsPanel } from '../components/settings/EclesiasticaSettingsPanel'
 import { GananciasSettingsPanel } from '../components/settings/GananciasSettingsPanel'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
+import { AppTabs } from '../theme/AppTabs'
 import type { ClubesAppConfig, ClubesAssetKey, ClubesBackgroundStyle, MailSettings } from '../api/types'
 
 type ClubesTextConfig = Omit<
@@ -295,54 +296,18 @@ export function SettingsPage() {
         </article>
       </div>
 
-      <div className="admin-event-tabs" role="tablist" aria-label="Secciones de configuración">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'apariencia'}
-          className={`admin-events__view${tab === 'apariencia' ? ' is-on' : ''}`}
-          onClick={() => setTab('apariencia')}
-        >
-          Apariencia
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'imagenes'}
-          className={`admin-events__view${tab === 'imagenes' ? ' is-on' : ''}`}
-          onClick={() => setTab('imagenes')}
-        >
-          Imágenes
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'correo'}
-          className={`admin-events__view${tab === 'correo' ? ' is-on' : ''}`}
-          onClick={() => setTab('correo')}
-        >
-          Correo
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'ganancias'}
-          className={`admin-events__view${tab === 'ganancias' ? ' is-on' : ''}`}
-          onClick={() => setTab('ganancias')}
-        >
-          Ganancias
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'eclesiastica'}
-          className={`admin-events__view${tab === 'eclesiastica' ? ' is-on' : ''}`}
-          onClick={() => setTab('eclesiastica')}
-        >
-          Eclesiástica
-        </button>
-      </div>
-
+      <AppTabs
+        label="Secciones de configuración"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: 'apariencia', label: 'Apariencia' },
+          { id: 'imagenes', label: 'Imágenes' },
+          { id: 'correo', label: 'Correo' },
+          { id: 'ganancias', label: 'Ganancias' },
+          { id: 'eclesiastica', label: 'Distribución de ganancias' },
+        ]}
+      >
       {tab === 'apariencia' ? (
       <form className="app-panel admin-panel admin-form" onSubmit={onSubmit}>
         <h3>Apariencia de este front</h3>
@@ -655,6 +620,7 @@ export function SettingsPage() {
       {tab === 'ganancias' ? <GananciasSettingsPanel canUpdate={canUpdate} /> : null}
 
       {tab === 'eclesiastica' ? <EclesiasticaSettingsPanel canUpdate={canUpdate} /> : null}
+      </AppTabs>
     </section>
   )
 }

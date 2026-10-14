@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
-  canAccessClubAbonos,
   canAccessClubAttendance,
   canAccessClubPresupuesto,
   canAccessClubSettings,
+  canManageClubServices,
 } from './menu'
 import { useAuth } from '../auth/AuthProvider'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
@@ -13,15 +13,15 @@ export function RequirePermission({
   permission,
   requireOrgSettings = false,
   requireAttendance = false,
-  requireAbonos = false,
   requirePresupuesto = false,
+  requireServices = false,
   children,
 }: {
   permission: string
   requireOrgSettings?: boolean
   requireAttendance?: boolean
-  requireAbonos?: boolean
   requirePresupuesto?: boolean
+  requireServices?: boolean
   children: ReactNode
 }) {
   const auth = useAuth()
@@ -54,13 +54,13 @@ export function RequirePermission({
     return <Navigate to="/" replace />
   }
 
-  if (requireAbonos) {
+  if (requireServices) {
     if (
-      canAccessClubAbonos({
+      canManageClubServices({
+        can: auth.can,
         rolName: ctx?.rol_name,
         organizacionId: ctx?.organizacion_id,
-      }) ||
-      auth.can(permission)
+      })
     ) {
       return children
     }

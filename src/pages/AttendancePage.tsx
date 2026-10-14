@@ -23,6 +23,7 @@ import { formatEventChipDate } from '../components/attendance/AttendanceEventSel
 import { isEconomicEvent } from '../components/events/EventCard'
 import { boundsForMonth, formatDateRange, monthKey } from '../theme/dates'
 import { AppPanel } from '../theme/AppPanel'
+import { AppTabs } from '../theme/AppTabs'
 import { CreateDrawer } from '../theme/CreateDrawer'
 import { useNotice } from '../theme/NoticeProvider'
 import '../theme/attendance-rank.css'
@@ -333,29 +334,15 @@ export function AttendancePage() {
 
   return (
     <section className="admin-page admin-page--attendance">
-      <div className="admin-event-tabs" role="tablist" aria-label="Asistencia">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'resultados'}
-          className={`admin-events__view${tab === 'resultados' ? ' is-on' : ''}`}
-          onClick={() => setTab('resultados')}
-        >
-          <AdminIcon name="users" />
-          Resultados
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'tomar'}
-          className={`admin-events__view${tab === 'tomar' ? ' is-on' : ''}`}
-          onClick={() => setTab('tomar')}
-        >
-          <AdminIcon name="check" />
-          Tomar asistencia
-        </button>
-      </div>
-
+      <AppTabs
+        label="Asistencia"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: 'resultados', label: <><AdminIcon name="users" /> Resultados</> },
+          { id: 'tomar', label: <><AdminIcon name="check" /> Tomar asistencia</> },
+        ]}
+      >
       {tab === 'resultados' ? (
         <AppPanel className="admin-attendance-rank" shine={false}>
           <p className="app-panel__kicker">Resumen</p>
@@ -397,29 +384,15 @@ export function AttendancePage() {
         <>
           <div className="attendance-workspace__grid">
             <AppPanel shine={false} className="attendance-board">
-              <div className="admin-event-tabs" role="tablist" aria-label="Eventos de asistencia">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={eventFilter === 'pendientes'}
-                  className={`admin-events__view${eventFilter === 'pendientes' ? ' is-on' : ''}`}
-                  onClick={() => changeEventFilter('pendientes')}
-                >
-                  <AdminIcon name="calendar" />
-                  Por pasar lista
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={eventFilter === 'tomados'}
-                  className={`admin-events__view${eventFilter === 'tomados' ? ' is-on' : ''}`}
-                  onClick={() => changeEventFilter('tomados')}
-                >
-                  <AdminIcon name="check" />
-                  Ya pasaron lista
-                </button>
-              </div>
-
+              <AppTabs
+                label="Eventos de asistencia"
+                value={eventFilter}
+                onChange={changeEventFilter}
+                tabs={[
+                  { id: 'pendientes', label: <><AdminIcon name="calendar" /> Por pasar lista</> },
+                  { id: 'tomados', label: <><AdminIcon name="check" /> Ya pasaron lista</> },
+                ]}
+              >
               <label className="attendance-search">
                 Buscar
                 <span className="app-panel__field">
@@ -476,6 +449,7 @@ export function AttendancePage() {
                   )
                 })}
               </div>
+              </AppTabs>
             </AppPanel>
 
             {!isMobile ? (
@@ -498,6 +472,7 @@ export function AttendancePage() {
           ) : null}
         </>
       ) : null}
+      </AppTabs>
     </section>
   )
 }

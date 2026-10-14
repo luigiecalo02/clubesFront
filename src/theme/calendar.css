@@ -314,6 +314,135 @@
   font-size: 0.82rem;
 }
 
+.admin-calendar-pick {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.admin-calendar-pick__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(4 8 14 / 0.55);
+  cursor: pointer;
+}
+
+.app-panel.admin-calendar-pick__panel {
+  --panel-padding: 0.95rem 0.95rem 1rem;
+  --panel-width: min(22.5rem, calc(100vw - 2rem));
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  width: min(22.5rem, calc(100vw - 2rem));
+  max-height: min(78vh, 34rem);
+}
+
+.admin-calendar-pick__panel .app-panel__title {
+  font-size: 1.15rem;
+}
+
+.admin-calendar-pick__list {
+  display: grid;
+  align-content: start;
+  gap: 0.55rem;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.admin-calendar-pick__card {
+  display: grid;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--panel-input-border);
+  border-left: 3px solid var(--chip, var(--panel-gold));
+  border-radius: 0.95rem;
+  background: var(--panel-input-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-calendar-pick__card:hover,
+.admin-calendar-pick__card:focus-visible {
+  border-color: var(--panel-gold);
+  background: var(--panel-input-bg-focus);
+  outline: none;
+}
+
+.admin-calendar-pick__media {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 6.6rem;
+  background: color-mix(in srgb, var(--chip, var(--panel-gold)) 18%, var(--panel-input-bg));
+}
+
+.admin-calendar-pick__banner {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-calendar-pick__logo {
+  position: relative;
+  z-index: 1;
+  width: 3.1rem;
+  height: 3.1rem;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-input-border);
+}
+
+.admin-calendar-pick__media.has-banner .admin-calendar-pick__logo {
+  position: absolute;
+  left: 0.7rem;
+  bottom: 0.55rem;
+  box-shadow: 0 8px 18px rgb(0 0 0 / 0.28);
+}
+
+.admin-calendar-pick__body {
+  min-width: 0;
+  padding: 0.7rem 0.75rem 0.75rem;
+}
+
+.admin-calendar-pick__copy {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.admin-calendar-pick__copy strong {
+  color: var(--panel-title);
+  font-size: 0.95rem;
+  font-weight: var(--panel-weight-strong);
+  line-height: 1.25;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.admin-calendar-pick__copy small {
+  color: var(--panel-muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .admin-calendar-detail__meta .admin-icon {
   width: 0.95rem;
   height: 0.95rem;

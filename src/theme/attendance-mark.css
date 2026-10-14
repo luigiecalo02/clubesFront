@@ -43,10 +43,6 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.attendance-mark__stats--money {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
 .attendance-mark__icon--text {
   width: auto;
   min-width: 2.45rem;
@@ -134,9 +130,11 @@
   --panel-padding: 1.35rem 1.4rem 1.2rem;
   --panel-width: min(34rem, 100%);
   --panel-max-width: 34rem;
+  --panel-radius: 1.4rem;
   position: relative;
   z-index: 1;
   width: min(34rem, 100%);
+  overflow: hidden;
 }
 
 .app-panel.attendance-confirm__panel .app-panel__title {
@@ -236,11 +234,31 @@
 }
 
 .attendance-mark__card--sales {
-  grid-template-columns: 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   justify-items: stretch;
-  align-items: start;
-  gap: 0.45rem;
+  align-items: stretch;
+  column-gap: 0.65rem;
+  row-gap: 0.45rem;
   padding: 0.7rem 0.75rem;
+}
+
+.attendance-mark__card--sales .attendance-mark__avatar {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: stretch;
+  width: 3.35rem;
+  height: auto;
+  min-height: 3.35rem;
+  border-radius: 0.85rem;
+}
+
+.attendance-mark__card--sales .attendance-mark__who {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.attendance-mark__card--sales .attendance-mark__sales {
+  grid-column: 1 / -1;
 }
 
 .attendance-mark__who {
@@ -250,9 +268,89 @@
   min-width: 0;
 }
 
+.attendance-mark__name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.attendance-mark__name-row > p {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.attendance-mark__name-row .attendance-mark__sales-toggle {
+  flex: 0 1 auto;
+}
+
 .attendance-mark__card--sales .attendance-mark__who p {
   text-align: left;
   white-space: normal;
+}
+
+.attendance-proofs {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.attendance-proofs__total {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1.5px solid color-mix(in srgb, var(--panel-gold) 45%, var(--panel-input-border));
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+}
+
+.attendance-proofs__total strong {
+  color: var(--panel-title);
+  font-size: 1.45rem;
+  font-weight: var(--panel-weight-strong);
+  line-height: 1;
+}
+
+.attendance-proofs__total span {
+  color: var(--panel-muted);
+  font-size: 0.78rem;
+}
+
+.attendance-proofs__list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attendance-proofs__list li {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.7rem 0.75rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+}
+
+.attendance-proofs__list li > p {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.attendance-proofs__list strong {
+  color: var(--panel-title);
+  font-weight: var(--panel-weight-strong);
+}
+
+.attendance-proofs__list small {
+  color: var(--panel-muted);
 }
 
 .attendance-mark__card--sales .attendance-mark__icons {
@@ -302,11 +400,6 @@
   gap: 0.35rem;
 }
 
-@media (max-width: 720px) {
-  .attendance-mark__card--sales {
-    grid-template-columns: 1fr;
-  }
-}
 
 .attendance-mark__sales-empty {
   margin: 0;
@@ -358,6 +451,10 @@
 
 .attendance-mark--join {
   gap: 0.85rem;
+}
+
+.attendance-mark--join .attendance-mark__stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .attendance-mark--join .app-panel__subtitle {
@@ -478,92 +575,13 @@
   text-align: center;
 }
 
-.attendance-mark__pad-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-}
-
-.attendance-mark__pad-backdrop {
-  position: absolute;
-  inset: 0;
-  border: 0;
-  background: rgb(4 8 14 / 0.55);
-  cursor: pointer;
-}
-
-.app-panel.attendance-mark__pad {
-  --panel-padding: 0.85rem;
-  --panel-radius: 1.15rem;
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 0.45rem;
-  width: min(18.5rem, calc(100vw - 2rem));
-  aspect-ratio: 1;
-}
-
-.attendance-mark__pad .app-panel__kicker {
-  text-align: center;
-}
-
-.attendance-mark__pad-readout {
-  color: var(--panel-title);
-  font-size: 2rem;
-  font-weight: var(--panel-weight-strong);
-  line-height: 1;
-  text-align: center;
-}
-
-.attendance-mark__pad-keys {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-rows: repeat(4, minmax(0, 1fr));
-  gap: 0.4rem;
-  min-height: 0;
-}
-
-.attendance-mark__pad-keys button {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  border: 1.5px solid color-mix(in srgb, var(--panel-gold) 45%, var(--panel-input-border));
-  border-radius: 0.7rem;
-  background: var(--panel-input-bg);
-  color: var(--panel-title);
-  font: inherit;
-  font-size: 1.2rem;
-  font-weight: var(--panel-weight-strong);
-  cursor: pointer;
-}
-
-.attendance-mark__pad-keys button.is-clear,
-.attendance-mark__pad-keys button.is-enter {
-  border: 0;
-  font-size: 0.82rem;
-}
-
-.attendance-mark__pad-keys button.is-clear {
-  background: var(--panel-alert-bg);
-  color: var(--panel-alert-text);
-}
-
-.attendance-mark__pad-keys button.is-enter {
-  background: var(--panel-btn-bg);
-  color: var(--panel-btn-text);
-  box-shadow: var(--panel-btn-shadow);
-}
-
 .attendance-mark--join .admin-events__view-tabs {
   justify-content: flex-start;
+}
+
+.attendance-mark--join .attendance-mark__toolbar .attendance-mark__paid {
+  width: 100%;
+  min-height: 2.7rem;
 }
 
 .attendance-mark__abono-bar {
@@ -584,6 +602,30 @@
   width: auto;
   min-width: 7.5rem;
   flex: none;
+}
+
+.attendance-mark__paid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex: none;
+  min-width: 7.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--panel-ok-text) 16%, transparent);
+  color: var(--panel-ok-text);
+  font-size: 0.9rem;
+  font-weight: var(--panel-weight-strong);
+}
+
+.attendance-mark__paid svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0.12rem;
+  border-radius: 50%;
+  background: var(--panel-ok-text);
+  color: var(--panel-input-bg);
 }
 
 .attendance-mark__abonos {
@@ -609,6 +651,13 @@
 .attendance-mark__abonos strong {
   color: var(--panel-title);
   font-weight: 500;
+}
+
+.attendance-mark__abono-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: none;
 }
 
 .app-panel .attendance-mark__sale input {
@@ -773,8 +822,7 @@
 }
 
 @media (max-width: 720px) {
-  .attendance-mark__stats,
-  .attendance-mark__stats--money {
+  .attendance-mark__stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -793,7 +841,8 @@
     font-size: 0.62rem;
   }
 
-  .attendance-mark__abono-bar .app-panel__btn--primary {
+  .attendance-mark__abono-bar .app-panel__btn--primary,
+  .attendance-mark__paid {
     width: 100%;
   }
 }

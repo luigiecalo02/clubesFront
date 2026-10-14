@@ -4,6 +4,7 @@ import { resolveFileUrl } from '../../api/baseUrl'
 import type { PresupuestoBloqueKey, PresupuestoDetalle, PresupuestoEvento, PresupuestoItem } from '../../api/types'
 import { AdminIcon } from '../../admin/AdminIcon'
 import { AppPanel } from '../../theme/AppPanel'
+import { AppTabs } from '../../theme/AppTabs'
 import '../../theme/abonos.css'
 import {
   collectItems,
@@ -39,6 +40,7 @@ type PresupuestoStudioProps = {
   onRemoveItem: (item: PresupuestoItem) => void
   onAcompanantesChange: (value: string) => void
   onSaveAcompanantes: () => void
+  viewingBudgetId?: number | null
   compactHero?: boolean
 }
 
@@ -61,6 +63,7 @@ export function PresupuestoStudio({
   onRemoveItem,
   onAcompanantesChange,
   onSaveAcompanantes,
+  viewingBudgetId = null,
   compactHero = false,
 }: PresupuestoStudioProps) {
   const [filter, setFilter] = useState<ConceptFilter>('todos')
@@ -169,11 +172,12 @@ export function PresupuestoStudio({
         </AppPanel>
       )}
 
+      <div className={`presupuesto-sheet${detail.presupuesto_id ? ' has-sheet' : ''}`}>
       <div className="presupuesto-versions">
         {versions.length ? (
           <div className="abonos-status-tabs" role="tablist" aria-label="Versiones del presupuesto">
             {versions.map((item) => {
-              const selected = item.id === detail.presupuesto_id
+              const selected = item.id === (viewingBudgetId ?? detail.presupuesto_id)
               const editing = selected && renaming
               return (
                 <div
@@ -252,6 +256,7 @@ export function PresupuestoStudio({
         ) : null}
       </div>
 
+      <div className={`presupuesto-sheet__body${viewingBudgetId != null ? ' is-busy' : ''}`} aria-busy={viewingBudgetId != null}>
       <div className="presupuesto-kpis">
         <AppPanel shine={false} className="presupuesto-kpi">
           <span className="presupuesto-kpi__icon" data-tone="ok"><AdminIcon name="users" /></span>
@@ -316,8 +321,11 @@ export function PresupuestoStudio({
             ) : null}
           </div>
 
-          <div className="presupuesto-filters" role="tablist" aria-label="Conceptos del presupuesto">
-            {(
+          <AppTabs
+            label="Conceptos del presupuesto"
+            value={filter}
+            onChange={setFilter}
+            tabs={(
               [
                 {
                   id: 'todos' as const,
@@ -341,30 +349,25 @@ export function PresupuestoStudio({
                   icon: 'group' as const,
                 },
               ] as const
-            ).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={filter === tab.id}
-                className={`presupuesto-version-tab${filter === tab.id ? ' is-on' : ''}`}
-                onClick={() => setFilter(tab.id)}
-              >
-                <span className="abonos-status-board__icon" aria-hidden="true">
-                  <AdminIcon name={tab.icon} />
-                </span>
-                <span>
-                  <strong>{tab.label}</strong>
-                  <small>{tab.hint}</small>
-                </span>
-                <span className="abonos-status-board__total">
-                  <strong>{formatMoney(tab.total)}</strong>
-                  <small>Total</small>
-                </span>
-              </button>
-            ))}
-          </div>
-
+            ).map((tab) => ({
+              id: tab.id,
+              label: (
+                <>
+                  <span className="abonos-status-board__icon" aria-hidden="true">
+                    <AdminIcon name={tab.icon} />
+                  </span>
+                  <span>
+                    <strong>{tab.label}</strong>
+                    <small>{tab.hint}</small>
+                  </span>
+                  <span className="abonos-status-board__total">
+                    <strong>{formatMoney(tab.total)}</strong>
+                    <small>Total</small>
+                  </span>
+                </>
+              ),
+            }))}
+          >
           {visible.length === 0 ? (
             <p className="app-panel__hint">Todavía no hay conceptos en este presupuesto.</p>
           ) : (
@@ -449,6 +452,7 @@ export function PresupuestoStudio({
               </table>
             </div>
           )}
+          </AppTabs>
         </AppPanel>
 
         <AppPanel shine={false} className="presupuesto-summary">
@@ -500,6 +504,8 @@ export function PresupuestoStudio({
             </div>
           </dl>
         </AppPanel>
+      </div>
+      </div>
       </div>
 
       <div className="presupuesto-help">

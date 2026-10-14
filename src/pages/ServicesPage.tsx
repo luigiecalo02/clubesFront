@@ -6,6 +6,7 @@ import type { ClubServicio } from '../api/types'
 import { canManageClubServices } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
+import { AppTabs } from '../theme/AppTabs'
 import { CreateDrawer } from '../theme/CreateDrawer'
 import { ServiceIconPicker, ServiceThumb } from '../components/services/ServiceVisual'
 import { ImageUpload } from '../theme/ImageUpload'
@@ -183,26 +184,15 @@ export function ServicesPage() {
         }
       >
         <form id="service-form" className="admin-form" onSubmit={onSave}>
-          <div className="admin-events__view-tabs" role="tablist" aria-label="Imagen del servicio">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={form.visual === 'foto'}
-              className={`admin-events__view${form.visual === 'foto' ? ' is-on' : ''}`}
-              onClick={() => setForm((current) => ({ ...current, visual: 'foto' }))}
-            >
-              Foto
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={form.visual === 'icono'}
-              className={`admin-events__view${form.visual === 'icono' ? ' is-on' : ''}`}
-              onClick={() => setForm((current) => ({ ...current, visual: 'icono' }))}
-            >
-              Ícono
-            </button>
-          </div>
+          <AppTabs
+            label="Imagen del servicio"
+            value={form.visual}
+            onChange={(visual) => setForm((current) => ({ ...current, visual }))}
+            tabs={[
+              { id: 'foto', label: 'Foto' },
+              { id: 'icono', label: 'Ícono' },
+            ]}
+          >
           {form.visual === 'foto' ? (
             <ImageUpload
               label="Foto"
@@ -220,6 +210,7 @@ export function ServicesPage() {
               onChange={(icono) => setForm((current) => ({ ...current, icono }))}
             />
           )}
+          </AppTabs>
           <label>
             Nombre
             <input

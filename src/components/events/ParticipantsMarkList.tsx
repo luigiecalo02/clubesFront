@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { EventParticipant, EventParticipantService } from '../../api/types'
+import type { AbonoMovimiento, EventParticipant, EventParticipantService } from '../../api/types'
+import { resolveFileUrl } from '../../api/baseUrl'
+import { AdminIcon } from '../../admin/AdminIcon'
 import { AppPanel } from '../../theme/AppPanel'
 import { formatDate } from '../../theme/dates'
+import { memberInitials } from '../attendance/AttendanceMarkList'
+import { AbonoProofReview, AbonoShotButton, abonoEstadoLabel } from '../abonos/AbonoProofReview'
 import { ServiceThumb } from '../services/ServiceVisual'
+import { ProgressBar, SummaryDonut, SummaryKpi, summaryPercent } from './SummaryCards'
 import '../../theme/attendance-mark.css'
 
 type BulkParticipa = boolean | ''
@@ -76,6 +81,125 @@ function servicePrice(service: EventParticipantService): number {
   return Number.isFinite(amount) ? amount : 0
 }
 
+export function participantEventCounts(
+  members: EventParticipant[],
+  services: EventParticipantService[],
+  draft: ParticipantDraft,
+) {
+  const participan = members.filter((row) => draft[row.persona_id]?.participa === true).length
+  return members.reduce(
+    (acc, row) => {
+      const current = draft[row.persona_id]
+      if (current?.participa !== true) return acc
+      const totals = saleTotals(services, current.ventas)
+      return {
+        ...acc,
+        unidades: acc.unidades + totals.unidades,
+        recaudo: acc.recaudo + totals.recaudo,
+        abonado: acc.abonado + (Number(row.abonado) || 0),
+      }
+    },
+    { participan, unidades: 0, recaudo: 0, abonado: 0 },
+  )
+}
+
+export function ParticipantEventStats({
+  members,
+  services,
+  draft,
+}: {
+  members: EventParticipant[]
+  services: EventParticipantService[]
+  draft: ParticipantDraft
+}) {
+  const counts = useMemo(
+    () => participantEventCounts(members, services, draft),
+    [draft, members, services],
+  )
+
+  const participanPct = summaryPercent(counts.participan, members.length)
+  const ingresadoPct = summaryPercent(counts.abonado, counts.recaudo)
+  const porCobrar = Math.max(0, counts.recaudo - counts.abonado)
+  const porCobrarPct = summaryPercent(porCobrar, counts.recaudo)
+
+  return (
+    <div className="event-stats" aria-live="polite">
+      <SummaryKpi icon="users" tone="ok" label="Participan" value={counts.participan}>
+        <ProgressBar value={participanPct} />
+        <small>
+          {counts.participan} de {members.length} integrantes
+        </small>
+      </SummaryKpi>
+      <SummaryKpi icon="box" tone="gold" label="A vender" value={counts.unidades}>
+        <small>Unidades en total</small>
+      </SummaryKpi>
+      <SummaryKpi icon="calculator" tone="info" label="Proyección total" value={formatPrice(counts.recaudo)}>
+        <ProgressBar value={counts.recaudo > 0 ? 100 : 0} tone="info" />
+        <small>100% estimado</small>
+      </SummaryKpi>
+      <SummaryKpi icon="trendUp" tone="ok" label="Ingresado en abonos" value={formatPrice(counts.abonado)}>
+        <ProgressBar value={ingresadoPct} />
+        <small>{ingresadoPct}% del total</small>
+      </SummaryKpi>
+      <SummaryKpi
+        icon="target"
+        tone="danger"
+        label="Falta por cobrar"
+        value={formatPrice(porCobrar)}
+        className="is-debt is-full"
+      >
+        <SummaryDonut value={porCobrarPct} label="del total" />
+      </SummaryKpi>
+    </div>
+  )
+}
+
+export function pendingProofs(members: EventParticipant[]) {
+  return members.flatMap((row) =>
+    (row.abonos ?? [])
+      .filter((abono) => abono.estado === 'pendiente')
+      .map((abono) => ({ abono, row })),
+  )
+}
+
+export function PendingProofsPanel({
+  members,
+  canReview = false,
+  onReview,
+}: {
+  members: EventParticipant[]
+  canReview?: boolean
+  onReview?: (abono: AbonoMovimiento, estado: 'aprobado' | 'rechazado', monto?: number) => Promise<void>
+}) {
+  const pending = pendingProofs(members)
+
+  return (
+    <div className="attendance-proofs">
+      <p className="attendance-proofs__total">
+        <strong>{pending.length}</strong>
+        <span>
+          {pending.length === 1 ? 'comprobante por confirmar' : 'comprobantes por confirmar'}
+        </span>
+      </p>
+      {pending.length === 0 ? (
+        <p className="app-panel__muted">No hay abonos pendientes de confirmar el pantallazo.</p>
+      ) : (
+        <ul className="attendance-proofs__list">
+          {pending.map(({ abono, row }) => (
+            <li key={abono.id}>
+              <p>
+                <strong>{row.full_name}</strong>
+                {abono.created_at ? <small>{formatDate(abono.created_at)}</small> : null}
+              </p>
+              <AbonoProofReview abono={abono} canReview={canReview} onReview={onReview} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export function saleTotals(services: EventParticipantService[], ventas: Record<number, number>) {
   return services.reduce(
     (acc, service) => {
@@ -100,6 +224,7 @@ type ParticipantsMarkListProps = {
   onQty: (personaId: number, productoServicioId: number, cantidad: number) => void
   onMarkAll: (participa: boolean | '', mode: 'all' | 'empty') => void
   onStartAbono?: (personaId: number) => void
+  onReviewAbono?: (abono: AbonoMovimiento, estado: 'aprobado' | 'rechazado', monto?: number) => Promise<void>
 }
 
 export function ParticipantsMarkList({
@@ -115,6 +240,7 @@ export function ParticipantsMarkList({
   onQty,
   onMarkAll,
   onStartAbono,
+  onReviewAbono,
 }: ParticipantsMarkListProps) {
   const [query, setQuery] = useState('')
   const [openIds, setOpenIds] = useState<number[]>([])
@@ -133,31 +259,6 @@ export function ParticipantsMarkList({
       return haystack.includes(needle)
     })
   }, [members, query])
-
-  const counts = useMemo(() => {
-    const participan = members.filter((row) => draft[row.persona_id]?.participa === true).length
-    const noParticipan = members.filter((row) => draft[row.persona_id]?.participa === false).length
-    return members.reduce(
-      (acc, row) => {
-        const current = draft[row.persona_id]
-        if (current?.participa !== true) return acc
-        const totals = saleTotals(services, current.ventas)
-        return {
-          ...acc,
-          unidades: acc.unidades + totals.unidades,
-          recaudo: acc.recaudo + totals.recaudo,
-          abonado: acc.abonado + (Number(row.abonado) || 0),
-        }
-      },
-      {
-        participan,
-        noParticipan,
-        unidades: 0,
-        recaudo: 0,
-        abonado: 0,
-      },
-    )
-  }, [draft, members, services])
 
   function requestBulk(participa: BulkParticipa) {
     if (markedCount === 0) {
@@ -190,34 +291,6 @@ export function ParticipantsMarkList({
 
   return (
     <div className="attendance-mark">
-      <div className="attendance-mark__toolbar">
-        <div className="attendance-mark__stats attendance-mark__stats--money" aria-live="polite">
-          <p className="attendance-mark__stat attendance-mark__stat--presente">
-            <strong>{counts.participan}</strong>
-            <span>Participan</span>
-          </p>
-          <p className="attendance-mark__stat attendance-mark__stat--ausente">
-            <strong>{counts.noParticipan}</strong>
-            <span>No participan</span>
-          </p>
-          <p className="attendance-mark__stat">
-            <strong>{formatPrice(Math.max(0, counts.recaudo - counts.abonado))}</strong>
-            <span>Por cobrar</span>
-          </p>
-          <p className="attendance-mark__stat attendance-mark__stat--puntual">
-            <strong>{counts.unidades}</strong>
-            <span>A vender</span>
-          </p>
-          <p className="attendance-mark__stat attendance-mark__stat--puntual">
-            <strong>{formatPrice(counts.recaudo)}</strong>
-            <span>Recaudo</span>
-          </p>
-          <p className="attendance-mark__stat attendance-mark__stat--presente">
-            <strong>{formatPrice(counts.abonado)}</strong>
-            <span>Abonado</span>
-          </p>
-        </div>
-      </div>
       <label className="attendance-mark__search">
         Buscar
         <input
@@ -282,6 +355,7 @@ export function ParticipantsMarkList({
           const totals = saleTotals(services, current.ventas)
           const abonado = Number(row.abonado) || 0
           const pendiente = totals.recaudo - abonado
+          const photo = resolveFileUrl(row.foto_url)
           return (
             <article
               key={row.persona_id}
@@ -290,8 +364,30 @@ export function ParticipantsMarkList({
               }`}
               style={{ animationDelay: `${Math.min(index, 16) * 28}ms` }}
             >
+              <span className="attendance-mark__avatar" aria-hidden="true">
+                {photo ? <img src={photo} alt="" /> : memberInitials(row.full_name)}
+              </span>
               <div className="attendance-mark__who">
-                <p title={row.full_name}>{row.full_name}</p>
+                <div className="attendance-mark__name-row">
+                  <p title={row.full_name}>{row.full_name}</p>
+                  {selected === true ? (
+                    <button
+                      type="button"
+                      className="attendance-mark__sales-toggle"
+                      aria-expanded={open}
+                      onClick={() => toggleOpen(row.persona_id)}
+                    >
+                      <span>
+                        {services.length === 0
+                          ? 'Sin servicios'
+                          : totals.unidades
+                            ? `${totals.unidades} uds · ${formatPrice(totals.recaudo)}`
+                            : 'Sin cantidades'}
+                      </span>
+                      <small>{open ? 'Cerrar' : canAbonar ? 'Servicios y abonos' : 'Ver servicios'}</small>
+                    </button>
+                  ) : null}
+                </div>
                 <div className="attendance-mark__icons" role="group" aria-label={`Participación de ${row.full_name}`}>
                   <button
                     type="button"
@@ -315,26 +411,10 @@ export function ParticipantsMarkList({
                   >
                     No
                   </button>
-                  {selected === true ? (
-                    <button
-                      type="button"
-                      className="attendance-mark__sales-toggle"
-                      aria-expanded={open}
-                      onClick={() => toggleOpen(row.persona_id)}
-                    >
-                      <span>
-                        {services.length === 0
-                          ? 'Sin servicios en el evento'
-                          : totals.unidades
-                            ? `${totals.unidades} uds · ${formatPrice(totals.recaudo)}`
-                            : 'Sin cantidades'}
-                      </span>
-                      <small>{open ? 'Cerrar' : canAbonar ? 'Servicios y abonos' : 'Ver servicios'}</small>
-                    </button>
-                  ) : null}
                 </div>
-                {selected === true && open ? (
-                  <div className="attendance-mark__sales is-open">
+              </div>
+              {selected === true && open ? (
+                <div className="attendance-mark__sales is-open">
                     {services.length === 0 ? (
                       <p className="attendance-mark__sales-empty">Asocia servicios en la ficha del evento.</p>
                     ) : (
@@ -372,14 +452,21 @@ export function ParticipantsMarkList({
                         <p className="attendance-mark__abono-summary">
                           Abonado {formatPrice(abonado)} · Faltante {formatPrice(pendiente)}
                         </p>
-                        <button
-                          type="button"
-                          className="app-panel__btn--primary"
-                          disabled={payingId === row.persona_id || pendiente <= 0}
-                          onClick={() => onStartAbono(row.persona_id)}
-                        >
-                          Abonar
-                        </button>
+                        {pendiente > 0 ? (
+                          <button
+                            type="button"
+                            className="app-panel__btn--primary"
+                            disabled={payingId === row.persona_id}
+                            onClick={() => onStartAbono(row.persona_id)}
+                          >
+                            Abonar
+                          </button>
+                        ) : (
+                          <span className="attendance-mark__paid">
+                            <AdminIcon name="check" />
+                            Al día
+                          </span>
+                        )}
                       </div>
                     ) : null}
                     {row.abonos?.length ? (
@@ -390,14 +477,17 @@ export function ParticipantsMarkList({
                               {formatDate(abono.created_at)}
                               {abono.nota ? ` · ${abono.nota}` : ''}
                             </span>
-                            <strong>{formatPrice(abono.monto)}</strong>
+                            <span className="attendance-mark__abono-end">
+                              <AbonoShotButton abono={abono} />
+                              <strong>{abonoEstadoLabel(abono) ?? formatPrice(abono.monto)}</strong>
+                            </span>
+                            <AbonoProofReview abono={abono} canReview={canAbonar} hideShot onReview={onReviewAbono} />
                           </li>
                         ))}
                       </ul>
                     ) : null}
                   </div>
                 ) : null}
-              </div>
             </article>
           )
         })}

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type AnimationEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { AppPanel } from './AppPanel'
 import { lockBodyScroll, unlockBodyScroll } from './bodyScrollLock'
@@ -33,8 +33,15 @@ export function CreateDrawer({
   footer,
   children,
 }: CreateDrawerProps) {
+  const [visible, setVisible] = useState(open)
+  const closing = visible && !open
+
   useEffect(() => {
-    if (!open) return undefined
+    if (open) setVisible(true)
+  }, [open])
+
+  useEffect(() => {
+    if (!visible) return undefined
     lockBodyScroll()
 
     function onKey(event: KeyboardEvent) {
@@ -43,19 +50,29 @@ export function CreateDrawer({
       onClose()
     }
     window.addEventListener('keydown', onKey, stacked)
+    const fallback = window.setTimeout(() => {
+      if (!open) setVisible(false)
+    }, 380)
     return () => {
       unlockBodyScroll()
       window.removeEventListener('keydown', onKey, stacked)
+      window.clearTimeout(fallback)
     }
-  }, [onClose, open, stacked])
+  }, [onClose, open, stacked, visible])
 
-  if (!open) return null
+  function onPanelAnimationEnd(event: AnimationEvent<HTMLElement>) {
+    if (event.target !== event.currentTarget || open) return
+    if (!event.animationName.endsWith('-out') && event.animationName !== 'create-drawer-out') return
+    setVisible(false)
+  }
 
-  const host = document.querySelector('.admin-shell') ?? document.body
+  if (!visible) return null
+
+  const host = document.querySelector('.admin-main') ?? document.querySelector('.admin-shell') ?? document.body
 
   return createPortal(
     <div
-      className={`create-drawer${placement === 'top' ? ' create-drawer--top' : ''}${placement === 'bottom' ? ' create-drawer--bottom' : ''}${size === 'half' ? ' create-drawer--half' : ''}${stacked ? ' create-drawer--stacked' : ''}`}
+      className={`create-drawer${closing ? ' is-closing' : ''}${placement === 'top' ? ' create-drawer--top' : ''}${placement === 'bottom' ? ' create-drawer--bottom' : ''}${size === 'half' ? ' create-drawer--half' : ''}${stacked ? ' create-drawer--stacked' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -66,7 +83,7 @@ export function CreateDrawer({
         aria-label="Cerrar"
         onClick={onClose}
       />
-      <AppPanel className="create-drawer__panel" shine={false}>
+      <AppPanel className="create-drawer__panel" shine={false} onAnimationEnd={onPanelAnimationEnd}>
         <header className={`create-drawer__head${cover ? ' create-drawer__head--cover' : ''}`}>
           {cover ? <img src={cover} alt="" className="create-drawer__cover" /> : null}
           {cover ? <span className="create-drawer__cover-fade" aria-hidden="true" /> : null}

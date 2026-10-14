@@ -43,6 +43,16 @@ const PATHS: Record<AdminIconName, string> = {
   pencil: 'M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z',
   x: 'M6 6l12 12M18 6 6 18',
   pulse: 'M3 12h4l2.2-6 3.6 12L15 12h6',
+  trendUp: 'M4 17 10 11l4 4 6-6M15 9h5v5',
+  calculator:
+    'M7 3h10a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM9 6.5h6v3H9zM9 13h.01M12 13h.01M15 13h.01M9 16.5h.01M12 16.5h.01M15 16.5h.01',
+  coins:
+    'M12 9c4 0 7-1.3 7-3s-3-3-7-3-7 1.3-7 3 3 3 7 3zM5 6v4c0 1.7 3 3 7 3s7-1.3 7-3V6M5 10v4c0 1.7 3 3 7 3s7-1.3 7-3v-4M5 14v4c0 1.7 3 3 7 3s7-1.3 7-3v-4',
+  target:
+    'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM12 12h.01M12 12l7-7',
+  chart: 'M5 20V12M10 20V7M15 20v-5M20 20V4M3 20h18',
+  pie: 'M12 3a9 9 0 1 0 9 9h-9zM15 3.5A8 8 0 0 1 20.5 9H15z',
+  alert: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5v5.5M12 16.5h.01',
 }
 
 const PRIME_TO_NAME: Record<string, AdminIconName> = {

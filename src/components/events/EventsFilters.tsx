@@ -2,8 +2,7 @@ import type { EventTipo } from '../../api/types'
 import { DateInput } from '../../theme/DateInput'
 
 export const EVENT_ESTADO_FILTERS = [
-  { value: '', label: 'Activos y próximos' },
-  { value: 'todos', label: 'Todos' },
+  { value: '', label: 'Todos' },
   { value: 'publicado', label: 'Publicado' },
   { value: 'en_proceso', label: 'En proceso' },
   { value: 'cerrado', label: 'Finalizado' },
@@ -40,7 +39,7 @@ export function EventsFilters({
         Estado
         <select value={estado} onChange={(event) => onEstado(event.target.value)}>
           {EVENT_ESTADO_FILTERS.map((option) => (
-            <option key={option.value || 'vigentes'} value={option.value}>
+            <option key={option.value || 'todos'} value={option.value}>
               {option.label}
             </option>
           ))}

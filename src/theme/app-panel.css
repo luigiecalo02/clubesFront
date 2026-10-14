@@ -264,11 +264,15 @@
 
 .app-date-input__picker::-webkit-calendar-picker-indicator {
   cursor: pointer;
+  opacity: 0.72;
+}
+
+.app-panel .app-date-input__picker::-webkit-calendar-picker-indicator {
   opacity: 0.92;
   filter: invert(1);
 }
 
-.admin-shell--day .app-date-input__picker::-webkit-calendar-picker-indicator {
+.admin-shell--day .app-panel .app-date-input__picker::-webkit-calendar-picker-indicator {
   filter: none;
   opacity: 0.72;
 }
@@ -282,10 +286,18 @@
   display: flex;
   align-items: center;
   pointer-events: none;
-  color: var(--panel-title);
+  color: #071e48;
 }
 
 .app-date-input__value.is-empty {
+  color: #6b7a90;
+}
+
+.app-panel .app-date-input__value {
+  color: var(--panel-title);
+}
+
+.app-panel .app-date-input__value.is-empty {
   color: var(--panel-placeholder);
 }
 

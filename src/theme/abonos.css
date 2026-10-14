@@ -30,6 +30,10 @@
   min-height: 0;
 }
 
+.admin-page--my-abonos .app-panel.abonos-detail {
+  overflow: auto;
+}
+
 .abonos-board,
 .abonos-detail {
   min-width: 0;
@@ -166,6 +170,16 @@
 .abonos-status-row.is-ok {
   border-color: color-mix(in srgb, var(--panel-ok-text) 32%, var(--panel-input-border));
   background: color-mix(in srgb, var(--panel-ok-text) 10%, var(--panel-input-bg-focus));
+}
+
+.abonos-deals .app-tabs.has-sheet:has(.app-tabs__tab.is-paid.is-on) .app-tabs__body,
+.abonos-deals .app-tabs.has-sheet .app-tabs__tab.is-paid.is-on {
+  border-color: color-mix(in srgb, var(--panel-ok-text) 28%, transparent);
+  background: color-mix(in srgb, var(--panel-ok-text) 8%, transparent);
+}
+
+.abonos-deals .app-tabs.has-sheet .app-tabs__tab.is-paid.is-on {
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--panel-ok-text) 8%, transparent);
 }
 
 .abonos-status-row .abonos-avatar {
@@ -567,6 +581,16 @@
   padding-top: 0.2rem;
 }
 
+.abonos-pay__shot {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.abonos-pay__shot .app-panel__btn--ghost {
+  justify-self: start;
+  width: auto;
+}
+
 .abonos-pay__amount,
 .abonos-pay__amount-row {
   display: grid;
@@ -676,6 +700,16 @@
     gap: 0.55rem;
   }
 
+  .admin-page--my-abonos {
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: start;
+  }
+
+  .admin-page--my-abonos .app-panel.abonos-workspace {
+    height: auto;
+    align-self: start;
+  }
+
   .app-panel.abonos-workspace {
     --panel-padding: 0.5rem 0.8rem 0.55rem;
     --panel-radius: 0.9rem;
@@ -730,4 +764,240 @@
   .abonos-picks {
     overflow: visible;
   }
+}
+
+.abono-proof-form,
+.abono-proof {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.abono-proof {
+  grid-column: 1 / -1;
+  flex: 1 0 100%;
+}
+
+.attendance-mark__abonos li:has(.abono-proof) {
+  flex-wrap: wrap;
+}
+
+.abono-proof-form label,
+.abono-proof label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--panel-muted);
+  font-size: 0.82rem;
+}
+
+.abono-proof small {
+  color: var(--panel-muted);
+  font-size: 0.75rem;
+}
+
+.abono-proof.is-inline {
+  grid-template-columns: minmax(7.5rem, 12rem) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.abono-proof__open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.abono-proof__peek {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: 999px;
+  background: var(--panel-ghost-bg);
+  color: var(--panel-gold);
+  cursor: zoom-in;
+}
+
+.abono-proof__peek:hover {
+  border-color: var(--panel-focus);
+}
+
+.abono-proof__peek svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.abono-proof__shot {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border-radius: var(--panel-input-radius);
+  border: 1.5px solid var(--panel-input-border);
+  background: var(--panel-input-bg);
+}
+
+.abono-proof.is-inline .abono-proof__shot {
+  height: 100%;
+  max-height: none;
+  min-height: 7.5rem;
+  object-fit: contain;
+}
+
+.image-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  min-height: 0;
+  padding: 0.75rem;
+}
+
+.create-drawer > .image-preview {
+  position: absolute;
+  z-index: 30;
+}
+
+.image-preview__backdrop,
+.app-panel.image-preview__panel {
+  grid-area: 1 / 1;
+}
+
+.image-preview__backdrop {
+  border: 0;
+  padding: 0;
+  background: rgb(4 8 14 / 0.55);
+  cursor: pointer;
+}
+
+.app-panel.image-preview__panel {
+  --panel-width: 100%;
+  --panel-max-width: none;
+  --panel-padding: 0.85rem 0.9rem 0.9rem;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.image-preview__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.image-preview__head .app-panel__kicker {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.image-preview__zoom {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: 999px;
+  background: var(--panel-ghost-bg);
+}
+
+.image-preview__zoom button,
+.image-preview__close {
+  display: grid;
+  place-items: center;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  margin: 0;
+  padding: 0 0.55rem;
+  border: 0;
+  background: transparent;
+  color: var(--panel-title);
+  font: inherit;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.image-preview__zoom button.is-level {
+  min-width: 3.6rem;
+  border-inline: 1px solid var(--panel-input-border);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.image-preview__zoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.image-preview__close {
+  width: 2.2rem;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--panel-btn-bg);
+  color: var(--panel-btn-text);
+  box-shadow: var(--panel-btn-shadow);
+}
+
+.image-preview__close svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.image-preview__stage {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 0.7rem;
+  overflow: auto;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  touch-action: none;
+  cursor: zoom-in;
+  user-select: none;
+}
+
+.image-preview__stage.is-zoomed {
+  cursor: grab;
+}
+
+.image-preview__stage.is-zoomed:active {
+  cursor: grabbing;
+}
+
+.image-preview__stage img {
+  display: block;
+  flex: none;
+  margin: auto;
+  max-width: none;
+  max-height: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.image-preview__hint {
+  flex: none;
+  margin: 0.5rem 0 0;
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.abono-proof__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
 }

@@ -1,0 +1,87 @@
+.number-pad {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.number-pad__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(4 8 14 / 0.55);
+  cursor: pointer;
+}
+
+.app-panel.number-pad__panel {
+  --panel-padding: 0.85rem;
+  --panel-radius: 1.15rem;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.45rem;
+  width: min(18.5rem, calc(100vw - 2rem));
+  aspect-ratio: 1;
+}
+
+.number-pad__panel .app-panel__kicker {
+  text-align: center;
+}
+
+.number-pad__readout {
+  overflow: hidden;
+  color: var(--panel-title);
+  font-size: 2rem;
+  font-weight: var(--panel-weight-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.number-pad__keys {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+.number-pad__keys button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid color-mix(in srgb, var(--panel-gold) 45%, var(--panel-input-border));
+  border-radius: 0.7rem;
+  background: var(--panel-input-bg);
+  color: var(--panel-title);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: var(--panel-weight-strong);
+  cursor: pointer;
+}
+
+.number-pad__keys button.is-clear,
+.number-pad__keys button.is-enter {
+  border: 0;
+  font-size: 0.82rem;
+}
+
+.number-pad__keys button.is-clear {
+  background: var(--panel-alert-bg);
+  color: var(--panel-alert-text);
+}
+
+.number-pad__keys button.is-enter {
+  background: var(--panel-btn-bg);
+  color: var(--panel-btn-text);
+  box-shadow: var(--panel-btn-shadow);
+}

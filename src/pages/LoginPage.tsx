@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { resolveClubRootId, resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
 import { settingsApi } from '../api/settings'
@@ -27,15 +27,10 @@ function parseOrgId(value: string | undefined): number | null {
 export function LoginPage() {
   const auth = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
   const { orgId: orgIdParam } = useParams()
   const orgId = parseOrgId(orgIdParam) ?? resolveClubRootId()
   const { theme, toggleTheme } = useSceneTheme()
   const [branding, setBranding] = useState<ClubesPublicBranding>(DEFAULT_LOGIN_BRANDING)
-  const redirectTo =
-    typeof (location.state as { from?: string } | null)?.from === 'string'
-      ? (location.state as { from: string }).from
-      : SESSION_HOME
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
   const [email, setEmail] = useState('')
@@ -72,7 +67,7 @@ export function LoginPage() {
   }
 
   if (auth.user) {
-    return <Navigate to={auth.requiresContext ? '/contexto' : redirectTo} replace />
+    return <Navigate to={auth.requiresContext ? '/contexto' : SESSION_HOME} replace />
   }
 
   async function onSubmit(event: FormEvent) {
@@ -83,7 +78,7 @@ export function LoginPage() {
     try {
       const user = await auth.login(email.trim(), password)
       const needsContext = Boolean(user.requires_context && !user.contexto)
-      navigate(needsContext ? '/contexto' : redirectTo, { replace: true })
+      navigate(needsContext ? '/contexto' : SESSION_HOME, { replace: true })
     } catch (err) {
       setError(getApiErrorMessage(err, 'Correo o contraseña incorrectos'))
     } finally {

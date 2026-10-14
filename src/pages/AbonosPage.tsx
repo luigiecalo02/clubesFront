@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { abonosApi } from '../api/abonos'
+import { usersApi } from '../api/users'
 import { resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
-import type { AbonoFila, AbonosBoard, AbonosModo } from '../api/types'
+import type { AbonoFila, AbonosBoard, AbonosModo, AuthUser } from '../api/types'
 import { AdminIcon } from '../admin/AdminIcon'
-import { canAccessClubAbonos } from '../admin/menu'
+import { canAccessClubAbonos, MY_ABONOS_REGISTER_PERMISSION } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { AbonoPayForm, emptyAbonoPayDraft, composeAbonoNota, parseAbonoNota, type AbonoPayDraft } from '../components/abonos/AbonoPayForm'
+import { AbonoProofReview, abonoEstadoLabel } from '../components/abonos/AbonoProofReview'
 import { memberInitials } from '../components/attendance/AttendanceMarkList'
 import { ServiceThumb } from '../components/services/ServiceVisual'
 import { AppPanel } from '../theme/AppPanel'
+import { AppTabs } from '../theme/AppTabs'
 import { CreateDrawer } from '../theme/CreateDrawer'
+import { compressReceiptImage } from '../theme/cropImage'
 import { formatDate } from '../theme/dates'
 import { useNotice } from '../theme/NoticeProvider'
 import '../theme/abonos.css'
@@ -50,6 +54,22 @@ function pickKey(row: AbonoFila): string {
 
 function countLabel(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`
+}
+
+function samePersonName(rowName: string, candidate: string): boolean {
+  const row = rowName.trim().toLowerCase()
+  const name = candidate.trim().toLowerCase()
+  if (!row || !name) return false
+  return row === name || row.startsWith(`${name} `) || name.startsWith(`${row} `)
+}
+
+function findSessionAbono(rows: AbonoFila[], user: AuthUser, personaId: number | null, fullName: string | null) {
+  if (personaId) {
+    const byId = rows.find((row) => row.persona_id === personaId)
+    if (byId) return byId
+  }
+  const names = [fullName, user.name].filter((value): value is string => Boolean(value?.trim()))
+  return rows.find((row) => names.some((name) => samePersonName(row.full_name ?? '', name))) ?? null
 }
 
 
@@ -114,7 +134,7 @@ function AbonosAvatar({
   )
 }
 
-export function AbonosPage() {
+export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const auth = useAuth()
   const ctx = auth.user?.contexto
   const canEdit =
@@ -122,6 +142,7 @@ export function AbonosPage() {
       rolName: ctx?.rol_name,
       organizacionId: ctx?.organizacion_id,
     }) || auth.can('abonos.update')
+  const canSendProof = auth.can(MY_ABONOS_REGISTER_PERMISSION)
   const notices = useNotice()
   const [modo, setModo] = useState<AbonosModo>('integrante')
   const [personaId, setPersonaId] = useState<number | null>(null)
@@ -129,7 +150,7 @@ export function AbonosPage() {
   const [list, setList] = useState<AbonosBoard>(emptyBoard)
   const [detail, setDetail] = useState<AbonosBoard>(emptyBoard)
   const [loadingList, setLoadingList] = useState(true)
-  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [loadingDetail, setLoadingDetail] = useState(mine)
   const [saving, setSaving] = useState(false)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<PayFilter>('pendientes')
@@ -138,15 +159,18 @@ export function AbonosPage() {
   const [dealTab, setDealTab] = useState<DealTab>('abonar')
   const [payKey, setPayKey] = useState<string | null>(null)
   const [draft, setDraft] = useState<AbonoPayDraft>(emptyDraft)
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [proofPreview, setProofPreview] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia(MOBILE_ABONOS).matches : false,
   )
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const selected = modo === 'integrante' ? personaId : eventoId
-  const selectedRow = list.filas.find((row) =>
+  const listedRow = list.filas.find((row) =>
     modo === 'integrante' ? row.persona_id === personaId : row.evento_id === eventoId,
   )
+  const selectedRow = listedRow
   const selectedName =
     modo === 'integrante' ? selectedRow?.full_name : selectedRow?.evento_name
   const pendingDeals = detail.filas.filter((row) => row.pendiente > 0)
@@ -177,6 +201,7 @@ export function AbonosPage() {
   const drawerPlacement = isMobile ? 'bottom' : 'end'
 
   useEffect(() => {
+    if (mine) return undefined
     let cancelled = false
     setLoadingList(true)
     abonosApi
@@ -199,7 +224,7 @@ export function AbonosPage() {
     return () => {
       cancelled = true
     }
-  }, [modo, notices])
+  }, [mine, modo, notices])
 
   useEffect(() => {
     const media = window.matchMedia(MOBILE_ABONOS)
@@ -213,10 +238,43 @@ export function AbonosPage() {
   }, [])
 
   useEffect(() => {
+    if (!mine || !auth.user?.id) return undefined
+    let cancelled = false
+    setLoadingList(true)
+    setLoadingDetail(true)
+    const user = auth.user
+    Promise.all([
+      abonosApi.board({ modo: 'integrante' }),
+      usersApi.show(user.id).catch(() => null),
+    ])
+      .then(([board, profile]) => {
+        if (cancelled) return
+        setList(board)
+        const row = findSessionAbono(
+          board.filas,
+          user,
+          profile?.persona?.id ?? profile?.persona_id ?? user.persona_id ?? null,
+          profile?.persona?.full_name ?? null,
+        )
+        setPersonaId(row?.persona_id ?? profile?.persona?.id ?? profile?.persona_id ?? user.persona_id ?? null)
+      })
+      .catch((err) => {
+        if (!cancelled) notices.error(getApiErrorMessage(err, 'No se pudieron cargar tus abonos'))
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingList(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [auth.user, mine, notices])
+
+  useEffect(() => {
     if (!selected) {
       setDetail(emptyBoard())
       setDetailsKey(null)
       setPayKey(null)
+      if (mine) setLoadingDetail(false)
       return undefined
     }
     let cancelled = false
@@ -243,7 +301,7 @@ export function AbonosPage() {
     return () => {
       cancelled = true
     }
-  }, [eventoId, modo, notices, personaId, selected])
+  }, [eventoId, mine, modo, notices, personaId, selected])
 
   useEffect(() => {
     setDealTab('abonar')
@@ -270,7 +328,7 @@ export function AbonosPage() {
     setDrawerOpen(false)
     closePay()
     closeDetails()
-    if (isMobile) {
+    if (isMobile && !mine) {
       setPersonaId(null)
       setEventoId(null)
     }
@@ -295,9 +353,54 @@ export function AbonosPage() {
     })
   }
 
+  function clearProof() {
+    setProofPreview((current) => {
+      if (current) URL.revokeObjectURL(current)
+      return null
+    })
+    setProofFile(null)
+  }
+
   function closePay() {
     setPayKey(null)
     setDraft(emptyDraft())
+    clearProof()
+  }
+
+  async function pickProof(file: File | null) {
+    clearProof()
+    if (!file) return
+    try {
+      const compact = await compressReceiptImage(file)
+      setProofFile(compact)
+      setProofPreview(URL.createObjectURL(compact))
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo preparar el pantallazo'))
+    }
+  }
+
+  async function reloadMine() {
+    const nextDetail = await abonosApi.board({
+      modo: 'integrante',
+      personaId,
+    })
+    setDetail(nextDetail)
+    setList(await abonosApi.board({ modo: 'integrante' }))
+  }
+
+  async function submitProof() {
+    if (!mine || !canSendProof || !payRow?.evento_id || !proofFile || saving) return
+    setSaving(true)
+    try {
+      await abonosApi.submitComprobante(payRow.evento_id, proofFile)
+      await reloadMine()
+      closePay()
+      notices.success('Abono enviado. Queda pendiente hasta que la directiva lo apruebe.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo enviar el abono'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function submitAbono(event?: FormEvent) {
@@ -327,10 +430,13 @@ export function AbonosPage() {
         monto,
         nota: composeAbonoNota(draft),
         modo,
+        comprobante: draft.comprobante,
       })
       setDetail(next)
-      const listed = await abonosApi.board({ modo })
-      setList(listed)
+      if (!mine) {
+        const listed = await abonosApi.board({ modo })
+        setList(listed)
+      }
       closePay()
       setDraft(emptyDraft())
       notices.success('Abono registrado.')
@@ -341,15 +447,50 @@ export function AbonosPage() {
     }
   }
 
+  async function reviewAbono(
+    abono: { id: number },
+    estado: 'aprobado' | 'rechazado',
+    monto?: number,
+  ) {
+    if (!canEdit) return
+    if (estado === 'aprobado' && (!monto || monto <= 0)) {
+      notices.warning('Escribe el valor que se ve en el pantallazo.')
+      return
+    }
+    setSaving(true)
+    try {
+      await abonosApi.review(abono.id, { estado, monto })
+      const nextDetail = await abonosApi.board({
+        modo,
+        personaId: modo === 'integrante' ? personaId : null,
+        eventoId: modo === 'actividad' ? eventoId : null,
+      })
+      setDetail(nextDetail)
+      if (!mine) {
+        setList(await abonosApi.board({ modo }))
+      }
+      notices.success(estado === 'aprobado' ? 'Abono aprobado.' : 'Abono rechazado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo revisar el abono'))
+      throw err
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const listNoun = modo === 'integrante' ? 'integrantes' : 'actividades'
   const pendingNoun = modo === 'integrante' ? ['actividad pendiente', 'actividades pendientes'] : ['integrante pendiente', 'integrantes pendientes']
   const detailContent = (
     <>
-      {!selected ? (
+      {!selected && !mine ? (
         <p className="app-panel__hint">Elige un integrante o una actividad para registrar el recaudo.</p>
       ) : null}
+      {mine && loadingList ? <p className="app-panel__muted">Cargando tus abonos…</p> : null}
+      {mine && !loadingList && !selected ? (
+        <p className="app-panel__hint">No encontramos abonos de tu usuario en este club.</p>
+      ) : null}
 
-      {selected && selectedRow ? (
+      {selected && selectedRow && !mine ? (
         <header className="abonos-detail__head">
           <AbonosAvatar
             name={selectedName || '?'}
@@ -375,46 +516,50 @@ export function AbonosPage() {
       {selected && !loadingDetail && detail.filas.length ? (
         <>
           <section className="abonos-deals">
-            <div className="abonos-status-tabs" role="tablist" aria-label="Estado de los compromisos">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={dealTab === 'abonar'}
-                className={dealTab === 'abonar' ? 'is-on' : ''}
-                onClick={() => setDealTab('abonar')}
-              >
-                <span className="abonos-status-board__icon" aria-hidden="true">
-                  <AdminIcon name="hourglass" />
-                </span>
-                <span>
-                  <strong>Por abonar ({pendingDeals.length})</strong>
-                  <small>{pendingHint}</small>
-                </span>
-                <span className="abonos-status-board__total">
-                  <strong>{formatPrice(pendingTotal)}</strong>
-                  <small>Total pendiente</small>
-                </span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={dealTab === 'pagados'}
-                className={`is-paid${dealTab === 'pagados' ? ' is-on' : ''}`}
-                onClick={() => setDealTab('pagados')}
-              >
-                <span className="abonos-status-board__icon" aria-hidden="true">
-                  <AdminIcon name="check" />
-                </span>
-                <span>
-                  <strong>Pagados ({paidDeals.length})</strong>
-                  <small>{paidHint}</small>
-                </span>
-                <span className="abonos-status-board__total">
-                  <strong>{formatPrice(paidTotal)}</strong>
-                  <small>Total pagado</small>
-                </span>
-              </button>
-            </div>
+            <AppTabs
+              label="Estado de los compromisos"
+              value={dealTab}
+              onChange={setDealTab}
+              tabs={[
+                {
+                  id: 'abonar',
+                  label: (
+                    <>
+                      <span className="abonos-status-board__icon" aria-hidden="true">
+                        <AdminIcon name="hourglass" />
+                      </span>
+                      <span>
+                        <strong>Por abonar ({pendingDeals.length})</strong>
+                        <small>{pendingHint}</small>
+                      </span>
+                      <span className="abonos-status-board__total">
+                        <strong>{formatPrice(pendingTotal)}</strong>
+                        <small>Total pendiente</small>
+                      </span>
+                    </>
+                  ),
+                },
+                {
+                  id: 'pagados',
+                  paid: true,
+                  label: (
+                    <>
+                      <span className="abonos-status-board__icon" aria-hidden="true">
+                        <AdminIcon name="check" />
+                      </span>
+                      <span>
+                        <strong>Pagados ({paidDeals.length})</strong>
+                        <small>{paidHint}</small>
+                      </span>
+                      <span className="abonos-status-board__total">
+                        <strong>{formatPrice(paidTotal)}</strong>
+                        <small>Total pagado</small>
+                      </span>
+                    </>
+                  ),
+                },
+              ]}
+            >
             <div className="abonos-status-board is-on">
               {dealTab === 'abonar' ? (
                 pendingDeals.length ? (
@@ -426,8 +571,8 @@ export function AbonosPage() {
                       photo={modo === 'integrante' ? row.image_url : row.foto_url}
                       square={modo === 'integrante'}
                       paid={false}
-                      canPay={canEdit}
-                      onPay={() => startPay(row)}
+                      canPay={mine ? canSendProof && row.pendiente > 0 : canEdit}
+                      onPay={() => (mine ? setPayKey(pickKey(row)) : startPay(row))}
                       onDetails={() => openDetails(row)}
                     />
                   ))
@@ -450,6 +595,7 @@ export function AbonosPage() {
                 <p className="app-panel__muted">Todavía no hay compromisos pagados.</p>
               )}
             </div>
+            </AppTabs>
           </section>
 
         </>
@@ -458,40 +604,33 @@ export function AbonosPage() {
   )
 
   return (
-    <section className="admin-page admin-page--abonos">
+    <section className={`admin-page admin-page--abonos${mine ? ' admin-page--my-abonos' : ''}`}>
       <AppPanel shine={false} className="abonos-workspace">
         <p className="app-panel__kicker">Recaudo</p>
-        <h2 className="app-panel__title">Registrar abono</h2>
+        <h2 className="app-panel__title">{mine ? 'Mis abonos' : 'Registrar abono'}</h2>
         <p className="app-panel__subtitle">
-          Busca primero a la persona o la actividad. Luego registra exactamente lo que recibió.
+          {mine
+            ? 'Estas son tus actividades económicas y lo que falta por abonar.'
+            : 'Busca primero a la persona o la actividad. Luego registra exactamente lo que recibió.'}
         </p>
       </AppPanel>
 
+      {mine ? (
+        <AppPanel shine={false} className="abonos-detail">
+          {detailContent}
+        </AppPanel>
+      ) : (
       <div className="abonos-workspace__grid">
         <AppPanel shine={false} className="abonos-board">
-            <div className="admin-event-tabs" role="tablist" aria-label="Vista de abonos">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={modo === 'integrante'}
-                className={`admin-events__view${modo === 'integrante' ? ' is-on' : ''}`}
-                onClick={() => changeModo('integrante')}
-              >
-                <AdminIcon name="user" />
-                Por integrante
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={modo === 'actividad'}
-                className={`admin-events__view${modo === 'actividad' ? ' is-on' : ''}`}
-                onClick={() => changeModo('actividad')}
-              >
-                <AdminIcon name="calendar" />
-                Por actividad
-              </button>
-            </div>
-
+            <AppTabs
+              label="Vista de abonos"
+              value={modo}
+              onChange={changeModo}
+              tabs={[
+                { id: 'integrante', label: <><AdminIcon name="user" /> Por integrante</> },
+                { id: 'actividad', label: <><AdminIcon name="calendar" /> Por actividad</> },
+              ]}
+            >
             <label className="abonos-search">
               Buscar
               <span className="app-panel__field">
@@ -561,6 +700,7 @@ export function AbonosPage() {
                 )
               })}
             </div>
+            </AppTabs>
         </AppPanel>
 
         {!isMobile ? (
@@ -569,8 +709,9 @@ export function AbonosPage() {
           </AppPanel>
         ) : null}
       </div>
+      )}
 
-      {isMobile ? (
+      {!mine && isMobile ? (
         <CreateDrawer
           open={drawerOpen && Boolean(selected)}
           title={selectedName || 'Registrar abono'}
@@ -610,28 +751,15 @@ export function AbonosPage() {
                 <span>Pendiente</span>
               </p>
             </div>
-            <div className="admin-event-tabs" role="tablist" aria-label="Detalle del compromiso">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={detailsTab === 'servicios'}
-                className={`admin-events__view${detailsTab === 'servicios' ? ' is-on' : ''}`}
-                onClick={() => setDetailsTab('servicios')}
-              >
-                <AdminIcon name="box" />
-                Servicios
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={detailsTab === 'abonos'}
-                className={`admin-events__view${detailsTab === 'abonos' ? ' is-on' : ''}`}
-                onClick={() => setDetailsTab('abonos')}
-              >
-                <AdminIcon name="wallet" />
-                Abonos
-              </button>
-            </div>
+            <AppTabs
+              label="Detalle del compromiso"
+              value={detailsTab}
+              onChange={setDetailsTab}
+              tabs={[
+                { id: 'servicios', label: <><AdminIcon name="box" /> Servicios</> },
+                { id: 'abonos', label: <><AdminIcon name="wallet" /> Abonos</> },
+              ]}
+            >
             {detailsTab === 'servicios' && detailsRow.pedidos?.length ? (
               <ul className="abonos-pedidos">
                 {detailsRow.pedidos.map((pedido) => (
@@ -663,7 +791,12 @@ export function AbonosPage() {
                           {nota.texto ? <small>{nota.texto}</small> : null}
                         </span>
                       </span>
-                      <strong>{formatPrice(abono.monto)}</strong>
+                      <strong>{abonoEstadoLabel(abono) ?? formatPrice(abono.monto)}</strong>
+                      <AbonoProofReview
+                        abono={abono}
+                        canReview={canEdit}
+                        onReview={reviewAbono}
+                      />
                     </li>
                   )
                 })}
@@ -672,6 +805,7 @@ export function AbonosPage() {
             {detailsTab === 'abonos' && !detailsRow.abonos?.length ? (
               <p className="app-panel__muted">Todavía no hay abonos en este compromiso.</p>
             ) : null}
+            </AppTabs>
           </div>
         ) : null}
       </CreateDrawer>
@@ -681,8 +815,8 @@ export function AbonosPage() {
         stacked
         size="half"
         placement={drawerPlacement}
-        title={payTitle || 'Registrar abono'}
-        subtitle="Recaudo"
+        title={mine ? payTitle || 'Enviar abono' : payTitle || 'Registrar abono'}
+        subtitle={mine ? 'Pantallazo del abono' : 'Recaudo'}
         cover={resolveFileUrl(payRow?.banner_url)}
         avatar={resolveFileUrl(payPhoto)}
         avatarFallback={memberInitials(payPersonName || payTitle || 'AB')}
@@ -695,16 +829,39 @@ export function AbonosPage() {
             <button
               type="button"
               className="app-panel__btn--primary"
-              disabled={saving || !payRow || payRow.pendiente <= 0}
-              onClick={() => void submitAbono()}
+              disabled={saving || !payRow || (mine ? !proofFile : payRow.pendiente <= 0)}
+              onClick={() => void (mine ? submitProof() : submitAbono())}
             >
               <AdminIcon name="wallet" />
-              Registrar abono
+              {mine ? (saving ? 'Enviando…' : 'Enviar abono') : 'Registrar abono'}
             </button>
           </>
         }
       >
-        {payRow ? (
+        {payRow && mine ? (
+          <form
+            className="abono-proof-form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void submitProof()
+            }}
+          >
+            <p className="app-panel__subtitle">
+              Sube el pantallazo de tu abono. Queda pendiente hasta que la directiva lo apruebe.
+            </p>
+            <label>
+              Pantallazo del abono
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={saving}
+                onChange={(event) => void pickProof(event.target.files?.[0] ?? null)}
+              />
+            </label>
+            {proofPreview ? <img className="abono-proof__shot" src={proofPreview} alt="Pantallazo listo para enviar" /> : null}
+          </form>
+        ) : null}
+        {payRow && !mine ? (
           <div className="abonos-detail">
             <div className="abonos-deal__money">
               <p className="event-countdown__cell">

@@ -106,6 +106,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [applyUser, clearSession, token])
 
+  useEffect(() => {
+    if (!token) return undefined
+    let lastSync = Date.now()
+    const sync = () => {
+      if (document.visibilityState === 'hidden' || Date.now() - lastSync < 15000) return
+      lastSync = Date.now()
+      authApi
+        .me()
+        .then(applyUser)
+        .catch(() => undefined)
+    }
+    window.addEventListener('focus', sync)
+    document.addEventListener('visibilitychange', sync)
+    return () => {
+      window.removeEventListener('focus', sync)
+      document.removeEventListener('visibilitychange', sync)
+    }
+  }, [applyUser, token])
+
   const login = useCallback(
     async (email: string, password: string) => {
       const result = await authApi.login(email, password)

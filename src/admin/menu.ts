@@ -42,8 +42,17 @@ export type AdminIconName =
   | 'pencil'
   | 'x'
   | 'pulse'
+  | 'trendUp'
+  | 'calculator'
+  | 'coins'
+  | 'target'
+  | 'chart'
+  | 'pie'
+  | 'alert'
 
 export const SESSION_HOME = '/mi-actividad'
+export const MY_ABONOS = '/mis-abonos'
+export const MY_ABONOS_REGISTER_PERMISSION = 'mis_abonos.update'
 
 export const ADMIN_MENU: AdminMenuItem[] = [
   {
@@ -138,6 +147,13 @@ export const ADMIN_MENU: AdminMenuItem[] = [
     description: 'Registra lo recogido de las actividades económicas, por integrante o por actividad.',
   },
   {
+    path: MY_ABONOS,
+    label: 'Mis abonos',
+    permission: 'mis_abonos.view',
+    icon: 'wallet',
+    description: 'Tus actividades económicas y lo que falta por abonar.',
+  },
+  {
     path: '/presupuesto',
     label: 'Presupuesto',
     permission: 'presupuesto.view',
@@ -176,6 +192,19 @@ export const ADMIN_MENU: AdminMenuItem[] = [
 
 export function isClubDirectorRole(rolName: string | null | undefined): boolean {
   return rolName === 'director'
+}
+
+const CLUB_DIRECTIVA_ROLES = ['director', 'subdirector', 'secretario', 'tesorero']
+
+export function isClubDirectivaRole(rolName: string | null | undefined): boolean {
+  return CLUB_DIRECTIVA_ROLES.includes(rolName ?? '')
+}
+
+export function canViewClubEventGanancias(options?: {
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  return Boolean(options?.organizacionId) && isClubDirectivaRole(options?.rolName)
 }
 
 export function canManageClubDirectors(options?: {
@@ -330,8 +359,14 @@ export function canImpersonateClubMember(options?: {
   return Boolean(options?.organizacionId) && isClubDirectorRole(options?.rolName)
 }
 
-export function canEditOwnProfilePhoto(rolName?: string | null): boolean {
-  return rolName !== 'miembro'
+const MEMBER_PHOTO_PERMISSION = 'integrantes.manage_photos'
+
+export function canEditOwnProfilePhoto(options?: {
+  can?: (permission: string) => boolean
+  rolName?: string | null
+}): boolean {
+  if (options?.can?.(MEMBER_PHOTO_PERMISSION)) return true
+  return isClubDirectivaRole(options?.rolName)
 }
 
 export function canManageMemberPhotos(options?: {
@@ -339,13 +374,8 @@ export function canManageMemberPhotos(options?: {
   rolName?: string | null
   organizacionId?: number | null
 }): boolean {
-  if (options?.can?.('integrantes.manage_photos')) {
-    return true
-  }
-  if (isClubDirectorRole(options?.rolName) && Boolean(options?.organizacionId)) {
-    return true
-  }
-  return canCreateClubMember(options) || canUpdateClubMember(options)
+  if (options?.can?.(MEMBER_PHOTO_PERMISSION)) return true
+  return isClubDirectivaRole(options?.rolName) && Boolean(options?.organizacionId)
 }
 
 export function visibleMenu(
@@ -360,11 +390,15 @@ export function visibleMenu(
     if (item.path === '/asistencia') {
       return canAccessClubAttendance(options) || can(item.permission)
     }
-    if (item.path === '/abonos') {
-      return canAccessClubAbonos(options) || can(item.permission)
-    }
     if (item.path === '/presupuesto') {
       return canAccessClubPresupuesto(options) || can(item.permission)
+    }
+    if (item.path === '/servicios') {
+      return canManageClubServices({
+        can,
+        rolName: options?.rolName,
+        organizacionId: options?.organizacionId,
+      })
     }
     return can(item.permission)
   })

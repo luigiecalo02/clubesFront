@@ -97,10 +97,14 @@ export const serviciosApi = {
     return data.data
   },
 
-  async syncEventOffers(eventoId: number, productoServicioIds: number[]): Promise<EventoServicios> {
+  async syncEventOffers(
+    eventoId: number,
+    productoServicioIds: number[],
+    proyecciones: Array<{ producto_servicio_id: number; cantidad: number }> = [],
+  ): Promise<EventoServicios> {
     const { data } = await api.put<ApiEnvelope<EventoServicios>>(
       `/api/v1/settings/clubes/events/${eventoId}/servicios`,
-      { producto_servicio_ids: productoServicioIds },
+      { producto_servicio_ids: productoServicioIds, proyecciones },
     )
     return data.data
   },

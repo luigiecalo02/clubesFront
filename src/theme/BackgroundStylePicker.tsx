@@ -1,4 +1,5 @@
 import { BACKGROUND_STYLES, parseBackgroundStyle, type ClubesBackgroundStyle } from './backgroundStyle'
+import { AppTabs } from './AppTabs'
 import './image-upload.css'
 
 type BackgroundStylePickerProps = {
@@ -13,22 +14,15 @@ export function BackgroundStylePicker({ value, disabled = false, onChange }: Bac
 
   return (
     <div className="background-style">
-      <div className="admin-event-tabs" role="radiogroup" aria-label="Estilo del fondo">
-        {BACKGROUND_STYLES.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="radio"
-            aria-checked={style === item.id}
-            className={`admin-events__view${style === item.id ? ' is-on' : ''}`}
-            disabled={disabled}
-            onClick={() => onChange(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-      {hint ? <small className="image-upload__hint">{hint}</small> : null}
+      <AppTabs
+        label="Estilo del fondo"
+        value={style}
+        onChange={onChange}
+        disabled={disabled}
+        tabs={BACKGROUND_STYLES.map((item) => ({ id: item.id, label: item.label }))}
+      >
+        {hint ? <small className="image-upload__hint">{hint}</small> : <span />}
+      </AppTabs>
     </div>
   )
 }

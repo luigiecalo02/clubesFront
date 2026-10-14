@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
@@ -101,6 +101,8 @@ export function PresupuestoPage() {
   const [draft, setDraft] = useState<ItemDraft>(emptyDraft('miembros'))
   const [acompanantesDraft, setAcompanantesDraft] = useState('')
   const [nombreDraft, setNombreDraft] = useState('')
+  const [viewingBudgetId, setViewingBudgetId] = useState<number | null>(null)
+  const budgetRequest = useRef(0)
 
   const filteredEvents = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -156,6 +158,8 @@ export function PresupuestoPage() {
       return
     }
     let cancelled = false
+    budgetRequest.current += 1
+    setViewingBudgetId(null)
     setLoadingDetail(true)
     presupuestoApi
       .show(eventoId)
@@ -222,14 +226,20 @@ export function PresupuestoPage() {
   }
 
   async function selectBudget(id: number) {
-    if (!eventoId || detail?.presupuesto_id === id) return
-    setLoadingDetail(true)
+    if (!eventoId || detail?.presupuesto_id === id || viewingBudgetId != null) return
+    const request = ++budgetRequest.current
+    const eventId = eventoId
+    setViewingBudgetId(id)
     try {
-      applyDetail(await presupuestoApi.show(eventoId, id))
+      const next = await presupuestoApi.show(eventId, id)
+      if (budgetRequest.current !== request) return
+      applyDetail(next)
     } catch (err) {
-      notices.error(getApiErrorMessage(err, 'No se pudo cargar el presupuesto'))
+      if (budgetRequest.current === request) {
+        notices.error(getApiErrorMessage(err, 'No se pudo cargar el presupuesto'))
+      }
     } finally {
-      setLoadingDetail(false)
+      if (budgetRequest.current === request) setViewingBudgetId(null)
     }
   }
 
@@ -396,6 +406,7 @@ export function PresupuestoPage() {
       onRemoveItem={(item) => void removeItem(item)}
       onAcompanantesChange={setAcompanantesDraft}
       onSaveAcompanantes={() => void saveAcompanantes()}
+      viewingBudgetId={viewingBudgetId}
       compactHero={isMobile}
     />
   ) : null

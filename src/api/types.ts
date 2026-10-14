@@ -337,7 +337,11 @@ export interface EventSummary {
   visibilidad?: string | null
   organizacion?: { id: number; nombre: string; codigo?: string | null } | null
   tipo_evento?: EventTipo | null
+  ganancia_eclesiastica_id?: number | null
+  capital?: number | string | null
   inscritos_count?: number
+  participantes_count?: number
+  asistentes_count?: number
   inscrito?: boolean
   image_url?: string | null
   banner_url?: string | null
@@ -452,6 +456,7 @@ export interface EventoServicioOferta {
   evento_id: number
   producto_servicio_id: number
   precio: number | string
+  cantidad_proyectada?: number | null
   activo: boolean
   producto?: ClubServicio | null
 }
@@ -514,6 +519,10 @@ export interface EventSelfParticipation {
     abonado: number
     abonos: AbonoMovimiento[]
   }
+  ganancia?: {
+    capital: number
+    proyeccion_otros: number
+  }
 }
 
 export type AbonosModo = 'integrante' | 'actividad'
@@ -530,7 +539,21 @@ export interface AbonoMovimiento {
   id: number
   monto: number
   nota?: string | null
+  estado?: 'pendiente' | 'aprobado' | 'rechazado' | string | null
+  comprobante_url?: string | null
   created_at?: string | null
+}
+
+export interface AbonoRevision {
+  abono: AbonoMovimiento
+  persona_id: number
+  evento_id: number
+  abonado: number
+}
+
+export interface AbonoRecaudo {
+  abonado: number
+  abonos: AbonoMovimiento[]
 }
 
 export interface AbonoPedido {

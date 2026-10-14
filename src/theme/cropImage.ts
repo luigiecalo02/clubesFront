@@ -19,6 +19,8 @@ export type OptimizeImageOptions = {
   quality: number
   maxBytes: number
   fileName: string
+  minQuality?: number
+  mimes?: string[]
 }
 
 const EDITOR_MAX_EDGE = 2400
@@ -160,6 +162,45 @@ export async function cropAndOptimize(
   return encodeOptimizedCanvas(canvas, options)
 }
 
+const RECEIPT_MAX_EDGES = [2000, 1600, 1280, 1024]
+const RECEIPT_MAX_BYTES = 500_000
+
+export async function compressReceiptImage(file: File): Promise<File> {
+  const decoded = await decodeOrientedImage(file)
+  try {
+    let result: File | null = null
+    for (const edge of RECEIPT_MAX_EDGES) {
+      const scale = Math.min(1, edge / Math.max(decoded.width, decoded.height, 1))
+      const width = Math.max(1, Math.round(decoded.width * scale))
+      const height = Math.max(1, Math.round(decoded.height * scale))
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('No se pudo leer la imagen.')
+      context.fillStyle = '#fff'
+      context.fillRect(0, 0, width, height)
+      context.imageSmoothingEnabled = true
+      context.imageSmoothingQuality = 'high'
+      context.drawImage(decoded, 0, 0, width, height)
+      result = await encodeOptimizedCanvas(canvas, {
+        outputWidth: width,
+        mime: 'image/jpeg',
+        quality: 0.86,
+        minQuality: 0.62,
+        maxBytes: RECEIPT_MAX_BYTES,
+        fileName: 'pantallazo.jpg',
+        mimes: ['image/jpeg'],
+      })
+      if (result.size <= RECEIPT_MAX_BYTES) break
+    }
+    if (!result) throw new Error('No se pudo optimizar la imagen.')
+    return result
+  } finally {
+    decoded.close()
+  }
+}
+
 async function decodeOrientedImage(file: File): Promise<ImageBitmap> {
   if (typeof createImageBitmap === 'function') {
     try {
@@ -235,15 +276,17 @@ async function bitmapToPreviewUrl(bitmap: ImageBitmap): Promise<string> {
 
 async function encodeOptimizedCanvas(canvas: HTMLCanvasElement, options: OptimizeImageOptions): Promise<File> {
   const mimes =
-    options.mime === 'image/png' ? ['image/png'] : uniqueMimes([options.mime, 'image/webp', 'image/jpeg'])
+    options.mimes ??
+    (options.mime === 'image/png' ? ['image/png'] : uniqueMimes([options.mime, 'image/webp', 'image/jpeg']))
   let best: { blob: Blob; mime: string } | null = null
 
   for (const mime of mimes) {
     let quality = options.quality
     let blob = await canvasToBlob(canvas, mime, quality)
     if (!blob) continue
-    while (blob.size > options.maxBytes && quality > 0.45) {
-      quality = Math.max(0.45, quality - 0.08)
+    const floor = options.minQuality ?? 0.45
+    while (blob.size > options.maxBytes && quality > floor) {
+      quality = Math.max(floor, quality - 0.08)
       const next = await canvasToBlob(canvas, mime, quality)
       if (!next) break
       blob = next

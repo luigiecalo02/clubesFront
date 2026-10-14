@@ -12,7 +12,6 @@ import type {
   ClubesInviteLink,
 } from '../api/types'
 import {
-  canAccessClubAbonos,
   canAccessClubAttendance,
   canCreateClubMember,
   canImpersonateClubMember,
@@ -26,6 +25,7 @@ import { MemberInsightDrawer, type MemberInsightKind } from '../components/membe
 import { PersonSearchSelect } from '../components/members/PersonSearchSelect'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
+import { AppTabs } from '../theme/AppTabs'
 import { useNotice } from '../theme/NoticeProvider'
 
 const MINISTRY_LABELS: Record<string, string> = {
@@ -77,7 +77,7 @@ export function MyClubPage() {
   const canCreateMembers = canCreateClubMember(access)
   const canUpdateMembers = canUpdateClubMember(access)
   const canImpersonateMembers = canImpersonateClubMember(access)
-  const canViewSaldos = canAccessClubAbonos(access) || auth.can('abonos.view')
+  const canViewSaldos = auth.can('abonos.view')
   const canViewAttendance = canAccessClubAttendance(access) || auth.can('asistencia.view')
   const [clubTab, setClubTab] = useState<'directiva' | 'integrantes'>('directiva')
   const [memberMode, setMemberMode] = useState<MemberDrawerMode | null>(null)
@@ -318,27 +318,15 @@ export function MyClubPage() {
             </AppPanel>
 
             <AppPanel className="admin-club__card">
-              <div className="admin-event-tabs" role="tablist" aria-label="Personas del club">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={clubTab === 'directiva'}
-                  className={`admin-events__view${clubTab === 'directiva' ? ' is-on' : ''}`}
-                  onClick={() => setClubTab('directiva')}
-                >
-                  Directiva
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={clubTab === 'integrantes'}
-                  className={`admin-events__view${clubTab === 'integrantes' ? ' is-on' : ''}`}
-                  onClick={() => setClubTab('integrantes')}
-                >
-                  Integrantes{members.length ? ` (${members.length})` : ''}
-                </button>
-              </div>
-
+              <AppTabs
+                label="Personas del club"
+                value={clubTab}
+                onChange={setClubTab}
+                tabs={[
+                  { id: 'directiva', label: 'Directiva' },
+                  { id: 'integrantes', label: `Integrantes${members.length ? ` (${members.length})` : ''}` },
+                ]}
+              >
               {clubTab === 'directiva' ? (
                 <>
                   <p className="app-panel__subtitle">
@@ -426,6 +414,7 @@ export function MyClubPage() {
               ) : (
                 <p className="app-panel__muted">Este club todavía no tiene integrantes registrados.</p>
               )}
+              </AppTabs>
             </AppPanel>
           </div>
 

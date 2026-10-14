@@ -1,32 +1,26 @@
-export type EventWorkspaceTab = 'ficha' | 'subeventos'
+import { AppTabList } from '../../theme/AppTabs'
+
+export type EventWorkspaceTab = 'ficha' | 'subeventos' | 'ganancias'
 
 type EventTabsProps = {
   tab: EventWorkspaceTab
   count?: number
+  showSubeventos?: boolean
+  showGanancias?: boolean
   onChange: (tab: EventWorkspaceTab) => void
 }
 
-export function EventTabs({ tab, count = 0, onChange }: EventTabsProps) {
-  return (
-    <div className="admin-event-tabs" role="tablist" aria-label="Secciones del evento">
-      <button
-        type="button"
-        role="tab"
-        aria-selected={tab === 'ficha'}
-        className={`admin-events__view${tab === 'ficha' ? ' is-on' : ''}`}
-        onClick={() => onChange('ficha')}
-      >
-        Ficha
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={tab === 'subeventos'}
-        className={`admin-events__view${tab === 'subeventos' ? ' is-on' : ''}`}
-        onClick={() => onChange('subeventos')}
-      >
-        Subeventos{count ? ` (${count})` : ''}
-      </button>
-    </div>
-  )
+export function EventTabs({
+  tab,
+  count = 0,
+  showSubeventos = true,
+  showGanancias = false,
+  onChange,
+}: EventTabsProps) {
+  const tabs: { id: EventWorkspaceTab; label: string }[] = [{ id: 'ficha', label: 'Ficha' }]
+  if (showSubeventos) tabs.push({ id: 'subeventos', label: `Subeventos${count ? ` (${count})` : ''}` })
+  if (showGanancias) tabs.push({ id: 'ganancias', label: 'Ganancias' })
+  if (tabs.length < 2) return null
+
+  return <AppTabList label="Secciones del evento" tabs={tabs} value={tab} onChange={onChange} />
 }

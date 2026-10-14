@@ -1,6 +1,7 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { resolveFileUrl } from '../api/baseUrl'
 import type { EventSummary, EventTipo } from '../api/types'
+import { CalendarDayPicker } from '../components/events/CalendarDayPicker'
 import { EventBoard } from '../components/events/EventBoard'
 import { EventCardActions } from '../components/events/EventCard'
 import { AppPanel } from '../theme/AppPanel'
@@ -11,9 +12,12 @@ import {
   eventSpanSlice,
   eventsForDay,
   eventsForMonth,
+  formatDayLabel,
   monthTitle,
   toDateKey,
 } from './calendarMonth'
+
+const CALENDAR_COMPACT = '(max-width: 979px)'
 
 const WEEKDAYS = [
   { full: 'Dom', mini: 'D', label: 'Domingo' },
@@ -51,6 +55,8 @@ type EventsCalendarProps = {
   onJoin?: (item: EventSummary) => void
   onInscriptions?: (item: EventSummary) => void
   onEdit: (item: EventSummary) => void
+  canChangeEstado?: boolean
+  onEstadoChange?: (item: EventSummary, estado: string) => Promise<void> | void
 }
 
 export function EventsCalendar({
@@ -67,11 +73,28 @@ export function EventsCalendar({
   onJoin,
   onInscriptions,
   onEdit,
+  canChangeEstado = false,
+  onEstadoChange,
 }: EventsCalendarProps) {
   const today = new Date()
   const [cursor, setCursor] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }))
   const [selectedDay, setSelectedDay] = useState(toDateKey(today))
   const [openId, setOpenId] = useState<number | null>(null)
+  const [pickKey, setPickKey] = useState<string | null>(null)
+  const [compact, setCompact] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(CALENDAR_COMPACT).matches : false,
+  )
+
+  useEffect(() => {
+    const media = window.matchMedia(CALENDAR_COMPACT)
+    const sync = () => {
+      setCompact(media.matches)
+      if (!media.matches) setPickKey(null)
+    }
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
 
   const days = useMemo(
     () => buildMonthGrid(cursor.year, cursor.month, today),
@@ -91,8 +114,12 @@ export function EventsCalendar({
     setOpenId(null)
   }
 
-  function openEvent(dayKey: string, eventId: number | null) {
+  function openEvent(dayKey: string, items: EventSummary[], eventId: number | null) {
     setSelectedDay(dayKey)
+    if (compact && items.length > 1) {
+      setPickKey(dayKey)
+      return
+    }
     setOpenId(eventId)
   }
 
@@ -101,13 +128,18 @@ export function EventsCalendar({
     setCursor({ year: next.getFullYear(), month: next.getMonth() })
     setSelectedDay(toDateKey(next))
     setOpenId(null)
+    setPickKey(null)
   }
 
   function goToday() {
     setCursor({ year: today.getFullYear(), month: today.getMonth() })
     setSelectedDay(toDateKey(today))
     setOpenId(null)
+    setPickKey(null)
   }
+
+  const pickDate = pickKey ? days.find((day) => day.key === pickKey)?.date ?? null : null
+  const pickItems = pickDate ? eventsForDay(events, pickDate) : []
 
   return (
     <section className="admin-page admin-page--calendar">
@@ -177,7 +209,7 @@ export function EventsCalendar({
                   }${selectedDay === day.key ? ' is-on' : ''}${fullDay ? ' is-full' : ''}${
                     splitDay ? ' is-split' : ''
                   }${daySpan ? ` is-span is-span-${leadSlice?.role}` : ''}`}
-                  onClick={() => openEvent(day.key, items[0]?.id ?? null)}
+                  onClick={() => openEvent(day.key, items, items[0]?.id ?? null)}
                 >
                   <span className="admin-calendar__num">{day.date.getDate()}</span>
                   {visible.map((item) => {
@@ -205,7 +237,7 @@ export function EventsCalendar({
                         }
                         onClick={(event) => {
                           event.stopPropagation()
-                          openEvent(day.key, item.id)
+                          openEvent(day.key, items, item.id)
                         }}
                       >
                         {cover ? <img src={cover} alt="" className="admin-calendar__chip-cover" /> : null}
@@ -224,9 +256,24 @@ export function EventsCalendar({
         </div>
       </AppPanel>
 
+      {compact && pickDate && pickItems.length > 1 ? (
+        <CalendarDayPicker
+          title={formatDayLabel(pickDate)}
+          items={pickItems}
+          onClose={() => setPickKey(null)}
+          onSelect={(item) => {
+            setPickKey(null)
+            setOpenId(item.id)
+          }}
+        />
+      ) : null}
+
       <CreateDrawer
         open={Boolean(selected)}
         title={selected?.name || 'Evento'}
+        subtitle={selected?.tipo_evento?.nombre}
+        cover={selected ? eventBanner(selected) : null}
+        avatar={selected ? eventLogo(selected) : null}
         onClose={closeEvent}
         footer={
           selected ? (
@@ -281,6 +328,8 @@ export function EventsCalendar({
             onJoin={onJoin}
             onInscriptions={onInscriptions}
             onEdit={onEdit}
+            canChangeEstado={canChangeEstado && selected.organizacion?.id === organizacionId}
+            onEstadoChange={onEstadoChange}
           />
         ) : null}
       </CreateDrawer>

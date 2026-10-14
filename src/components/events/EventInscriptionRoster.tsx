@@ -4,6 +4,7 @@ import { resolveFileUrl } from '../../api/baseUrl'
 import { getApiErrorMessage } from '../../api/client'
 import { inscripcionesApi, type InscripcionIntegrante } from '../../api/inscripciones'
 import type { EventSummary } from '../../api/types'
+import { AppTabs } from '../../theme/AppTabs'
 import { CreateDrawer } from '../../theme/CreateDrawer'
 import { useNotice } from '../../theme/NoticeProvider'
 import '../../theme/abonos.css'
@@ -165,47 +166,51 @@ export function EventInscriptionRoster({ event, canEdit, onClose, onChanged }: E
                   Agregar acompañantes
                 </button>
               ) : null}
-              <div className="abonos-status-tabs" role="tablist" aria-label="Estado de inscripción">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === 'inscritos'}
-                  className={`is-paid${tab === 'inscritos' ? ' is-on' : ''}`}
-                  onClick={() => setTab('inscritos')}
-                >
-                  <span className="abonos-status-board__icon" aria-hidden="true">
-                    <AdminIcon name="check" />
-                  </span>
-                  <span>
-                    <strong>Inscritos ({inscritos.length})</strong>
-                    <small>Ya confirmados en el evento</small>
-                  </span>
-                  <span className="abonos-status-board__total">
-                    <strong>{inscritos.length}</strong>
-                    <small>Total inscritos</small>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === 'pendientes'}
-                  className={tab === 'pendientes' ? 'is-on' : ''}
-                  onClick={() => setTab('pendientes')}
-                >
-                  <span className="abonos-status-board__icon" aria-hidden="true">
-                    <AdminIcon name="hourglass" />
-                  </span>
-                  <span>
-                    <strong>Sin inscribir ({pendientes.length})</strong>
-                    <small>Integrantes pendientes</small>
-                  </span>
-                  <span className="abonos-status-board__total">
-                    <strong>{pendientes.length}</strong>
-                    <small>Por inscribir</small>
-                  </span>
-                </button>
-              </div>
             </div>
+            <AppTabs
+              label="Estado de inscripción"
+              value={tab}
+              onChange={setTab}
+              tabs={[
+                {
+                  id: 'inscritos',
+                  paid: true,
+                  label: (
+                    <>
+                      <span className="abonos-status-board__icon" aria-hidden="true">
+                        <AdminIcon name="check" />
+                      </span>
+                      <span>
+                        <strong>Inscritos ({inscritos.length})</strong>
+                        <small>Ya confirmados en el evento</small>
+                      </span>
+                      <span className="abonos-status-board__total">
+                        <strong>{inscritos.length}</strong>
+                        <small>Total inscritos</small>
+                      </span>
+                    </>
+                  ),
+                },
+                {
+                  id: 'pendientes',
+                  label: (
+                    <>
+                      <span className="abonos-status-board__icon" aria-hidden="true">
+                        <AdminIcon name="hourglass" />
+                      </span>
+                      <span>
+                        <strong>Sin inscribir ({pendientes.length})</strong>
+                        <small>Integrantes pendientes</small>
+                      </span>
+                      <span className="abonos-status-board__total">
+                        <strong>{pendientes.length}</strong>
+                        <small>Por inscribir</small>
+                      </span>
+                    </>
+                  ),
+                },
+              ]}
+            >
             <p className="app-panel__muted">
               {clubInscritos} de {clubInscritos + pendientes.length} integrantes
               {externosInscritos ? ` · ${externosInscritos} externos` : ''}
@@ -252,6 +257,7 @@ export function EventInscriptionRoster({ event, canEdit, onClose, onChanged }: E
                 {tab === 'inscritos' ? 'Nadie está inscrito todavía.' : 'Todos los integrantes están inscritos.'}
               </p>
             )}
+            </AppTabs>
           </>
         ) : null}
       </CreateDrawer>

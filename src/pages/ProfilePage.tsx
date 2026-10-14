@@ -101,7 +101,10 @@ export function ProfilePage() {
 
   if (!user) return null
 
-  const canEditPhoto = canEditOwnProfilePhoto(user.contexto?.rol_name)
+  const canEditPhoto = canEditOwnProfilePhoto({
+    can: auth.can,
+    rolName: user.contexto?.rol_name,
+  })
   const userId = user.id
   const currentName = user.name
   const currentEmail = user.email
