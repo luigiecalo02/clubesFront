@@ -11,6 +11,15 @@ import { ProgressBar, SummaryDonut, SummaryKpi, summaryPercent } from './Summary
 import '../../theme/attendance-mark.css'
 
 type BulkParticipa = boolean | ''
+type ParticipantSort = 'nombre' | 'cantidad_desc' | 'cantidad_asc' | 'participan' | 'no_participan'
+
+const SORT_OPTIONS: { value: ParticipantSort; label: string }[] = [
+  { value: 'nombre', label: 'Nombre' },
+  { value: 'cantidad_desc', label: 'Más cantidades' },
+  { value: 'cantidad_asc', label: 'Menos cantidades' },
+  { value: 'participan', label: 'Participan primero' },
+  { value: 'no_participan', label: 'No participan primero' },
+]
 
 const BULK_COPY: Record<'yes' | 'no' | 'clear', { title: string; apply: string }> = {
   yes: { title: 'Marcar que todos participan', apply: 'participan' },
@@ -243,6 +252,7 @@ export function ParticipantsMarkList({
   onReviewAbono,
 }: ParticipantsMarkListProps) {
   const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<ParticipantSort>('nombre')
   const [openIds, setOpenIds] = useState<number[]>([])
   const [pending, setPending] = useState<BulkParticipa | null>(null)
 
@@ -253,12 +263,55 @@ export function ParticipantsMarkList({
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    if (!needle) return members
-    return members.filter((row) => {
-      const haystack = `${row.full_name} ${row.identificacion ?? ''}`.toLowerCase()
-      return haystack.includes(needle)
+    const rows = needle
+      ? members.filter((row) => {
+          const haystack = `${row.full_name} ${row.identificacion ?? ''}`.toLowerCase()
+          return haystack.includes(needle)
+        })
+      : [...members]
+
+    const qty = (row: EventParticipant) => {
+      const current = draft[row.persona_id]
+      if (current?.participa !== true) return 0
+      return saleTotals(services, current.ventas).unidades
+    }
+    const participaRank = (row: EventParticipant) => {
+      const value = draft[row.persona_id]?.participa
+      if (value === true) return 0
+      if (value === false) return 1
+      return 2
+    }
+    const byName = (a: EventParticipant, b: EventParticipant) =>
+      (a.full_name || '').localeCompare(b.full_name || '', 'es', { sensitivity: 'base' })
+
+    rows.sort((a, b) => {
+      if (sort === 'cantidad_desc') {
+        const diff = qty(b) - qty(a)
+        return diff !== 0 ? diff : byName(a, b)
+      }
+      if (sort === 'cantidad_asc') {
+        const diff = qty(a) - qty(b)
+        return diff !== 0 ? diff : byName(a, b)
+      }
+      if (sort === 'participan') {
+        const diff = participaRank(a) - participaRank(b)
+        return diff !== 0 ? diff : byName(a, b)
+      }
+      if (sort === 'no_participan') {
+        const rank = (row: EventParticipant) => {
+          const value = draft[row.persona_id]?.participa
+          if (value === false) return 0
+          if (value === true) return 1
+          return 2
+        }
+        const diff = rank(a) - rank(b)
+        return diff !== 0 ? diff : byName(a, b)
+      }
+      return byName(a, b)
     })
-  }, [members, query])
+
+    return rows
+  }, [draft, members, query, services, sort])
 
   function requestBulk(participa: BulkParticipa) {
     if (markedCount === 0) {
@@ -291,14 +344,26 @@ export function ParticipantsMarkList({
 
   return (
     <div className="attendance-mark">
-      <label className="attendance-mark__search">
-        Buscar
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Nombre o documento"
-        />
-      </label>
+      <div className="attendance-mark__toolbar-row">
+        <label className="attendance-mark__search">
+          Buscar
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Nombre o documento"
+          />
+        </label>
+        <label className="attendance-mark__sort">
+          Ordenar
+          <select value={sort} onChange={(event) => setSort(event.target.value as ParticipantSort)}>
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       {canEdit ? (
         <div className="attendance-mark__bulk">
