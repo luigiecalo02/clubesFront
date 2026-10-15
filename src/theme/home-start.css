@@ -485,6 +485,9 @@
 }
 
 .home-start__activities em {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
   padding: 0.22rem 0.55rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--panel-ok-text) 16%, var(--panel-input-bg));
@@ -494,13 +497,18 @@
   white-space: nowrap;
 }
 
+.home-start__activities em .admin-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
 .home-start__activities em[data-badge='proxima'] {
   border: 1px solid color-mix(in srgb, var(--panel-ok-text) 45%, transparent);
   background: transparent;
 }
 
-.home-start__activities em[data-badge='tarde'] {
-  background: color-mix(in srgb, var(--panel-gold) 16%, var(--panel-input-bg));
+.home-start__activities em[data-badge='puntual'] {
+  background: color-mix(in srgb, var(--panel-gold) 18%, var(--panel-input-bg));
   color: var(--panel-gold);
 }
 
@@ -512,6 +520,12 @@
 .home-start__activities em[data-badge='excusa'] {
   background: var(--panel-hint-bg);
   color: var(--panel-hint-text);
+}
+
+.home-start__activities em[data-badge='sin_marcar'] {
+  border: 1px solid var(--panel-ghost-border);
+  background: transparent;
+  color: var(--panel-muted);
 }
 
 .home-start__activities li > a > .admin-icon,

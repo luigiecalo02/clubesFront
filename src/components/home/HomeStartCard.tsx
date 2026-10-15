@@ -16,7 +16,7 @@ import { formatDate } from '../../theme/dates'
 import '../../theme/home-start.css'
 
 type ActivityTab = 'recientes' | 'proximas' | 'realizadas'
-type ActivityBadge = 'proxima' | 'asistio' | 'tarde' | 'ausente' | 'excusa'
+type ActivityBadge = 'proxima' | 'asistio' | 'puntual' | 'ausente' | 'excusa' | 'sin_marcar'
 
 type HomeActivity = {
   id: string
@@ -35,11 +35,14 @@ const TABS: { id: ActivityTab; label: string; icon: AdminIconName }[] = [
 
 const BADGE_LABEL: Record<ActivityBadge, string> = {
   proxima: 'Próxima',
-  asistio: 'Asististe',
-  tarde: 'Llegaste tarde',
-  ausente: 'Inasistencia',
+  asistio: 'Asistió',
+  puntual: 'Puntual',
+  ausente: 'No asistió',
   excusa: 'Excusa',
+  sin_marcar: 'Sin marcar',
 }
+
+const DONE_BADGES: ActivityBadge[] = ['asistio', 'puntual', 'ausente', 'excusa']
 
 function attendancePercent(history: AttendanceMemberHistory | null): number {
   if (!history || history.eventos <= 0) return 0
@@ -52,22 +55,28 @@ function lateCount(history: AttendanceMemberHistory | null): number {
   return Math.max(0, history.presentes - history.puntuales)
 }
 
-function badgeFor(estado?: AttendanceEstado | null): ActivityBadge {
-  if (estado === 'puntual') return 'asistio'
-  if (estado === 'presente') return 'tarde'
+function badgeFor(
+  estado?: AttendanceEstado | null,
+  inscrito?: boolean,
+): ActivityBadge {
+  if (estado === 'puntual') return 'puntual'
+  if (estado === 'presente') return 'asistio'
   if (estado === 'justificado') return 'excusa'
-  if (estado === 'ausente') return 'ausente'
+  if (estado === 'ausente' && inscrito !== false) return 'ausente'
+  if (inscrito === false) return 'sin_marcar'
+  if (!estado) return 'sin_marcar'
   return 'proxima'
 }
 
 function fromHistory(history: AttendanceMemberHistory | null): HomeActivity[] {
   return (history?.registros ?? [])
+    .filter((item) => item.inscrito !== false || Boolean(item.estado && item.estado !== 'ausente'))
     .map((item) => ({
       id: `h-${item.id}`,
       name: item.name,
       startsAt: item.starts_at,
       image: item.image_url,
-      badge: badgeFor(item.estado),
+      badge: badgeFor(item.estado, item.inscrito),
     }))
     .sort((a, b) => (b.startsAt ?? '').localeCompare(a.startsAt ?? ''))
 }
@@ -164,7 +173,7 @@ export function HomeStartCard() {
   const recent = useMemo(() => fromHistory(history), [history])
   const nextEvents = useMemo(() => fromEvents(upcoming), [upcoming])
   const done = useMemo(
-    () => recent.filter((item) => item.badge === 'asistio' || item.badge === 'tarde' || item.badge === 'excusa'),
+    () => recent.filter((item) => DONE_BADGES.includes(item.badge)),
     [recent],
   )
   const visible = tab === 'proximas' ? nextEvents : tab === 'realizadas' ? done : recent
@@ -329,7 +338,10 @@ export function HomeStartCard() {
                       ) : null}
                     </small>
                   </span>
-                  <em data-badge={item.badge}>{BADGE_LABEL[item.badge]}</em>
+                  <em data-badge={item.badge}>
+                    {item.badge === 'puntual' ? <AdminIcon name="star" /> : null}
+                    {BADGE_LABEL[item.badge]}
+                  </em>
                   <AdminIcon name="chevronRight" />
                 </>
               )

@@ -654,6 +654,7 @@ export function EventsPage() {
   }
 
   function openParticipantAbono(personaId: number) {
+    if (participantsFor?.estado !== 'en_proceso') return
     const row = participants.find((item) => item.persona_id === personaId)
     if (!row) return
     const ventas = participantDraft[personaId]?.ventas ?? {}
@@ -667,7 +668,7 @@ export function EventsPage() {
 
   async function submitParticipantAbono(event?: FormEvent) {
     event?.preventDefault()
-    if (!participantsFor || !canAbonar || !abonoForId) return
+    if (!participantsFor || !canAbonar || !abonoForId || participantsFor.estado !== 'en_proceso') return
     const monto = Number(abonoDraft.monto)
     if (!abonoDraft.metodo) {
       notices.warning('Elige un método de pago.')
@@ -847,6 +848,7 @@ export function EventsPage() {
           draft={participantDraft}
           canEdit={canTakeAttendance && !isEconomicParticipationLocked(participantsFor)}
           canAbonar={canAbonar}
+          eventEstado={participantsFor?.estado}
           participationLocked={isEconomicParticipationLocked(participantsFor)}
           saving={savingParticipants}
           payingId={payingId}
@@ -1118,6 +1120,7 @@ export function EventsPage() {
             members={participants}
             services={participantServices}
             draft={participantDraft}
+            eventEstado={participantsFor?.estado}
           />
         ) : null}
         {canViewGanancias || canAbonar ? (

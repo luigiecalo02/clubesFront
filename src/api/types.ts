@@ -400,6 +400,7 @@ export interface AttendanceHistoryEvent {
   starts_at?: string | null
   image_url?: string | null
   estado?: AttendanceEstado | null
+  inscrito?: boolean
   puntos: number
 }
 

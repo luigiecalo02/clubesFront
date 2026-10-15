@@ -116,16 +116,19 @@ export function ParticipantEventStats({
   members,
   services,
   draft,
+  eventEstado,
 }: {
   members: EventParticipant[]
   services: EventParticipantService[]
   draft: ParticipantDraft
+  eventEstado?: string | null
 }) {
   const counts = useMemo(
     () => participantEventCounts(members, services, draft),
     [draft, members, services],
   )
 
+  const showCobro = eventEstado === 'en_proceso' || eventEstado === 'cerrado'
   const participanPct = summaryPercent(counts.participan, members.length)
   const ingresadoPct = summaryPercent(counts.abonado, counts.recaudo)
   const porCobrar = Math.max(0, counts.recaudo - counts.abonado)
@@ -146,19 +149,23 @@ export function ParticipantEventStats({
         <ProgressBar value={counts.recaudo > 0 ? 100 : 0} tone="info" />
         <small>100% estimado</small>
       </SummaryKpi>
-      <SummaryKpi icon="trendUp" tone="ok" label="Ingresado en abonos" value={formatPrice(counts.abonado)}>
-        <ProgressBar value={ingresadoPct} />
-        <small>{ingresadoPct}% del total</small>
-      </SummaryKpi>
-      <SummaryKpi
-        icon="target"
-        tone="danger"
-        label="Falta por cobrar"
-        value={formatPrice(porCobrar)}
-        className="is-debt is-full"
-      >
-        <SummaryDonut value={porCobrarPct} label="del total" />
-      </SummaryKpi>
+      {showCobro ? (
+        <SummaryKpi icon="trendUp" tone="ok" label="Ingresado en abonos" value={formatPrice(counts.abonado)}>
+          <ProgressBar value={ingresadoPct} />
+          <small>{ingresadoPct}% del total</small>
+        </SummaryKpi>
+      ) : null}
+      {showCobro ? (
+        <SummaryKpi
+          icon="target"
+          tone="danger"
+          label="Falta por cobrar"
+          value={formatPrice(porCobrar)}
+          className="is-debt is-full"
+        >
+          <SummaryDonut value={porCobrarPct} label="del total" />
+        </SummaryKpi>
+      ) : null}
     </div>
   )
 }
@@ -226,6 +233,7 @@ type ParticipantsMarkListProps = {
   draft: ParticipantDraft
   canEdit: boolean
   canAbonar?: boolean
+  eventEstado?: string | null
   participationLocked?: boolean
   saving?: boolean
   payingId?: number | null
@@ -242,6 +250,7 @@ export function ParticipantsMarkList({
   draft,
   canEdit,
   canAbonar = false,
+  eventEstado = null,
   participationLocked = false,
   saving = false,
   payingId = null,
@@ -251,6 +260,8 @@ export function ParticipantsMarkList({
   onStartAbono,
   onReviewAbono,
 }: ParticipantsMarkListProps) {
+  const showAbonoTotals = eventEstado === 'en_proceso' || eventEstado === 'cerrado'
+  const canStartAbono = Boolean(canAbonar && eventEstado === 'en_proceso' && onStartAbono)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<ParticipantSort>('nombre')
   const [openIds, setOpenIds] = useState<number[]>([])
@@ -512,26 +523,26 @@ export function ParticipantsMarkList({
                         })}
                       </ul>
                     )}
-                    {canAbonar && onStartAbono ? (
+                    {showAbonoTotals ? (
                       <div className="attendance-mark__abono-bar">
                         <p className="attendance-mark__abono-summary">
                           Abonado {formatPrice(abonado)} · Faltante {formatPrice(pendiente)}
                         </p>
-                        {pendiente > 0 ? (
+                        {canStartAbono && pendiente > 0 ? (
                           <button
                             type="button"
                             className="app-panel__btn--primary"
                             disabled={payingId === row.persona_id}
-                            onClick={() => onStartAbono(row.persona_id)}
+                            onClick={() => onStartAbono?.(row.persona_id)}
                           >
                             Abonar
                           </button>
-                        ) : (
+                        ) : pendiente <= 0 ? (
                           <span className="attendance-mark__paid">
                             <AdminIcon name="check" />
                             Al día
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     ) : null}
                     {row.abonos?.length ? (
