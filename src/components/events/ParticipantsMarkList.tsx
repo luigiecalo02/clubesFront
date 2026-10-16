@@ -100,7 +100,7 @@ export function participantEventCounts(
     (acc, row) => {
       const current = draft[row.persona_id]
       if (current?.participa !== true) return acc
-      const totals = saleTotals(services, current.ventas)
+      const totals = saleTotals(services, billedVentas(row, draft))
       return {
         ...acc,
         unidades: acc.unidades + totals.unidades,
@@ -216,6 +216,19 @@ export function PendingProofsPanel({
   )
 }
 
+function billedVentas(row: EventParticipant, draft: ParticipantDraft): Record<number, number> {
+  const requested = draft[row.persona_id]?.ventas ?? {}
+  const saved = new Map((row.ventas ?? []).map((venta) => [venta.producto_servicio_id, venta]))
+  const ids = new Set<number>([...Object.keys(requested).map(Number), ...saved.keys()])
+  const out: Record<number, number> = {}
+  ids.forEach((id) => {
+    const pedido = Number(requested[id] ?? saved.get(id)?.cantidad ?? 0)
+    const entregada = saved.get(id)?.cantidad_entregada
+    out[id] = entregada == null ? pedido : entregada
+  })
+  return out
+}
+
 export function saleTotals(services: EventParticipantService[], ventas: Record<number, number>) {
   return services.reduce(
     (acc, service) => {
@@ -225,6 +238,14 @@ export function saleTotals(services: EventParticipantService[], ventas: Record<n
     },
     { unidades: 0, recaudo: 0 },
   )
+}
+
+export function saleGain(services: EventParticipantService[], ventas: Record<number, number>) {
+  return services.reduce((sum, service) => {
+    const cantidad = Math.max(0, Number(ventas[service.id]) || 0)
+    const unidad = Number(service.ganancia_unidad)
+    return sum + cantidad * (Number.isFinite(unidad) ? unidad : 0)
+  }, 0)
 }
 
 type ParticipantsMarkListProps = {
@@ -284,7 +305,7 @@ export function ParticipantsMarkList({
     const qty = (row: EventParticipant) => {
       const current = draft[row.persona_id]
       if (current?.participa !== true) return 0
-      return saleTotals(services, current.ventas).unidades
+      return saleTotals(services, billedVentas(row, draft)).unidades
     }
     const participaRank = (row: EventParticipant) => {
       const value = draft[row.persona_id]?.participa
@@ -428,7 +449,7 @@ export function ParticipantsMarkList({
           const current = draft[row.persona_id] ?? emptyRow()
           const selected = current.participa
           const open = openIds.includes(row.persona_id)
-          const totals = saleTotals(services, current.ventas)
+          const totals = saleTotals(services, billedVentas(row, draft))
           const abonado = Number(row.abonado) || 0
           const pendiente = totals.recaudo - abonado
           const photo = resolveFileUrl(row.foto_url)
@@ -437,121 +458,155 @@ export function ParticipantsMarkList({
               key={row.persona_id}
               className={`attendance-mark__card attendance-mark__card--sales${
                 selected === true ? ' is-presente' : selected === false ? ' is-justificado' : ''
-              }`}
+              }${open ? ' is-open' : ''}`}
               style={{ animationDelay: `${Math.min(index, 16) * 28}ms` }}
             >
-              <span className="attendance-mark__avatar" aria-hidden="true">
-                {photo ? <img src={photo} alt="" /> : memberInitials(row.full_name)}
-              </span>
-              <div className="attendance-mark__who">
-                <div className="attendance-mark__name-row">
+              <header className="attendance-mark__head">
+                <span className="attendance-mark__avatar" aria-hidden="true">
+                  {photo ? <img src={photo} alt="" /> : memberInitials(row.full_name)}
+                </span>
+                <div className="attendance-mark__who">
                   <p title={row.full_name}>{row.full_name}</p>
-                  {selected === true ? (
+                  <div className="attendance-mark__icons" role="group" aria-label={`Participación de ${row.full_name}`}>
                     <button
                       type="button"
-                      className="attendance-mark__sales-toggle"
-                      aria-expanded={open}
-                      onClick={() => toggleOpen(row.persona_id)}
+                      className={`attendance-mark__icon attendance-mark__icon--text attendance-mark__icon--presente${
+                        selected === true ? ' is-on' : ''
+                      }`}
+                      aria-pressed={selected === true}
+                      disabled={!canEdit}
+                      onClick={() => onChange(row.persona_id, selected === true ? '' : true)}
                     >
-                      <span>
-                        {services.length === 0
-                          ? 'Sin servicios'
-                          : totals.unidades
-                            ? `${totals.unidades} uds · ${formatPrice(totals.recaudo)}`
-                            : 'Sin cantidades'}
-                      </span>
-                      <small>{open ? 'Cerrar' : canAbonar ? 'Servicios y abonos' : 'Ver servicios'}</small>
+                      Sí
                     </button>
-                  ) : null}
+                    <button
+                      type="button"
+                      className={`attendance-mark__icon attendance-mark__icon--text attendance-mark__icon--justificado${
+                        selected === false ? ' is-on' : ''
+                      }`}
+                      aria-pressed={selected === false}
+                      disabled={!canEdit}
+                      onClick={() => onChange(row.persona_id, selected === false ? '' : false)}
+                    >
+                      No
+                    </button>
+                  </div>
                 </div>
-                <div className="attendance-mark__icons" role="group" aria-label={`Participación de ${row.full_name}`}>
+                {selected === true ? (
                   <button
                     type="button"
-                    className={`attendance-mark__icon attendance-mark__icon--text attendance-mark__icon--presente${
-                      selected === true ? ' is-on' : ''
-                    }`}
-                    aria-pressed={selected === true}
-                    disabled={!canEdit}
-                    onClick={() => onChange(row.persona_id, selected === true ? '' : true)}
+                    className="attendance-mark__sales-toggle"
+                    aria-expanded={open}
+                    onClick={() => toggleOpen(row.persona_id)}
                   >
-                    Sí
+                    <AdminIcon name="box" />
+                    <span>
+                      {services.length === 0
+                        ? 'Sin servicios'
+                        : totals.unidades
+                          ? `${totals.unidades} uds · ${formatPrice(totals.recaudo)}`
+                          : 'Sin cantidades'}
+                    </span>
+                    <AdminIcon name="chevronRight" />
                   </button>
-                  <button
-                    type="button"
-                    className={`attendance-mark__icon attendance-mark__icon--text attendance-mark__icon--justificado${
-                      selected === false ? ' is-on' : ''
-                    }`}
-                    aria-pressed={selected === false}
-                    disabled={!canEdit}
-                    onClick={() => onChange(row.persona_id, selected === false ? '' : false)}
-                  >
-                    No
-                  </button>
-                </div>
-              </div>
+                ) : null}
+              </header>
               {selected === true && open ? (
                 <div className="attendance-mark__sales is-open">
-                    {services.length === 0 ? (
-                      <p className="attendance-mark__sales-empty">Asocia servicios en la ficha del evento.</p>
-                    ) : (
-                      <ul className="attendance-mark__sale-list">
-                        {services.map((service) => {
-                          const cantidad = current.ventas[service.id] ?? 0
-                          const linea = cantidad * servicePrice(service)
-                          return (
-                            <li key={service.id} className="attendance-mark__sale">
-                              <span className="attendance-mark__sale-name">
-                                <ServiceThumb item={service} />
-                                {service.nombre}
-                              </span>
-                              <input
-                                type="number"
-                                min={0}
-                                step={1}
-                                inputMode="numeric"
-                                aria-label={`Cantidad de ${service.nombre} para ${row.full_name}`}
+                  {services.length === 0 ? (
+                    <p className="attendance-mark__sales-empty">Asocia servicios en la ficha del evento.</p>
+                  ) : (
+                    <ul className="attendance-mark__sale-list">
+                      {services.map((service) => {
+                        const cantidad = current.ventas[service.id] ?? 0
+                        const saved = row.ventas?.find((venta) => venta.producto_servicio_id === service.id)
+                        const entregada = saved?.cantidad_entregada
+                        const cobrada = entregada == null ? cantidad : entregada
+                        const linea = cobrada * servicePrice(service)
+                        return (
+                          <li key={service.id} className="attendance-mark__sale">
+                            <span className="attendance-mark__sale-name">
+                              <ServiceThumb item={service} />
+                              <strong>{service.nombre}</strong>
+                            </span>
+                            <div className="attendance-mark__stepper">
+                              <button
+                                type="button"
+                                aria-label={`Quitar una unidad de ${service.nombre}`}
+                                disabled={!canEdit || cantidad <= 0}
+                                onClick={() => onQty(row.persona_id, service.id, Math.max(0, cantidad - 1))}
+                              >
+                                −
+                              </button>
+                              <strong>{cantidad}</strong>
+                              <button
+                                type="button"
+                                aria-label={`Agregar una unidad de ${service.nombre}`}
                                 disabled={!canEdit}
-                                value={cantidad}
-                                onChange={(event) => onQty(row.persona_id, service.id, Number(event.target.value))}
-                              />
-                              <span className="attendance-mark__sale-price">
-                                <small>{formatPrice(servicePrice(service))}</small>
-                                <strong>{formatPrice(linea)}</strong>
-                              </span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-                    {showAbonoTotals ? (
-                      <div className="attendance-mark__abono-bar">
-                        <p className="attendance-mark__abono-summary">
-                          Abonado {formatPrice(abonado)} · Faltante {formatPrice(pendiente)}
-                        </p>
-                        {canStartAbono && pendiente > 0 ? (
-                          <button
-                            type="button"
-                            className="app-panel__btn--primary"
-                            disabled={payingId === row.persona_id}
-                            onClick={() => onStartAbono?.(row.persona_id)}
-                          >
-                            Abonar
-                          </button>
-                        ) : pendiente <= 0 ? (
-                          <span className="attendance-mark__paid">
-                            <AdminIcon name="check" />
-                            Al día
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    {row.abonos?.length ? (
+                                onClick={() => onQty(row.persona_id, service.id, cantidad + 1)}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <span className="attendance-mark__sale-metric">
+                              <small>Precio unitario</small>
+                              <strong>{formatPrice(servicePrice(service))}</strong>
+                            </span>
+                            <span className="attendance-mark__sale-metric is-total">
+                              <small>{entregada != null ? `Pedido ${cantidad}` : 'Total'}</small>
+                              <strong>{formatPrice(linea)}</strong>
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                  {showAbonoTotals ? (
+                    <div className="attendance-mark__abono-bar">
+                      <p className="attendance-mark__abono-metric is-paid">
+                        <AdminIcon name="coins" />
+                        <span>
+                          <small>Abonado</small>
+                          <strong>{formatPrice(abonado)}</strong>
+                        </span>
+                      </p>
+                      <p className="attendance-mark__abono-metric is-due">
+                        <AdminIcon name="hourglass" />
+                        <span>
+                          <small>Faltante</small>
+                          <strong>{formatPrice(Math.max(0, pendiente))}</strong>
+                        </span>
+                      </p>
+                      {canStartAbono && pendiente > 0 ? (
+                        <button
+                          type="button"
+                          className="app-panel__btn--primary"
+                          disabled={payingId === row.persona_id}
+                          onClick={() => onStartAbono?.(row.persona_id)}
+                        >
+                          <AdminIcon name="wallet" />
+                          Abonar
+                        </button>
+                      ) : pendiente <= 0 ? (
+                        <span className="attendance-mark__paid">
+                          <AdminIcon name="check" />
+                          Al día
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {row.abonos?.length ? (
+                    <section className="attendance-mark__history">
+                      <h4>
+                        <AdminIcon name="idCard" />
+                        Historial de pagos
+                      </h4>
                       <ul className="attendance-mark__abonos">
                         {row.abonos.map((abono) => (
                           <li key={abono.id}>
-                            <span>
-                              {formatDate(abono.created_at)}
-                              {abono.nota ? ` · ${abono.nota}` : ''}
+                            <span className="attendance-mark__abono-when">
+                              <strong>{formatDate(abono.created_at)}</strong>
+                              {abono.nota ? <small>{abono.nota}</small> : null}
                             </span>
                             <span className="attendance-mark__abono-end">
                               <AbonoShotButton abono={abono} />
@@ -561,9 +616,10 @@ export function ParticipantsMarkList({
                           </li>
                         ))}
                       </ul>
-                    ) : null}
-                  </div>
-                ) : null}
+                    </section>
+                  ) : null}
+                </div>
+              ) : null}
             </article>
           )
         })}

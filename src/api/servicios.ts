@@ -100,11 +100,18 @@ export const serviciosApi = {
   async syncEventOffers(
     eventoId: number,
     productoServicioIds: number[],
-    proyecciones: Array<{ producto_servicio_id: number; cantidad: number }> = [],
+    proyecciones: Array<{ producto_servicio_id: number; cantidad: number; inversion?: number; precio?: number }> = [],
+    gananciaEclesiasticaId?: string,
   ): Promise<EventoServicios> {
     const { data } = await api.put<ApiEnvelope<EventoServicios>>(
       `/api/v1/settings/clubes/events/${eventoId}/servicios`,
-      { producto_servicio_ids: productoServicioIds, proyecciones },
+      {
+        producto_servicio_ids: productoServicioIds,
+        proyecciones,
+        ...(gananciaEclesiasticaId !== undefined
+          ? { ganancia_eclesiastica_id: gananciaEclesiasticaId ? Number(gananciaEclesiasticaId) : null }
+          : {}),
+      },
     )
     return data.data
   },
@@ -127,6 +134,18 @@ export const serviciosApi = {
     const { data } = await api.put<ApiEnvelope<EventParticipantsRoster>>(
       `/api/v1/settings/clubes/events/${eventoId}/participantes`,
       { participantes },
+    )
+    return data.data
+  },
+
+  async deliver(
+    eventoId: number,
+    personaId: number,
+    ventas: Array<{ producto_servicio_id: number; cantidad_entregada: number }>,
+  ): Promise<EventParticipantsRoster> {
+    const { data } = await api.put<ApiEnvelope<EventParticipantsRoster>>(
+      `/api/v1/settings/clubes/events/${eventoId}/participantes/${personaId}/entrega`,
+      { ventas },
     )
     return data.data
   },

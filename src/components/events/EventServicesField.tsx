@@ -18,6 +18,9 @@ type EventServicesFieldProps = {
   canCreate?: boolean
   hideLegend?: boolean
   lockRemovals?: boolean
+  prices?: Record<number, string>
+  canEditPrice?: boolean
+  onPrice?: (id: number, value: string) => void
   onChange: (ids: number[]) => void
   onCreated?: (service: ClubServicio) => void
 }
@@ -29,6 +32,9 @@ export function EventServicesField({
   canCreate = false,
   hideLegend = false,
   lockRemovals = false,
+  prices = {},
+  canEditPrice = false,
+  onPrice,
   onChange,
   onCreated,
 }: EventServicesFieldProps) {
@@ -133,7 +139,20 @@ export function EventServicesField({
               <ServiceThumb item={item} />
               <span>
                 {item.nombre}
-                <small>{formatPrice(item.precio)}</small>
+                {canEditPrice && onPrice ? (
+                  <input
+                    className="admin-service-picks__price"
+                    inputMode="numeric"
+                    aria-label={`Precio de ${item.nombre} en este evento`}
+                    value={prices[item.id] ?? String(Math.round(Number(item.precio) || 0))}
+                    onChange={(event) => onPrice(item.id, event.target.value.replace(/\D/g, ''))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') event.preventDefault()
+                    }}
+                  />
+                ) : (
+                  <small>{formatPrice(prices[item.id] ?? item.precio)}</small>
+                )}
               </span>
               {lockRemovals ? null : (
                 <button type="button" aria-label={`Quitar ${item.nombre}`} onClick={() => remove(item.id)}>
@@ -148,6 +167,9 @@ export function EventServicesField({
       )}
       {lockRemovals && selected.length ? (
         <p className="app-panel__hint">Ya hay un abono en esta actividad. Puedes agregar servicios, pero no quitarlos.</p>
+      ) : null}
+      {canEditPrice && selected.length ? (
+        <p className="app-panel__hint">El precio que escribas queda solo para este evento.</p>
       ) : null}
 
       <div

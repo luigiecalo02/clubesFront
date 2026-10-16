@@ -130,6 +130,7 @@ export function HomeStartCard() {
   const canOpenEvents = auth.can('events.view')
   const [tab, setTab] = useState<ActivityTab>('recientes')
   const [hideSaldo, setHideSaldo] = useState(false)
+  const [hideGanancia, setHideGanancia] = useState(false)
   const [loading, setLoading] = useState(true)
   const [history, setHistory] = useState<AttendanceMemberHistory | null>(null)
   const [board, setBoard] = useState<AbonosBoard | null>(null)
@@ -184,6 +185,7 @@ export function HomeStartCard() {
   const club = ctx?.organizacion_nombre || 'Tu club'
   const percent = attendancePercent(history)
   const saldo = board?.resumen.pendiente ?? 0
+  const ganancia = board?.resumen.ganancia ?? 0
 
   if (!user) return null
 
@@ -221,6 +223,29 @@ export function HomeStartCard() {
             Abonar
           </Link>
         ) : null}
+      </span>
+    </AppPanel>
+  )
+
+  const gananciaCard = (
+    <AppPanel shine={false} className="home-start__action">
+      <span className="home-start__action-icon" data-tone="ok">
+        <AdminIcon name="coins" />
+      </span>
+      <span>
+        <small>Ganancia actual</small>
+        <strong>{hideGanancia ? '***' : formatMoney(ganancia)}</strong>
+      </span>
+      <span className="home-start__action-tools">
+        <button
+          type="button"
+          className="home-start__eye"
+          aria-pressed={hideGanancia}
+          aria-label={hideGanancia ? 'Mostrar ganancia' : 'Ocultar ganancia'}
+          onClick={() => setHideGanancia((current) => !current)}
+        >
+          <AdminIcon name={hideGanancia ? 'eyeOff' : 'eye'} />
+        </button>
       </span>
     </AppPanel>
   )
@@ -284,6 +309,7 @@ export function HomeStartCard() {
 
       <div className="home-start__actions">
         {saldoCard}
+        {gananciaCard}
         {canOpenEvents && nextActivity ? <Link to="/eventos">{nextCard}</Link> : nextCard}
       </div>
 

@@ -103,6 +103,31 @@
   height: 1rem;
 }
 
+.event-summary__tools {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.event-summary__sort {
+  display: grid;
+  gap: 0.15rem;
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+}
+
+.app-panel .event-summary__sort select {
+  min-height: 2.2rem;
+  padding: 0.3rem 0.6rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  color: var(--panel-title);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
 .app-panel .event-summary__export {
   display: inline-flex;
   align-items: center;
@@ -111,6 +136,61 @@
   min-height: 2.2rem;
   padding: 0.35rem 0.85rem;
   font-size: 0.8rem;
+}
+
+.app-panel .event-summary__deliver {
+  width: auto;
+  min-height: 2rem;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.78rem;
+}
+
+.event-summary__table--people .event-summary__row {
+  grid-template-columns: 2rem minmax(8rem, 1.4fr) repeat(5, minmax(0, 1fr));
+}
+
+.event-summary__cell.is-pedidos em {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--panel-muted);
+  font-size: 0.7rem;
+  font-style: normal;
+}
+
+.event-summary__edit {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--panel-muted);
+  cursor: pointer;
+}
+
+.event-summary__edit:hover {
+  color: var(--panel-title);
+  background: var(--panel-ghost-bg);
+}
+
+.event-summary__edit svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+button.event-summary__pill {
+  border: 0;
+  font: inherit;
+  font-weight: var(--panel-weight-strong);
+  cursor: pointer;
+}
+
+button.event-summary__pill.is-danger:hover {
+  background: color-mix(in srgb, var(--summary-danger) 24%, transparent);
 }
 
 .event-summary__total {
@@ -173,6 +253,38 @@
   gap: 0.1rem;
   min-width: 0;
   margin: 0;
+}
+
+.event-summary__units {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0;
+  padding: 0.45rem 0 0;
+  list-style: none;
+  border-top: 1px solid var(--panel-input-border);
+}
+
+.event-summary__units li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.1rem 0.65rem;
+  align-items: baseline;
+}
+
+.event-summary__units span,
+.event-summary__units small {
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+}
+
+.event-summary__units small {
+  grid-column: 1;
+}
+
+.event-summary__units strong {
+  color: var(--panel-ok-text);
+  font-size: 0.95rem;
 }
 
 .event-summary__kpi p span {
@@ -352,6 +464,15 @@
   width: min(7rem, 100%);
 }
 
+.event-summary__cell.is-ganancia .event-summary__paid {
+  width: 100%;
+}
+
+.event-summary__cell.is-ganancia .event-summary__paid small {
+  flex: none;
+  white-space: nowrap;
+}
+
 .event-summary__paid small {
   color: var(--panel-muted);
   font-size: 0.68rem;
@@ -452,11 +573,13 @@
   }
 
   .event-summary__row,
-  .event-summary__table--debt .event-summary__row {
+  .event-summary__table--debt .event-summary__row,
+  .event-summary__table--people .event-summary__row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-areas:
       'who who ganancia'
-      'aporte pagado falta';
+      'pedidos aporte pagado'
+      'falta falta falta';
     gap: 0.55rem 0.6rem;
     padding: 0.75rem;
     border: 1px solid var(--panel-input-border);
@@ -476,6 +599,10 @@
 
   .event-summary__cell.is-who {
     grid-area: who;
+  }
+
+  .event-summary__cell.is-pedidos {
+    grid-area: pedidos;
   }
 
   .event-summary__cell.is-aporte {

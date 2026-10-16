@@ -339,6 +339,7 @@ export interface EventSummary {
   tipo_evento?: EventTipo | null
   ganancia_eclesiastica_id?: number | null
   capital?: number | string | null
+  ganancia_registro?: EventoGananciaRegistro | null
   inscritos_count?: number
   participantes_count?: number
   asistentes_count?: number
@@ -452,12 +453,27 @@ export interface ClubServicio {
   activo: boolean
 }
 
+export interface EventoGananciaRegistro {
+  proyeccion: number
+  capital: number
+  ganancia: number
+  ofrenda: number
+  diezmo: number
+  resto: number
+  participantes: number
+  club: number
+  extras: number
+}
+
 export interface EventoServicioOferta {
   id: number
   evento_id: number
   producto_servicio_id: number
   precio: number | string
   cantidad_proyectada?: number | null
+  inversion?: number | string | null
+  total?: number | string | null
+  ganancia_unidad?: number | string | null
   activo: boolean
   producto?: ClubServicio | null
 }
@@ -468,6 +484,7 @@ export interface EventoServicios {
     name: string
     es_economica?: boolean
     tiene_abonos?: boolean
+    ganancia_registro?: EventoGananciaRegistro | null
   }
   catalogo: ClubServicio[]
   ofertas: EventoServicioOferta[]
@@ -476,6 +493,7 @@ export interface EventoServicios {
 export interface EventParticipantVenta {
   producto_servicio_id: number
   cantidad: number
+  cantidad_entregada?: number | null
 }
 
 export interface EventParticipant {
@@ -493,6 +511,7 @@ export interface EventParticipantService {
   id: number
   nombre: string
   precio?: number | string
+  ganancia_unidad?: number | string | null
   icono?: string | null
   image_url?: string | null
 }
@@ -579,6 +598,7 @@ export interface AbonoFila {
   comprometido: number
   abonado: number
   pendiente: number
+  ganancia?: number
   items?: number
   pendientes?: number
   pedidos?: AbonoPedido[]
@@ -615,6 +635,7 @@ export interface AbonosBoard {
     comprometido: number
     abonado: number
     pendiente: number
+    ganancia?: number
   }
   opciones_integrantes: AbonoOption[]
   opciones_actividades: AbonoOption[]

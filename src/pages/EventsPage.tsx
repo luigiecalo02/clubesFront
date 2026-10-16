@@ -13,6 +13,8 @@ import type {
   ClubServicio,
   EventParticipant,
   EventParticipantService,
+  EventoGananciaRegistro,
+  EventoServicios,
   EventSummary,
   EventTipo,
 } from '../api/types'
@@ -22,6 +24,7 @@ import {
   canAccessClubAttendance,
   canCreateClubEvent,
   canJoinClubEconomicEvent,
+  canChangeClubEventGanancia,
   canViewClubEventGanancias,
   canJoinClubInscriptionEvent,
   canManageClubInscriptions,
@@ -163,6 +166,10 @@ export function EventsPage() {
     rolName: ctx?.rol_name,
     organizacionId: ctx?.organizacion_id,
   })
+  const canChangeGanancia = canChangeClubEventGanancia({
+    rolName: ctx?.rol_name,
+    isSuper: Boolean(auth.user?.is_super || auth.user?.roles?.includes('super_admin')),
+  })
   const canTakeAttendance =
     canAccessClubAttendance({
       rolName: ctx?.rol_name,
@@ -206,6 +213,10 @@ export function EventsPage() {
   const [serviceCatalog, setServiceCatalog] = useState<ClubServicio[]>([])
   const [serviceIds, setServiceIds] = useState<number[]>([])
   const [projectedQty, setProjectedQty] = useState<Record<number, string>>({})
+  const [serviceInvestments, setServiceInvestments] = useState<Record<number, string>>({})
+  const [servicePrices, setServicePrices] = useState<Record<number, string>>({})
+  const [gainLines, setGainLines] = useState<Record<number, { total: number; gananciaUnidad: number }>>({})
+  const [gainRecord, setGainRecord] = useState<EventoGananciaRegistro | null>(null)
   const [servicesLocked, setServicesLocked] = useState(false)
   const [loadingServices, setLoadingServices] = useState(false)
   const [loadingRoster, setLoadingRoster] = useState(false)
@@ -337,6 +348,9 @@ export function EventsPage() {
     setForm(emptyForm())
     setServiceIds([])
     setProjectedQty({})
+    setServicePrices({})
+    setGainLines({})
+    setGainRecord(null)
     setServiceCatalog([])
   }
 
@@ -350,6 +364,7 @@ export function EventsPage() {
     setForm(emptyForm())
     setServiceIds([])
     setProjectedQty({})
+    setServicePrices({})
     setShowForm(true)
   }
 
@@ -478,8 +493,29 @@ export function EventsPage() {
               ]),
             ),
           )
+          setServiceInvestments(
+            Object.fromEntries(
+              eventServices.ofertas.map((oferta) => [
+                oferta.producto_servicio_id,
+                String(Math.round(Number(oferta.inversion) || 0) || ''),
+              ]),
+            ),
+          )
+          setServicePrices(
+            Object.fromEntries(
+              eventServices.ofertas.map((oferta) => [
+                oferta.producto_servicio_id,
+                String(Math.round(Number(oferta.precio) || 0)),
+              ]),
+            ),
+          )
+          applyGainSnapshot(eventServices)
           setServicesLocked(Boolean(eventServices.evento.tiene_abonos))
         } else {
+          setServiceInvestments({})
+          setServicePrices({})
+          setGainLines({})
+          setGainRecord(null)
           setServicesLocked(false)
         }
       })
@@ -493,6 +529,66 @@ export function EventsPage() {
       cancelled = true
     }
   }, [showForm, formIsEconomic, editing, notices])
+
+  function applyGainSnapshot(payload: EventoServicios) {
+    const registro = payload.evento.ganancia_registro ?? null
+    setGainRecord(registro)
+    setGainLines(
+      Object.fromEntries(
+        payload.ofertas.map((oferta) => [
+          oferta.producto_servicio_id,
+          {
+            total: Number(oferta.total) || 0,
+            gananciaUnidad: Number(oferta.ganancia_unidad) || 0,
+          },
+        ]),
+      ),
+    )
+    if (!registro || !editing) return
+    setEvents((current) =>
+      current.map((item) =>
+        item.id === editing.id ? { ...item, ganancia_registro: registro, capital: registro.capital } : item,
+      ),
+    )
+    setParticipantsFor((current) =>
+      current && current.id === editing.id
+        ? { ...current, ganancia_registro: registro, capital: registro.capital }
+        : current,
+    )
+  }
+
+  useEffect(() => {
+    if (!showForm || !editing || !formIsEconomic || loadingServices) return undefined
+    const eventId = editing.id
+    const timer = window.setTimeout(() => {
+      const proyecciones = serviceIds.map((id) => ({
+        producto_servicio_id: id,
+        cantidad: Math.max(0, Math.round(Number(projectedQty[id]) || 0)),
+        inversion: Math.max(0, Math.round(Number(serviceInvestments[id]) || 0)),
+        precio: Math.max(0, Math.round(Number(servicePrices[id] ?? serviceCatalog.find((item) => item.id === id)?.precio) || 0)),
+      }))
+      serviciosApi
+        .syncEventOffers(eventId, serviceIds, proyecciones, form.ganancia_eclesiastica_id)
+        .then((saved) => {
+          if (editing?.id !== eventId) return
+          applyGainSnapshot(saved)
+        })
+        .catch((err) => notices.error(getApiErrorMessage(err, 'No se pudo actualizar la ganancia guardada')))
+    }, 700)
+    return () => window.clearTimeout(timer)
+  }, [
+    showForm,
+    editing,
+    formIsEconomic,
+    loadingServices,
+    serviceIds,
+    servicePrices,
+    serviceInvestments,
+    projectedQty,
+    serviceCatalog,
+    form.ganancia_eclesiastica_id,
+    notices,
+  ])
 
   useEffect(() => {
     if (!attendanceFor) return undefined
@@ -653,6 +749,24 @@ export function EventsPage() {
     }
   }
 
+  async function deliverParticipant(
+    personaId: number,
+    ventas: Array<{ producto_servicio_id: number; cantidad_entregada: number }>,
+  ) {
+    if (!participantsFor || participantsFor.estado !== 'en_proceso') return
+    try {
+      const next = await serviciosApi.deliver(participantsFor.id, personaId, ventas)
+      setParticipants(next.integrantes)
+      const nextDraft = emptyParticipantsDraft(next.integrantes)
+      participantDraftRef.current = nextDraft
+      setParticipantDraft(nextDraft)
+      notices.success('Entrega confirmada. Ese es el valor que se cobra.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo confirmar la entrega'))
+      throw err
+    }
+  }
+
   function openParticipantAbono(personaId: number) {
     if (participantsFor?.estado !== 'en_proceso') return
     const row = participants.find((item) => item.persona_id === personaId)
@@ -794,7 +908,16 @@ export function EventsPage() {
         ? await eventsApi.update(editing.id, payload)
         : await eventsApi.create(payload)
       if (formIsEconomic) {
-        await serviciosApi.syncEventOffers(saved.id, serviceIds)
+        await serviciosApi.syncEventOffers(
+          saved.id,
+          serviceIds,
+          serviceIds.map((id) => ({
+            producto_servicio_id: id,
+            cantidad: Math.max(0, Math.round(Number(projectedQty[id]) || 0)),
+            inversion: Math.max(0, Math.round(Number(serviceInvestments[id]) || 0)),
+            precio: Math.max(0, Math.round(Number(servicePrices[id] ?? serviceCatalog.find((item) => item.id === id)?.precio) || 0)),
+          })),
+        )
       }
       notices.success(editing ? 'Evento actualizado.' : 'Evento creado.')
       closeForm()
@@ -832,7 +955,14 @@ export function EventsPage() {
         services={participantServices}
         draft={participantDraft}
         capital={Number(participantsFor?.capital) || 0}
+        gananciaConfigId={participantsFor?.ganancia_eclesiastica_id}
+        gananciaRegistro={participantsFor?.ganancia_registro}
         eventName={participantsFor?.name}
+        canEntregar={canTakeAttendance && participantsFor?.estado === 'en_proceso'}
+        onStartAbono={
+          canAbonar && participantsFor?.estado === 'en_proceso' ? openParticipantAbono : undefined
+        }
+        onDeliver={deliverParticipant}
       />
     )
   ) : (
@@ -915,12 +1045,27 @@ export function EventsPage() {
           {eventTab === 'ganancias' && formIsEconomic && canViewGanancias ? (
             <EventGananciasPanel
               value={form.ganancia_eclesiastica_id}
+              canChange={canChangeGanancia}
               services={serviceIds.flatMap((id) => {
                 const service = serviceCatalog.find((item) => item.id === id)
                 if (!service) return []
-                return [{ id: service.id, nombre: service.nombre, precio: Number(service.precio) || 0 }]
+                return [{
+                  id: service.id,
+                  nombre: service.nombre,
+                  precio: Math.round(Number(servicePrices[id] ?? service.precio) || 0),
+                  totalRegistrado: gainLines[id]?.total ?? 0,
+                  gananciaUnidad: gainLines[id]?.gananciaUnidad ?? 0,
+                  image_url: service.image_url,
+                  icono: service.icono,
+                  descripcion: service.descripcion,
+                  tipo: service.tipo,
+                }]
               })}
               cantidades={projectedQty}
+              inversiones={serviceInvestments}
+              onInversion={(id, inversion) =>
+                setServiceInvestments((current) => ({ ...current, [id]: inversion }))
+              }
               capital={form.capital}
               loadingServices={loadingServices}
               onChange={(ganancia_eclesiastica_id) =>
@@ -931,6 +1076,7 @@ export function EventsPage() {
                 )
               }
               onCapital={(capital) => setForm((current) => ({ ...current, capital }))}
+              registro={gainRecord}
             />
           ) : (
           <>
@@ -1058,7 +1204,21 @@ export function EventsPage() {
                 canCreate={canCreateServices}
                 hideLegend
                 lockRemovals={servicesLocked}
-                onChange={setServiceIds}
+                prices={servicePrices}
+                canEditPrice={form.estado === 'publicado'}
+                onPrice={(id, precio) => setServicePrices((current) => ({ ...current, [id]: precio }))}
+                onChange={(ids) => {
+                  setServiceIds(ids)
+                  setServicePrices((current) => {
+                    const next = { ...current }
+                    for (const id of ids) {
+                      if (next[id] !== undefined) continue
+                      const item = serviceCatalog.find((service) => service.id === id)
+                      next[id] = item ? String(Math.round(Number(item.precio) || 0)) : ''
+                    }
+                    return next
+                  })
+                }}
                 onCreated={(service) =>
                   setServiceCatalog((current) =>
                     current.some((item) => item.id === service.id) ? current : [...current, service],
@@ -1133,7 +1293,7 @@ export function EventsPage() {
               ...(canViewGanancias ? [{ id: 'ganancias' as const, label: 'Ganancias' }] : []),
               {
                 id: 'comprobantes' as const,
-                label: pendingProofCount ? `Por confirmar (${pendingProofCount})` : 'Por confirmar',
+                label: pendingProofCount ? `Confirmar abono (${pendingProofCount})` : 'Confirmar abono',
               },
             ]}
           >

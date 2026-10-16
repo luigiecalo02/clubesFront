@@ -9,6 +9,7 @@ import { MY_ABONOS_REGISTER_PERMISSION } from '../../admin/menu'
 import { useAuth } from '../../auth/AuthProvider'
 import { AbonoProofReview, AbonoShotButton, abonoEstadoLabel } from '../abonos/AbonoProofReview'
 import { isEconomicParticipationLocked } from './EventCard'
+import { saleGain } from './ParticipantsMarkList'
 import { compressReceiptImage } from '../../theme/cropImage'
 import { AppTabs } from '../../theme/AppTabs'
 import { CreateDrawer } from '../../theme/CreateDrawer'
@@ -33,15 +34,6 @@ function formatPrice(value: number | string): string {
 function servicePrice(service: EventParticipantService): number {
   const amount = Number(service.precio)
   return Number.isFinite(amount) ? amount : 0
-}
-
-function memberGanancia(recaudo: number, abonado: number, capital: number, otros: number) {
-  const venta = Math.max(0, recaudo)
-  const total = Math.max(0, otros) + venta
-  if (total <= 0 || venta <= 0) return { ganada: 0, proyectada: 0 }
-  const proyectada = ((total - capital) * venta) / total
-  const cubierto = Math.min(Math.max(0, abonado), venta)
-  return { ganada: (proyectada * cubierto) / venta, proyectada }
 }
 
 function saleTotals(services: EventParticipantService[], ventas: Record<number, number>) {
@@ -84,20 +76,35 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
   const [saving, setSaving] = useState(false)
   const [services, setServices] = useState<EventParticipantService[]>([])
   const [ventas, setVentas] = useState<Record<number, number>>({})
+  const [entregadas, setEntregadas] = useState<Record<number, number | null>>({})
   const [already, setAlready] = useState(false)
   const [abonado, setAbonado] = useState(0)
   const [abonos, setAbonos] = useState<AbonoMovimiento[]>([])
-  const [capital, setCapital] = useState(0)
-  const [proyeccionOtros, setProyeccionOtros] = useState(0)
   const [tab, setTab] = useState<'servicios' | 'historial'>('servicios')
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [proofPreview, setProofPreview] = useState<string | null>(null)
   const [sendingProof, setSendingProof] = useState(false)
   const [padId, setPadId] = useState<number | null>(null)
-  const totals = useMemo(() => saleTotals(services, ventas), [services, ventas])
+  const billed = useMemo(
+    () =>
+      Object.fromEntries(
+        services.map((service) => {
+          const entregada = entregadas[service.id]
+          const pedido = ventas[service.id] ?? 0
+          return [service.id, entregada == null ? pedido : entregada]
+        }),
+      ),
+    [entregadas, services, ventas],
+  )
+  const totals = useMemo(() => saleTotals(services, billed), [billed, services])
+  const hayEntrega = services.some((service) => entregadas[service.id] != null)
   const padService = services.find((service) => service.id === padId) ?? null
   const faltante = totals.recaudo - abonado
-  const ganancia = memberGanancia(totals.recaudo, abonado, capital, proyeccionOtros)
+  const cobertura = totals.recaudo > 0 ? Math.min(Math.max(abonado, 0), totals.recaudo) / totals.recaudo : 0
+  const ganancia = {
+    ganada: Math.round(saleGain(services, billed) * cobertura),
+    proyectada: saleGain(services, ventas),
+  }
   const locked = isEconomicParticipationLocked(event)
   const canSendProof = canRegisterAbono && event.estado === 'en_proceso' && already && !loading
 
@@ -113,10 +120,16 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
         setVentas(
           Object.fromEntries((data.integrante.ventas ?? []).map((venta) => [venta.producto_servicio_id, venta.cantidad])),
         )
+        setEntregadas(
+          Object.fromEntries(
+            (data.integrante.ventas ?? []).map((venta) => [
+              venta.producto_servicio_id,
+              venta.cantidad_entregada == null ? null : venta.cantidad_entregada,
+            ]),
+          ),
+        )
         setAbonado(Number(data.recaudo?.abonado) || 0)
         setAbonos(data.recaudo?.abonos ?? [])
-        setCapital(Number(data.ganancia?.capital) || 0)
-        setProyeccionOtros(Number(data.ganancia?.proyeccion_otros) || 0)
       })
       .catch((err) => {
         if (cancelled) return
@@ -229,12 +242,12 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
           </p>
           <div className="attendance-mark__toolbar">
             <div className="event-stats" aria-live="polite">
-              <SummaryKpi icon="box" tone="gold" label="A vender" value={totals.unidades}>
-                <small>Unidades en total</small>
+              <SummaryKpi icon="box" tone="gold" label={hayEntrega ? 'Entregadas' : 'A vender'} value={totals.unidades}>
+                <small>{hayEntrega ? 'Según lo entregado' : 'Unidades en total'}</small>
               </SummaryKpi>
               <SummaryKpi icon="calculator" tone="info" label="Recaudo" value={formatPrice(totals.recaudo)}>
                 <ProgressBar value={totals.recaudo > 0 ? 100 : 0} tone="info" />
-                <small>Lo que vas a vender</small>
+                <small>{hayEntrega ? 'Según lo entregado' : 'Lo que vas a vender'}</small>
               </SummaryKpi>
               <SummaryKpi
                 icon="coins"
@@ -243,7 +256,7 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
                 value={formatPrice(ganancia.ganada)}
               >
                 <ProgressBar value={summaryPercent(ganancia.ganada, ganancia.proyectada)} />
-                <small>Según lo ya abonado</small>
+                <small>Según lo abonado y tu parte en la actividad</small>
               </SummaryKpi>
               <SummaryKpi
                 icon="trendUp"
@@ -251,7 +264,7 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
                 label="Ganancia proyectada"
                 value={formatPrice(ganancia.proyectada)}
               >
-                <small>Si vendes todo</small>
+                <small>Si vendes lo pedido</small>
               </SummaryKpi>
               <SummaryKpi
                 icon="wallet"
@@ -301,6 +314,8 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
             <ul className="attendance-mark__sale-list">
               {services.map((service) => {
                 const cantidad = ventas[service.id] ?? 0
+                const entregada = entregadas[service.id]
+                const cobrada = entregada == null ? cantidad : entregada
                 return (
                   <li key={service.id} className="attendance-mark__sale">
                     <span className="attendance-mark__sale-name">
@@ -311,8 +326,8 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
                       </span>
                     </span>
                     <span className="attendance-mark__sale-price">
-                      <small>Total</small>
-                      <strong>{formatPrice(cantidad * servicePrice(service))}</strong>
+                      <small>{entregada == null ? 'Total' : `Entregados ${entregada}`}</small>
+                      <strong>{formatPrice(cobrada * servicePrice(service))}</strong>
                     </span>
                     <div className="attendance-mark__qty">
                       <button
@@ -331,8 +346,9 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
                         disabled={saving || locked}
                         onClick={() => openPad(service.id)}
                       >
-                        <span>Cantidad</span>
+                        <span>{entregada == null ? 'Cantidad' : 'Pedido'}</span>
                         <strong>{cantidad}</strong>
+                        {entregada == null ? null : <small>Entregados {entregada}</small>}
                       </button>
                       <button
                         type="button"

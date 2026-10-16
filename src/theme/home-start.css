@@ -237,7 +237,7 @@
 
 .home-start__actions {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.7rem;
 }
 
@@ -267,6 +267,11 @@
 .home-start__action-icon[data-tone='hint'] {
   background: var(--panel-hint-bg);
   color: var(--panel-hint-text);
+}
+
+.home-start__action-icon[data-tone='ok'] {
+  background: color-mix(in srgb, var(--panel-ok-text) 16%, var(--panel-input-bg));
+  color: var(--panel-ok-text);
 }
 
 .home-start__action small,
@@ -544,7 +549,7 @@
   }
 
   .home-start__actions {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

@@ -207,6 +207,13 @@ export function canViewClubEventGanancias(options?: {
   return Boolean(options?.organizacionId) && isClubDirectivaRole(options?.rolName)
 }
 
+export function canChangeClubEventGanancia(options?: {
+  rolName?: string | null
+  isSuper?: boolean
+}): boolean {
+  return Boolean(options?.isSuper) || isClubDirectorRole(options?.rolName)
+}
+
 export function canManageClubDirectors(options?: {
   can?: (permission: string) => boolean
   rolName?: string | null

@@ -546,9 +546,16 @@
 }
 
 .app-notice--warning {
-  --notice-text: var(--panel-hint-text);
-  --notice-border: var(--panel-hint-border);
-  --notice-fill: var(--panel-hint-bg);
+  --notice-text: #fff8e4;
+  --notice-border: var(--panel-gold);
+  --notice-fill: color-mix(in srgb, var(--panel-gold) 78%, #3a2804);
+  backdrop-filter: none;
+}
+
+.app-notice-host.is-day .app-notice--warning {
+  --notice-text: #3d2a00;
+  --notice-border: color-mix(in srgb, var(--panel-gold) 72%, #3d2a00);
+  --notice-fill: color-mix(in srgb, var(--panel-gold) 46%, #fff);
 }
 
 .app-notice--error {
@@ -588,7 +595,7 @@
 
 .app-notice__copy p {
   margin: 0;
-  color: var(--panel-title);
+  color: var(--notice-text, var(--panel-title));
   font-size: 0.95rem;
   font-weight: var(--panel-weight-strong);
   line-height: 1.35;
