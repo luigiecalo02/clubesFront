@@ -338,6 +338,8 @@ export interface EventSummary {
   organizacion?: { id: number; nombre: string; codigo?: string | null } | null
   tipo_evento?: EventTipo | null
   ganancia_eclesiastica_id?: number | null
+  cuenta_bancaria_id?: number | null
+  cuenta_bancaria?: CuentaBancariaClub | null
   capital?: number | string | null
   ganancia_registro?: EventoGananciaRegistro | null
   inscritos_count?: number
@@ -512,6 +514,8 @@ export interface EventParticipantService {
   nombre: string
   precio?: number | string
   ganancia_unidad?: number | string | null
+  inversion?: number | string | null
+  cantidad_proyectada?: number | null
   icono?: string | null
   image_url?: string | null
 }
@@ -542,6 +546,17 @@ export interface EventSelfParticipation {
   ganancia?: {
     capital: number
     proyeccion_otros: number
+    reparto?: {
+      ofrenda: number
+      diezmo: number
+      resto: number
+      miembros: number
+      club: number
+      extras: number
+    } | null
+    capital_propio?: number
+    unidades?: number
+    capital_unidad?: number
   }
 }
 
@@ -559,7 +574,9 @@ export interface AbonoMovimiento {
   id: number
   monto: number
   nota?: string | null
-  estado?: 'pendiente' | 'aprobado' | 'rechazado' | string | null
+  estado?: 'pendiente' | 'aprobado' | 'rechazado' | 'eliminado' | string | null
+  producto_servicio_id?: number | null
+  producto_nombre?: string | null
   comprobante_url?: string | null
   created_at?: string | null
 }
@@ -601,6 +618,7 @@ export interface AbonoFila {
   ganancia?: number
   items?: number
   pendientes?: number
+  cuenta_bancaria?: CuentaBancariaClub | null
   pedidos?: AbonoPedido[]
   abonos?: AbonoMovimiento[]
 }
@@ -613,6 +631,22 @@ export interface GananciaDistribucion {
   miembros: number
   extras: number
   es_predeterminada: boolean
+}
+
+export type CuentaBancariaTipo = 'ahorros' | 'corriente'
+
+export interface CuentaBancariaClub {
+  id: number
+  organizacion_id?: number | null
+  nombre: string
+  banco?: string | null
+  tipo_cuenta: CuentaBancariaTipo | string
+  numero_cuenta: string
+  titular?: string | null
+  identificacion_titular?: string | null
+  activo: boolean
+  orden?: number
+  qr_url?: string | null
 }
 
 export interface GananciaEclesiastica {
@@ -693,4 +727,81 @@ export interface PresupuestoDetalle {
   miembros_count: number
   cantidades: Record<PresupuestoBloqueKey, number>
   bloques: Record<PresupuestoBloqueKey, PresupuestoBloque>
+}
+
+export interface FinanzasKpis {
+  ingresos: number
+  gastos: number
+  disponible: number
+  por_distribuir: number
+  actividades: number
+  conceptos_gasto: number
+}
+
+export interface FinanzasParte {
+  key: string
+  label: string
+  amount: number
+  percent: number
+  tone: string
+}
+
+export interface FinanzasSerieMes {
+  mes: string
+  label: string
+  ingresos: number
+  gastos: number
+}
+
+export interface FinanzasCuenta {
+  id: number
+  nombre: string
+  tipo: string
+  saldo: number
+}
+
+export interface FinanzasMovimiento {
+  id: number
+  tipo: 'ingreso' | 'egreso' | string
+  origen: string
+  monto: number
+  concepto: string
+  cuenta_id: number
+  cuenta_nombre?: string | null
+  evento_id?: number | null
+  evento_nombre?: string | null
+  occurred_at?: string | null
+}
+
+export interface FinanzasActividad {
+  id: number
+  nombre: string
+  starts_at?: string | null
+  abonado: number
+  proyeccion: number
+  participantes: number
+  diezmo: number
+  ofrenda: number
+  club: number
+  extras: number
+  capital: number
+}
+
+export interface FinanzasEventoOption {
+  id: number
+  nombre: string
+  starts_at?: string | null
+}
+
+export interface FinanzasResumen {
+  desde: string
+  hasta: string
+  evento_id?: number | null
+  kpis: FinanzasKpis
+  distribucion: FinanzasParte[]
+  serie_mensual: FinanzasSerieMes[]
+  cuentas: FinanzasCuenta[]
+  movimientos: FinanzasMovimiento[]
+  actividades: FinanzasActividad[]
+  eventos: FinanzasEventoOption[]
 }

@@ -3,12 +3,21 @@ import { abonosApi } from '../api/abonos'
 import { usersApi } from '../api/users'
 import { resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
-import type { AbonoFila, AbonosBoard, AbonosModo, AuthUser } from '../api/types'
+import type { AbonoFila, AbonoMovimiento, AbonosBoard, AbonosModo, AuthUser } from '../api/types'
 import { AdminIcon } from '../admin/AdminIcon'
-import { canAccessClubAbonos, MY_ABONOS_REGISTER_PERMISSION } from '../admin/menu'
+import { canAccessClubAbonos, isClubDirectorRole, MY_ABONOS_REGISTER_PERMISSION } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
-import { AbonoPayForm, emptyAbonoPayDraft, composeAbonoNota, parseAbonoNota, type AbonoPayDraft } from '../components/abonos/AbonoPayForm'
-import { AbonoProofReview, abonoEstadoLabel } from '../components/abonos/AbonoProofReview'
+import {
+  AbonoPayForm,
+  abonoPayPartidas,
+  abonoPayTotal,
+  emptyAbonoPayDraft,
+  composeAbonoNota,
+  parseAbonoNota,
+  type AbonoPayDraft,
+} from '../components/abonos/AbonoPayForm'
+import { AbonoCuentaInfo } from '../components/abonos/AbonoCuentaInfo'
+import { AbonoAmountControl, AbonoProofReview, abonoEstadoLabel } from '../components/abonos/AbonoProofReview'
 import { memberInitials } from '../components/attendance/AttendanceMarkList'
 import { ServiceThumb } from '../components/services/ServiceVisual'
 import { AppPanel } from '../theme/AppPanel'
@@ -61,6 +70,18 @@ function samePersonName(rowName: string, candidate: string): boolean {
   const name = candidate.trim().toLowerCase()
   if (!row || !name) return false
   return row === name || row.startsWith(`${name} `) || name.startsWith(`${row} `)
+}
+
+function groupAbonosByShot(abonos: AbonoMovimiento[]): AbonoMovimiento[][] {
+  const groups = new Map<string, AbonoMovimiento[]>()
+  abonos.forEach((abono) => {
+    const shot = resolveFileUrl(abono.comprobante_url)
+    const key = shot || `abono:${abono.id}`
+    const current = groups.get(key)
+    if (current) current.push(abono)
+    else groups.set(key, [abono])
+  })
+  return [...groups.values()]
 }
 
 function findSessionAbono(rows: AbonoFila[], user: AuthUser, personaId: number | null, fullName: string | null) {
@@ -137,11 +158,14 @@ function AbonosAvatar({
 export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const auth = useAuth()
   const ctx = auth.user?.contexto
+  const isSuper = Boolean(auth.user?.is_super || auth.user?.roles?.includes('super_admin'))
   const canEdit =
     canAccessClubAbonos({
       rolName: ctx?.rol_name,
       organizacionId: ctx?.organizacion_id,
     }) || auth.can('abonos.update')
+  const canEditAbonoAmount = isClubDirectorRole(ctx?.rol_name) || isSuper
+  const canDeleteAbonoAmount = canEditAbonoAmount
   const canSendProof = auth.can(MY_ABONOS_REGISTER_PERMISSION)
   const notices = useNotice()
   const [modo, setModo] = useState<AbonosModo>('integrante')
@@ -195,6 +219,18 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const payTitle = modo === 'integrante' ? payRow?.evento_name : payRow?.full_name
   const payPersonName = payRow?.full_name || selectedRow?.full_name
   const payPhoto = payRow?.foto_url || selectedRow?.foto_url
+  const payProducts = (payRow?.pedidos ?? []).map((pedido) => {
+    const abonado = (payRow?.abonos ?? []).reduce((sum, abono) => {
+      if (Number(abono.producto_servicio_id) !== pedido.id) return sum
+      if (abono.estado && abono.estado !== 'aprobado') return sum
+      return sum + (Number(abono.monto) || 0)
+    }, 0)
+    return {
+      id: pedido.id,
+      nombre: pedido.nombre,
+      pendiente: Math.max(0, Number(pedido.total) - abonado),
+    }
+  })
   const detailsRow = detail.filas.find((row) => pickKey(row) === detailsKey) ?? null
   const detailsTitle = modo === 'integrante' ? detailsRow?.evento_name : detailsRow?.full_name
   const detailsPhoto = detailsRow?.foto_url || selectedRow?.foto_url
@@ -390,9 +426,14 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
 
   async function submitProof() {
     if (!mine || !canSendProof || !payRow?.evento_id || !proofFile || saving) return
+    const partidas = abonoPayPartidas(draft, payProducts)
+    if (payProducts.length > 0 && partidas.length === 0) {
+      notices.warning('Indica cuánto abonas de cada producto.')
+      return
+    }
     setSaving(true)
     try {
-      await abonosApi.submitComprobante(payRow.evento_id, proofFile)
+      await abonosApi.submitComprobante(payRow.evento_id, proofFile, partidas.length ? partidas : undefined)
       await reloadMine()
       closePay()
       notices.success('Abono enviado. Queda pendiente hasta que la directiva lo apruebe.')
@@ -413,12 +454,17 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
       notices.error('No se encontró el compromiso para abonar.')
       return
     }
-    const monto = Number(draft.monto)
+    const partidas = abonoPayPartidas(draft, payProducts)
+    const total = abonoPayTotal(draft, payProducts)
+    if (payProducts.length > 0 && partidas.length === 0) {
+      notices.warning('Indica cuánto abonas de cada producto.')
+      return
+    }
     if (!draft.metodo) {
       notices.warning('Elige un método de pago.')
       return
     }
-    if (!Number.isFinite(monto) || monto <= 0) {
+    if (total <= 0) {
       notices.warning('Escribe un monto mayor a cero.')
       return
     }
@@ -427,9 +473,10 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
       const next = await abonosApi.store({
         evento_id: payRow.evento_id,
         persona_id: payRow.persona_id,
-        monto,
+        monto: payProducts.length ? undefined : total,
         nota: composeAbonoNota(draft),
         modo,
+        partidas: payProducts.length ? partidas : undefined,
         comprobante: draft.comprobante,
       })
       setDetail(next)
@@ -442,6 +489,50 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
       notices.success('Abono registrado.')
     } catch (err) {
       notices.error(getApiErrorMessage(err, 'No se pudo registrar el abono'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function refreshAbonoBoards() {
+    const nextDetail = await abonosApi.board({
+      modo,
+      personaId: modo === 'integrante' ? personaId : null,
+      eventoId: modo === 'actividad' ? eventoId : null,
+    })
+    setDetail(nextDetail)
+    if (!mine) setList(await abonosApi.board({ modo }))
+  }
+
+  async function updateAbonoAmount(abono: { id: number }, monto: number) {
+    if (!canEditAbonoAmount) return
+    if (!Number.isFinite(monto) || monto <= 0) {
+      notices.warning('Escribe un valor mayor a cero.')
+      return
+    }
+    setSaving(true)
+    try {
+      await abonosApi.updateMonto(abono.id, monto)
+      await refreshAbonoBoards()
+      notices.success('Valor del abono actualizado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo cambiar el valor del abono'))
+      throw err
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteAbonoAmount(abono: { id: number }) {
+    if (!canDeleteAbonoAmount) return
+    setSaving(true)
+    try {
+      await abonosApi.review(abono.id, { estado: 'eliminado' })
+      await refreshAbonoBoards()
+      notices.success('Abono eliminado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo eliminar el abono'))
+      throw err
     } finally {
       setSaving(false)
     }
@@ -779,21 +870,54 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
             ) : null}
             {detailsTab === 'abonos' && detailsRow.abonos?.length ? (
               <ul className="abonos-history">
-                {detailsRow.abonos.map((abono) => {
-                  const nota = parseAbonoNota(abono.nota)
+                {groupAbonosByShot(detailsRow.abonos).map((group) => {
+                  const lead = group[0]
+                  const nota = parseAbonoNota(lead.nota)
+                  const pending = group.filter((abono) => abono.estado === 'pendiente')
+                  const products = group.map((abono) => abono.producto_nombre).filter(Boolean).join(' · ')
+                  const total = group.reduce((sum, abono) => sum + (Number(abono.monto) || 0), 0)
                   return (
-                    <li key={abono.id}>
+                    <li key={group.map((abono) => abono.id).join('-')}>
                       <span className="abonos-history__who">
                         <AdminIcon name="wallet" />
                         <span>
-                          <strong>{abono.created_at ? formatDate(abono.created_at) : nota.fecha || 'Abono'}</strong>
+                          <strong>{lead.created_at ? formatDate(lead.created_at) : nota.fecha || 'Abono'}</strong>
+                          {products ? <small>{products}</small> : null}
                           {nota.metodo ? <small>{nota.metodo}</small> : null}
                           {nota.texto ? <small>{nota.texto}</small> : null}
+                          {group.length > 1 ? <small>{group.length} productos · {formatPrice(total)}</small> : null}
                         </span>
                       </span>
-                      <strong>{abonoEstadoLabel(abono) ?? formatPrice(abono.monto)}</strong>
+                      {pending.length ? (
+                        <strong>{pending.length > 1 ? `Pendiente · ${pending.length}` : abonoEstadoLabel(pending[0])}</strong>
+                      ) : group.every((abono) => abono.estado === 'eliminado') ? (
+                        <strong>Eliminado</strong>
+                      ) : group.every((abono) => abono.estado === 'rechazado') ? (
+                        <strong>Rechazado</strong>
+                      ) : group.length === 1 ? (
+                        <AbonoAmountControl
+                          abono={group[0]}
+                          canEdit={canEditAbonoAmount}
+                          canDelete={canDeleteAbonoAmount}
+                          onSave={updateAbonoAmount}
+                          onDelete={deleteAbonoAmount}
+                        />
+                      ) : (
+                        <span className="abonos-history__amounts">
+                          {group.map((abono) => (
+                            <AbonoAmountControl
+                              key={abono.id}
+                              abono={abono}
+                              canEdit={canEditAbonoAmount}
+                              canDelete={canDeleteAbonoAmount}
+                              onSave={updateAbonoAmount}
+                              onDelete={deleteAbonoAmount}
+                            />
+                          ))}
+                        </span>
+                      )}
                       <AbonoProofReview
-                        abono={abono}
+                        abonos={group}
                         canReview={canEdit}
                         onReview={reviewAbono}
                       />
@@ -829,7 +953,15 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
             <button
               type="button"
               className="app-panel__btn--primary"
-              disabled={saving || !payRow || (mine ? !proofFile : payRow.pendiente <= 0)}
+              disabled={
+                saving ||
+                !payRow ||
+                (mine
+                  ? !proofFile || (payProducts.length > 0 && abonoPayPartidas(draft, payProducts).length === 0)
+                  : payRow.pendiente <= 0 ||
+                    !draft.metodo ||
+                    abonoPayTotal(draft, payProducts) <= 0)
+              }
               onClick={() => void (mine ? submitProof() : submitAbono())}
             >
               <AdminIcon name="wallet" />
@@ -846,8 +978,10 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
               void submitProof()
             }}
           >
+            <AbonoCuentaInfo cuenta={payRow.cuenta_bancaria} />
             <p className="app-panel__subtitle">
-              Sube el pantallazo de tu abono. Queda pendiente hasta que la directiva lo apruebe.
+              Sube un pantallazo y reparte cuánto va a cada producto. Queda pendiente hasta que la directiva lo
+              apruebe.
             </p>
             <label>
               Pantallazo del abono
@@ -859,6 +993,38 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
               />
             </label>
             {proofPreview ? <img className="abono-proof__shot" src={proofPreview} alt="Pantallazo listo para enviar" /> : null}
+            {payProducts.length ? (
+              <div className="abono-proof-form__splits">
+                <p className="abono-proof-form__splits-title">Valor por producto</p>
+                {payProducts.map((product) => (
+                  <label key={product.id} className="abono-proof-form__split">
+                    <span className="abono-proof-form__split-name">
+                      <strong>{product.nombre}</strong>
+                      <small>Falta {formatPrice(product.pendiente)}</small>
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                      placeholder="0"
+                      disabled={saving}
+                      value={draft.montos[String(product.id)] ?? ''}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          montos: { ...draft.montos, [String(product.id)]: event.target.value.replace(/\D/g, '') },
+                        })
+                      }
+                    />
+                  </label>
+                ))}
+                <p className="abono-proof-form__splits-total">
+                  <span>Total de esta captura</span>
+                  <strong>{formatPrice(abonoPayTotal(draft, payProducts))}</strong>
+                </p>
+              </div>
+            ) : null}
           </form>
         ) : null}
         {payRow && !mine ? (
@@ -880,6 +1046,8 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
             <AbonoPayForm
               draft={draft}
               pendiente={payRow.pendiente}
+              products={payProducts}
+              cuenta={payRow.cuenta_bancaria}
               saving={saving}
               showSubmit={false}
               onChange={setDraft}

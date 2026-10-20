@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
   canAccessClubAttendance,
+  canAccessClubFinanzas,
   canAccessClubPresupuesto,
   canAccessClubSettings,
   canManageClubServices,
@@ -14,6 +15,7 @@ export function RequirePermission({
   requireOrgSettings = false,
   requireAttendance = false,
   requirePresupuesto = false,
+  requireFinanzas = false,
   requireServices = false,
   children,
 }: {
@@ -21,6 +23,7 @@ export function RequirePermission({
   requireOrgSettings?: boolean
   requireAttendance?: boolean
   requirePresupuesto?: boolean
+  requireFinanzas?: boolean
   requireServices?: boolean
   children: ReactNode
 }) {
@@ -74,6 +77,20 @@ export function RequirePermission({
         organizacionId: ctx?.organizacion_id,
       }) ||
       auth.can(permission)
+    ) {
+      return children
+    }
+    return <Navigate to="/" replace />
+  }
+
+  if (requireFinanzas) {
+    if (
+      canAccessClubFinanzas({
+        rolName: ctx?.rol_name,
+        organizacionId: ctx?.organizacion_id,
+      }) ||
+      auth.can(permission) ||
+      auth.can('abonos.view')
     ) {
       return children
     }

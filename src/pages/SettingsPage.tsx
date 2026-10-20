@@ -8,6 +8,7 @@ import { ImageUpload, type ImageUploadVariant } from '../theme/ImageUpload'
 import { BackgroundStylePicker } from '../theme/BackgroundStylePicker'
 import { parseBackgroundStyle } from '../theme/backgroundStyle'
 import { useNotice } from '../theme/NoticeProvider'
+import { CuentasBancariasSettingsPanel } from '../components/settings/CuentasBancariasSettingsPanel'
 import { EclesiasticaSettingsPanel } from '../components/settings/EclesiasticaSettingsPanel'
 import { GananciasSettingsPanel } from '../components/settings/GananciasSettingsPanel'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
@@ -79,7 +80,7 @@ const APP_BACKGROUNDS: ClubAssetItem[] = [
   { key: 'background_day', label: 'Fondo claro', hint: 'Panel en modo día. Si la cargas, se omiten las animaciones y la app arranca más ligera.' },
 ]
 
-type SettingsTab = 'apariencia' | 'imagenes' | 'correo' | 'ganancias' | 'eclesiastica'
+type SettingsTab = 'apariencia' | 'imagenes' | 'correo' | 'ganancias' | 'cuentas' | 'eclesiastica'
 
 function assetVariant(key: ClubesAssetKey): ImageUploadVariant {
   return key === 'logo' ? 'logo' : 'banner'
@@ -305,6 +306,7 @@ export function SettingsPage() {
           { id: 'imagenes', label: 'Imágenes' },
           { id: 'correo', label: 'Correo' },
           { id: 'ganancias', label: 'Ganancias' },
+          { id: 'cuentas', label: 'Cuentas bancarias' },
           { id: 'eclesiastica', label: 'Distribución de ganancias' },
         ]}
       >
@@ -618,6 +620,8 @@ export function SettingsPage() {
       ) : null}
 
       {tab === 'ganancias' ? <GananciasSettingsPanel canUpdate={canUpdate} /> : null}
+
+      {tab === 'cuentas' ? <CuentasBancariasSettingsPanel canUpdate={canUpdate} /> : null}
 
       {tab === 'eclesiastica' ? <EclesiasticaSettingsPanel canUpdate={canUpdate} /> : null}
       </AppTabs>

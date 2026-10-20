@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import type { CuentaBancariaClub } from '../../api/types'
 import { AdminIcon } from '../../admin/AdminIcon'
 import { compressReceiptImage } from '../../theme/cropImage'
 import { DateInput } from '../../theme/DateInput'
 import { formatDate, toIsoDate } from '../../theme/dates'
 import { NumberPadInput } from '../../theme/NumberPad'
+import { AbonoCuentaInfo } from './AbonoCuentaInfo'
 import '../../theme/abonos.css'
 
 function formatMoney(value: number): string {
@@ -12,11 +14,24 @@ function formatMoney(value: number): string {
 
 export const ABONO_PAY_METHODS = ['Efectivo', 'Transferencia', 'Nequi', 'Daviplata', 'Otro'] as const
 
+export type AbonoPayProduct = {
+  id: number
+  nombre: string
+  pendiente?: number
+}
+
+export type AbonoPayPartida = {
+  producto_servicio_id: number
+  monto: number
+}
+
 export type AbonoPayDraft = {
   monto: string
+  montos: Record<string, string>
   nota: string
   metodo: (typeof ABONO_PAY_METHODS)[number] | ''
   fecha: string
+  productoId: string
   comprobante: File | null
 }
 
@@ -24,6 +39,8 @@ type AbonoPayFormProps = {
   id?: string
   draft: AbonoPayDraft
   pendiente: number
+  products?: AbonoPayProduct[]
+  cuenta?: CuentaBancariaClub | null
   saving?: boolean
   showSubmit?: boolean
   onChange: (draft: AbonoPayDraft) => void
@@ -31,7 +48,15 @@ type AbonoPayFormProps = {
 }
 
 export function emptyAbonoPayDraft(): AbonoPayDraft {
-  return { monto: '', nota: '', metodo: '', fecha: toIsoDate(new Date()), comprobante: null }
+  return {
+    monto: '',
+    montos: {},
+    nota: '',
+    metodo: '',
+    fecha: toIsoDate(new Date()),
+    productoId: '',
+    comprobante: null,
+  }
 }
 
 export function composeAbonoNota(draft: AbonoPayDraft): string | undefined {
@@ -52,10 +77,26 @@ export function parseAbonoNota(nota?: string | null): { metodo: string; fecha: s
   return { metodo, fecha, texto: [leftover, texto].filter(Boolean).join(' — ') }
 }
 
+export function abonoPayPartidas(draft: AbonoPayDraft, products: AbonoPayProduct[]): AbonoPayPartida[] {
+  if (products.length === 0) return []
+  return products.flatMap((product) => {
+    const monto = Math.round(Number(draft.montos[String(product.id)]) || 0)
+    if (monto <= 0) return []
+    return [{ producto_servicio_id: product.id, monto }]
+  })
+}
+
+export function abonoPayTotal(draft: AbonoPayDraft, products: AbonoPayProduct[]): number {
+  if (products.length === 0) return Math.round(Number(draft.monto) || 0)
+  return abonoPayPartidas(draft, products).reduce((sum, line) => sum + line.monto, 0)
+}
+
 export function AbonoPayForm({
   id = 'abono-pay-form',
   draft,
   pendiente,
+  products = [],
+  cuenta = null,
   saving = false,
   showSubmit = true,
   onChange,
@@ -64,6 +105,9 @@ export function AbonoPayForm({
   const locked = saving || pendiente <= 0
   const [preparing, setPreparing] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
+  const splitMode = products.length > 0
+  const total = abonoPayTotal(draft, products)
+  const partidas = abonoPayPartidas(draft, products)
 
   useEffect(() => {
     if (!draft.comprobante) {
@@ -90,6 +134,19 @@ export function AbonoPayForm({
     }
   }
 
+  function setProductMonto(productId: number, monto: string) {
+    onChange({
+      ...draft,
+      montos: { ...draft.montos, [String(productId)]: monto },
+    })
+  }
+
+  function applyProductPercent(product: AbonoPayProduct, percent: number) {
+    const base = Math.max(0, Math.min(pendiente, product.pendiente ?? pendiente))
+    if (base <= 0) return
+    setProductMonto(product.id, String(Math.round((base * percent) / 100)))
+  }
+
   function applyPercent(percent: number) {
     if (pendiente <= 0) return
     onChange({
@@ -98,9 +155,12 @@ export function AbonoPayForm({
     })
   }
 
+  const canSubmit = !locked && Boolean(draft.metodo) && (splitMode ? partidas.length > 0 : total > 0)
+
   return (
     <form id={id} className="abonos-pay" onSubmit={onSubmit}>
       <h3>Registrar abono</h3>
+      <AbonoCuentaInfo cuenta={cuenta} />
       <div className="abonos-pay__meta">
         <label>
           Método de pago
@@ -133,17 +193,6 @@ export function AbonoPayForm({
         </label>
       </div>
       <label>
-        Observación
-        <input
-          type="text"
-          maxLength={180}
-          placeholder="Opcional"
-          value={draft.nota}
-          disabled={saving}
-          onChange={(event) => onChange({ ...draft, nota: event.target.value })}
-        />
-      </label>
-      <label>
         Comprobante
         <input
           type="file"
@@ -151,7 +200,11 @@ export function AbonoPayForm({
           disabled={saving || preparing}
           onChange={(event) => void pickComprobante(event.target.files?.[0] ?? null)}
         />
-        <small className="app-panel__muted">Opcional. Sube el pantallazo si lo tienes.</small>
+        <small className="app-panel__muted">
+          {splitMode
+            ? 'Una sola captura puede cubrir varios productos: indica cuánto va a cada uno.'
+            : 'Opcional. Sube el pantallazo si lo tienes.'}
+        </small>
       </label>
       {preview ? (
         <div className="abonos-pay__shot">
@@ -167,38 +220,98 @@ export function AbonoPayForm({
           </button>
         </div>
       ) : null}
-      <label className="abonos-pay__amount">
-        Valor recibido
-        <span className="abonos-pay__money">
-          <span className="abonos-pay__currency" aria-hidden="true">
-            <AdminIcon name="wallet" />
-          </span>
-          <NumberPadInput
-            title="Valor recibido"
-            min={1}
-            maxDigits={9}
-            format={formatMoney}
-            value={draft.monto}
-            disabled={locked}
-            onChange={(monto) => onChange({ ...draft, monto })}
-          />
-        </span>
-        <span className="abonos-pay__percents" role="group" aria-label="Porcentaje del pendiente">
-          {[25, 50, 100].map((percent) => (
-            <button
-              key={percent}
-              type="button"
-              className="app-panel__btn--ghost"
+      {splitMode ? (
+        <div className="abonos-pay__splits">
+          <p className="abonos-pay__splits-title">Valor por producto</p>
+          {products.map((product) => {
+            const value = draft.montos[String(product.id)] ?? ''
+            const cap = Math.max(0, Math.min(pendiente, product.pendiente ?? pendiente))
+            return (
+              <div key={product.id} className="abonos-pay__split">
+                <span className="abonos-pay__split-name">
+                  <strong>{product.nombre}</strong>
+                  {product.pendiente != null ? <small>Falta {formatMoney(product.pendiente)}</small> : null}
+                </span>
+                <span className="abonos-pay__money">
+                  <span className="abonos-pay__currency" aria-hidden="true">
+                    <AdminIcon name="wallet" />
+                  </span>
+                  <NumberPadInput
+                    title={product.nombre}
+                    min={0}
+                    maxDigits={9}
+                    format={formatMoney}
+                    value={value}
+                    disabled={locked}
+                    onChange={(monto) => setProductMonto(product.id, monto)}
+                  />
+                </span>
+                <span className="abonos-pay__percents" role="group" aria-label={`Porcentaje de ${product.nombre}`}>
+                  {[25, 50, 100].map((percent) => (
+                    <button
+                      key={percent}
+                      type="button"
+                      className="app-panel__btn--ghost"
+                      disabled={locked || cap <= 0}
+                      onClick={() => applyProductPercent(product, percent)}
+                    >
+                      {percent}%
+                    </button>
+                  ))}
+                </span>
+              </div>
+            )
+          })}
+          <p className="abonos-pay__splits-total">
+            <span>Total de esta captura</span>
+            <strong>{formatMoney(total)}</strong>
+          </p>
+        </div>
+      ) : (
+        <label className="abonos-pay__amount">
+          Valor recibido
+          <span className="abonos-pay__money">
+            <span className="abonos-pay__currency" aria-hidden="true">
+              <AdminIcon name="wallet" />
+            </span>
+            <NumberPadInput
+              title="Valor recibido"
+              min={1}
+              maxDigits={9}
+              format={formatMoney}
+              value={draft.monto}
               disabled={locked}
-              onClick={() => applyPercent(percent)}
-            >
-              {percent}%
-            </button>
-          ))}
-        </span>
+              onChange={(monto) => onChange({ ...draft, monto })}
+            />
+          </span>
+          <span className="abonos-pay__percents" role="group" aria-label="Porcentaje del pendiente">
+            {[25, 50, 100].map((percent) => (
+              <button
+                key={percent}
+                type="button"
+                className="app-panel__btn--ghost"
+                disabled={locked}
+                onClick={() => applyPercent(percent)}
+              >
+                {percent}%
+              </button>
+            ))}
+          </span>
+        </label>
+      )}
+      <label>
+        Observación
+        <input
+          type="text"
+          maxLength={180}
+          placeholder="Opcional"
+          value={draft.nota}
+          disabled={saving}
+          onChange={(event) => onChange({ ...draft, nota: event.target.value })}
+        />
       </label>
       {showSubmit ? (
-        <button type="submit" className="app-panel__btn--primary" disabled={locked || !draft.metodo}>
+        <button type="submit" className="app-panel__btn--primary" disabled={!canSubmit}>
           <AdminIcon name="wallet" />
           Registrar abono
         </button>

@@ -97,26 +97,44 @@ export function NumberPadInput({
   onChange,
 }: NumberPadInputProps) {
   const [open, setOpen] = useState(false)
+  const amount = Number(value) || 0
+  const display = format ? (value === '' || value == null ? '' : format(amount)) : value
+  const tooLow = min != null && amount < min
 
   return (
     <>
       <input
-        type="number"
-        min={min}
-        step={1}
+        type={format ? 'text' : 'number'}
+        min={format ? undefined : min}
+        step={format ? undefined : 1}
         inputMode="none"
+        readOnly={Boolean(format)}
         className={className}
         aria-label={ariaLabel}
         aria-haspopup="dialog"
         required={required}
-        value={value}
+        value={display}
         disabled={disabled}
         onClick={() => setOpen(true)}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.currentTarget.form) setOpen(true)
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            if (!disabled) setOpen(true)
+          }
         }}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={format ? undefined : (event) => onChange(event.target.value)}
       />
+      {required && format ? (
+        <input
+          type="text"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          required
+          value={tooLow || value === '' ? '' : value}
+          onChange={() => undefined}
+        />
+      ) : null}
       {open && !disabled ? (
         <NumberPadDialog
           title={title}
@@ -125,7 +143,7 @@ export function NumberPadInput({
           format={format}
           onClose={() => setOpen(false)}
           onConfirm={(next) => {
-            onChange(next > 0 ? String(next) : '')
+            onChange(next > 0 ? String(next) : min === 0 ? '0' : '')
             setOpen(false)
           }}
         />

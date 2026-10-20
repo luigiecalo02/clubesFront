@@ -4,8 +4,9 @@ import { resolveFileUrl } from '../../api/baseUrl'
 import { AdminIcon } from '../../admin/AdminIcon'
 import { AppPanel } from '../../theme/AppPanel'
 import { formatDate } from '../../theme/dates'
+import { ImagePreviewDialog } from '../../theme/ImagePreviewDialog'
 import { memberInitials } from '../attendance/AttendanceMarkList'
-import { AbonoProofReview, AbonoShotButton, abonoEstadoLabel } from '../abonos/AbonoProofReview'
+import { AbonoAmountControl, AbonoProofReview, AbonoShotButton, abonoEstadoLabel } from '../abonos/AbonoProofReview'
 import { ServiceThumb } from '../services/ServiceVisual'
 import { ProgressBar, SummaryDonut, SummaryKpi, summaryPercent } from './SummaryCards'
 import '../../theme/attendance-mark.css'
@@ -96,20 +97,61 @@ export function participantEventCounts(
   draft: ParticipantDraft,
 ) {
   const participan = members.filter((row) => draft[row.persona_id]?.participa === true).length
-  return members.reduce(
+  const productQty = new Map<number, number>()
+  const totals = members.reduce(
     (acc, row) => {
       const current = draft[row.persona_id]
       if (current?.participa !== true) return acc
-      const totals = saleTotals(services, billedVentas(row, draft))
+      const billed = billedVentas(row, draft)
+      services.forEach((service) => {
+        const qty = Math.max(0, Number(billed[service.id]) || 0)
+        if (qty <= 0) return
+        productQty.set(service.id, (productQty.get(service.id) ?? 0) + qty)
+      })
+      const sale = saleTotals(services, billed)
       return {
         ...acc,
-        unidades: acc.unidades + totals.unidades,
-        recaudo: acc.recaudo + totals.recaudo,
+        unidades: acc.unidades + sale.unidades,
+        recaudo: acc.recaudo + sale.recaudo,
         abonado: acc.abonado + (Number(row.abonado) || 0),
       }
     },
     { participan, unidades: 0, recaudo: 0, abonado: 0 },
   )
+  return {
+    ...totals,
+    productos: services
+      .map((service) => ({
+        id: service.id,
+        nombre: service.nombre,
+        unidades: productQty.get(service.id) ?? 0,
+      }))
+      .filter((item) => item.unidades > 0),
+  }
+}
+
+export function abonoProductOptions(
+  services: EventParticipantService[],
+  ventas: Record<number, number>,
+  abonos: AbonoMovimiento[] = [],
+) {
+  return services.flatMap((service) => {
+    const cantidad = Math.max(0, Number(ventas[service.id]) || 0)
+    if (cantidad <= 0) return []
+    const comprometido = cantidad * servicePrice(service)
+    const abonado = abonos.reduce((sum, abono) => {
+      if (Number(abono.producto_servicio_id) !== service.id) return sum
+      if (abono.estado && abono.estado !== 'aprobado') return sum
+      return sum + (Number(abono.monto) || 0)
+    }, 0)
+    return [
+      {
+        id: service.id,
+        nombre: service.nombre,
+        pendiente: Math.max(0, comprometido - abonado),
+      },
+    ]
+  })
 }
 
 export function ParticipantEventStats({
@@ -144,6 +186,17 @@ export function ParticipantEventStats({
       </SummaryKpi>
       <SummaryKpi icon="box" tone="gold" label="A vender" value={counts.unidades}>
         <small>Unidades en total</small>
+        {counts.productos.length ? (
+          <ul className="event-summary__units">
+            {counts.productos.map((product) => (
+              <li key={product.id}>
+                <span>{product.nombre}</span>
+                <strong>{product.unidades}</strong>
+                <small>{product.unidades === 1 ? 'unidad' : 'unidades'}</small>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </SummaryKpi>
       <SummaryKpi icon="calculator" tone="info" label="Proyección total" value={formatPrice(counts.recaudo)}>
         <ProgressBar value={counts.recaudo > 0 ? 100 : 0} tone="info" />
@@ -178,39 +231,216 @@ export function pendingProofs(members: EventParticipant[]) {
   )
 }
 
+type AbonoHistoryGroup = {
+  key: string
+  name: string
+  photo: string | null
+  shot: string | null
+  abonos: AbonoMovimiento[]
+  createdAt: string | null
+}
+
+function activityAbonoGroups(members: EventParticipant[]): AbonoHistoryGroup[] {
+  const groups = new Map<string, AbonoHistoryGroup>()
+  members.forEach((row) => {
+    ;(row.abonos ?? []).forEach((abono) => {
+      const shot = resolveFileUrl(abono.comprobante_url)
+      const key = shot ? `${row.persona_id}:${shot}` : `abono:${abono.id}`
+      const current = groups.get(key)
+      if (current) {
+        current.abonos.push(abono)
+        if (String(abono.created_at ?? '') > String(current.createdAt ?? '')) {
+          current.createdAt = abono.created_at ?? null
+        }
+        return
+      }
+      groups.set(key, {
+        key,
+        name: row.full_name,
+        photo: resolveFileUrl(row.foto_url),
+        shot,
+        abonos: [abono],
+        createdAt: abono.created_at ?? null,
+      })
+    })
+  })
+  return [...groups.values()].sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
+}
+
+export function pendingProofGroups(members: EventParticipant[]) {
+  return activityAbonoGroups(members).filter((group) => group.abonos.some((abono) => abono.estado === 'pendiente'))
+}
+
+function groupPersonAbonos(abonos: AbonoMovimiento[]): AbonoMovimiento[][] {
+  const groups = new Map<string, AbonoMovimiento[]>()
+  abonos.forEach((abono) => {
+    const shot = resolveFileUrl(abono.comprobante_url)
+    const key = shot || `abono:${abono.id}`
+    const current = groups.get(key)
+    if (current) current.push(abono)
+    else groups.set(key, [abono])
+  })
+  return [...groups.values()]
+}
+
+function amountQuery(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+function AbonoHistoryPhoto({ src, label }: { src: string; label: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button type="button" className="attendance-proofs__photo" aria-label={label} onClick={() => setOpen(true)}>
+        <img src={src} alt="" />
+      </button>
+      {open ? <ImagePreviewDialog src={src} alt={label} onClose={() => setOpen(false)} /> : null}
+    </>
+  )
+}
+
 export function PendingProofsPanel({
   members,
   canReview = false,
+  canEditAmount = false,
+  canDeleteAmount = false,
   onReview,
+  onChangeAmount,
+  onDeleteAmount,
 }: {
   members: EventParticipant[]
   canReview?: boolean
+  canEditAmount?: boolean
+  canDeleteAmount?: boolean
   onReview?: (abono: AbonoMovimiento, estado: 'aprobado' | 'rechazado', monto?: number) => Promise<void>
+  onChangeAmount?: (abono: AbonoMovimiento, monto: number) => Promise<void>
+  onDeleteAmount?: (abono: AbonoMovimiento) => Promise<void>
 }) {
-  const pending = pendingProofs(members)
+  const [nameQuery, setNameQuery] = useState('')
+  const [valueQuery, setValueQuery] = useState('')
+  const history = activityAbonoGroups(members)
+  const pending = pendingProofGroups(members).length
+  const valueDigits = amountQuery(valueQuery)
+  const filtered = history.filter((group) => {
+    const nameOk = group.name.toLocaleLowerCase('es').includes(nameQuery.trim().toLocaleLowerCase('es'))
+    const total = group.abonos.reduce((sum, abono) => sum + (Number(abono.monto) || 0), 0)
+    const valueOk =
+      valueDigits === '' ||
+      String(Math.round(total)).includes(valueDigits) ||
+      group.abonos.some((abono) => String(Math.round(Number(abono.monto) || 0)).includes(valueDigits))
+    return nameOk && valueOk
+  })
 
   return (
     <div className="attendance-proofs">
-      <p className="attendance-proofs__total">
-        <strong>{pending.length}</strong>
-        <span>
-          {pending.length === 1 ? 'comprobante por confirmar' : 'comprobantes por confirmar'}
-        </span>
-      </p>
-      {pending.length === 0 ? (
-        <p className="app-panel__muted">No hay abonos pendientes de confirmar el pantallazo.</p>
+      <div className="attendance-proofs__filters">
+        <label>
+          Nombre
+          <input
+            value={nameQuery}
+            placeholder="Buscar participante"
+            onChange={(event) => setNameQuery(event.target.value)}
+          />
+        </label>
+        <label>
+          Valor
+          <input
+            inputMode="numeric"
+            value={valueQuery}
+            placeholder="Buscar monto"
+            onChange={(event) => setValueQuery(event.target.value)}
+          />
+        </label>
+      </div>
+      {pending > 0 ? (
+        <p className="attendance-proofs__total">
+          <strong>{pending}</strong>
+          <span>{pending === 1 ? 'comprobante por confirmar' : 'comprobantes por confirmar'}</span>
+        </p>
+      ) : null}
+      {history.length === 0 ? (
+        <p className="app-panel__muted">Todavía no hay abonos en esta actividad.</p>
+      ) : filtered.length === 0 ? (
+        <p className="app-panel__muted">Ningún abono coincide con el filtro.</p>
       ) : (
-        <ul className="attendance-proofs__list">
-          {pending.map(({ abono, row }) => (
-            <li key={abono.id}>
-              <p>
-                <strong>{row.full_name}</strong>
-                {abono.created_at ? <small>{formatDate(abono.created_at)}</small> : null}
-              </p>
-              <AbonoProofReview abono={abono} canReview={canReview} onReview={onReview} />
-            </li>
-          ))}
-        </ul>
+        <div className="attendance-proofs__table" role="table">
+          <div className="attendance-proofs__row is-head" role="row">
+            <span role="columnheader">Foto</span>
+            <span role="columnheader">Nombre</span>
+            <span role="columnheader">Fecha</span>
+            <span role="columnheader">Valor abonado</span>
+          </div>
+          {filtered.map((group) => {
+            const photo = group.shot || group.photo
+            const pendingItems = group.abonos.filter((abono) => abono.estado === 'pendiente')
+            const allPending = pendingItems.length === group.abonos.length
+            const estado =
+              pendingItems.length > 0
+                ? pendingItems.length > 1
+                  ? `Pendiente · ${pendingItems.length} productos`
+                  : abonoEstadoLabel(pendingItems[0])
+                : group.abonos.every((abono) => abono.estado === 'eliminado')
+                  ? 'Eliminado'
+                  : group.abonos.every((abono) => abono.estado === 'rechazado')
+                    ? 'Rechazado'
+                    : null
+            const products = group.abonos
+              .map((abono) => abono.producto_nombre)
+              .filter(Boolean)
+              .join(' · ')
+            const total = group.abonos.reduce((sum, abono) => sum + (Number(abono.monto) || 0), 0)
+            return (
+              <div key={group.key} className="attendance-proofs__entry">
+                <div className="attendance-proofs__row" role="row">
+                  <span className="attendance-proofs__cell is-photo" role="cell">
+                    {photo ? (
+                      <AbonoHistoryPhoto src={photo} label={`Foto del abono de ${group.name}`} />
+                    ) : (
+                      <span className="attendance-proofs__photo is-empty" aria-hidden="true">
+                        {memberInitials(group.name)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="attendance-proofs__cell is-name" role="cell">
+                    <strong>{group.name}</strong>
+                    {products ? <small>{products}</small> : null}
+                    {estado ? <small>{estado}</small> : null}
+                  </span>
+                  <span className="attendance-proofs__cell is-date" role="cell">
+                    {group.createdAt ? formatDate(group.createdAt) : '—'}
+                  </span>
+                  <span className="attendance-proofs__cell is-amount" role="cell">
+                    {allPending || pendingItems.length > 0 ? (
+                      <strong>{formatPrice(total)}</strong>
+                    ) : group.abonos.length === 1 ? (
+                      <AbonoAmountControl
+                        abono={group.abonos[0]}
+                        canEdit={canEditAmount}
+                        canDelete={canDeleteAmount}
+                        onSave={onChangeAmount}
+                        onDelete={onDeleteAmount}
+                      />
+                    ) : (
+                      <div className="attendance-proofs__amounts">
+                        {group.abonos.map((abono) => (
+                          <AbonoAmountControl
+                            key={abono.id}
+                            abono={abono}
+                            canEdit={canEditAmount}
+                            canDelete={canDeleteAmount}
+                            onSave={onChangeAmount}
+                            onDelete={onDeleteAmount}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </span>
+                </div>
+                <AbonoProofReview abonos={group.abonos} canReview={canReview} hideShot onReview={onReview} />
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )
@@ -602,19 +832,31 @@ export function ParticipantsMarkList({
                         Historial de pagos
                       </h4>
                       <ul className="attendance-mark__abonos">
-                        {row.abonos.map((abono) => (
-                          <li key={abono.id}>
-                            <span className="attendance-mark__abono-when">
-                              <strong>{formatDate(abono.created_at)}</strong>
-                              {abono.nota ? <small>{abono.nota}</small> : null}
-                            </span>
-                            <span className="attendance-mark__abono-end">
-                              <AbonoShotButton abono={abono} />
-                              <strong>{abonoEstadoLabel(abono) ?? formatPrice(abono.monto)}</strong>
-                            </span>
-                            <AbonoProofReview abono={abono} canReview={canAbonar} hideShot onReview={onReviewAbono} />
-                          </li>
-                        ))}
+                        {groupPersonAbonos(row.abonos).map((group) => {
+                          const lead = group[0]
+                          const products = group.map((abono) => abono.producto_nombre).filter(Boolean).join(' · ')
+                          const total = group.reduce((sum, abono) => sum + (Number(abono.monto) || 0), 0)
+                          const pending = group.some((abono) => abono.estado === 'pendiente')
+                          return (
+                            <li key={group.map((abono) => abono.id).join('-')}>
+                              <span className="attendance-mark__abono-when">
+                                <strong>{formatDate(lead.created_at)}</strong>
+                                {products ? <small>{products}</small> : null}
+                                {lead.nota ? <small>{lead.nota}</small> : null}
+                                {group.length > 1 ? <small>{group.length} productos</small> : null}
+                              </span>
+                              <span className="attendance-mark__abono-end">
+                                <AbonoShotButton abono={lead} />
+                                <strong>
+                                  {pending
+                                    ? abonoEstadoLabel(group.find((abono) => abono.estado === 'pendiente')!) ?? 'Pendiente'
+                                    : formatPrice(total)}
+                                </strong>
+                              </span>
+                              <AbonoProofReview abonos={group} canReview={canAbonar} hideShot onReview={onReviewAbono} />
+                            </li>
+                          )
+                        })}
                       </ul>
                     </section>
                   ) : null}

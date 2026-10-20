@@ -2835,18 +2835,21 @@
 }
 
 .event-ganancia__collect i {
-  display: block;
-  height: 0.45rem;
+  display: flex;
+  width: 100%;
+  height: 0.55rem;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--panel-input-bg);
+  background: color-mix(in srgb, var(--panel-muted) 28%, var(--panel-input-border));
 }
 
 .event-ganancia__collect i span {
   display: block;
   height: 100%;
+  flex: none;
   border-radius: inherit;
   background: var(--panel-ok-text);
+  min-width: 0;
 }
 
 .event-ganancia__collect small {
@@ -2894,6 +2897,27 @@
 .event-ganancia__config {
   display: grid;
   gap: 0.35rem;
+  margin: 0 0 0.85rem;
+  color: var(--panel-muted);
+  font-size: 0.82rem;
+}
+
+.event-ganancia__config select {
+  width: 100%;
+  min-height: 2.55rem;
+  padding: 0.45rem 0.75rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  color: var(--panel-title);
+  font: inherit;
+}
+
+.event-ganancia__config .app-panel__btn--ghost {
+  width: auto;
+  justify-self: start;
+  min-height: 2.2rem;
+  padding: 0.35rem 0.9rem;
 }
 
 .event-ganancia__products {

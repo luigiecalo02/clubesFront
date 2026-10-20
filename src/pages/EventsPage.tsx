@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '../api/client'
 import { serviciosApi } from '../api/servicios'
 import { settingsApi } from '../api/settings'
 import type {
+  AbonoRevision,
   AttendanceEstado,
   AttendanceMember,
   ClubServicio,
@@ -30,6 +31,7 @@ import {
   canManageClubInscriptions,
   canManageClubServices,
   canUpdateClubEvent,
+  isClubDirectorRole,
 } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { EventBoard } from '../components/events/EventBoard'
@@ -38,14 +40,21 @@ import { EventInscriptionJoin } from '../components/events/EventInscriptionJoin'
 import { EventInscriptionRoster } from '../components/events/EventInscriptionRoster'
 import { EventMemberJoin } from '../components/events/EventMemberJoin'
 import { EventServicesField } from '../components/events/EventServicesField'
-import { AbonoPayForm, composeAbonoNota, emptyAbonoPayDraft } from '../components/abonos/AbonoPayForm'
 import {
+  AbonoPayForm,
+  abonoPayPartidas,
+  abonoPayTotal,
+  composeAbonoNota,
+  emptyAbonoPayDraft,
+} from '../components/abonos/AbonoPayForm'
+import {
+  abonoProductOptions,
   emptyParticipantsDraft,
   participantsPayloadFromDraft,
   ParticipantEventStats,
   ParticipantsMarkList,
   PendingProofsPanel,
-  pendingProofs,
+  pendingProofGroups,
   saleTotals,
   type ParticipantDraft,
 } from '../components/events/ParticipantsMarkList'
@@ -81,6 +90,7 @@ const emptyForm = () => ({
   tipo_evento_id: '',
   estado: 'publicado',
   ganancia_eclesiastica_id: '',
+  cuenta_bancaria_id: '',
   capital: '',
   logo: null as File | null,
   banner: null as File | null,
@@ -133,6 +143,7 @@ function formFromEvent(item: EventSummary) {
     tipo_evento_id: item.tipo_evento?.id ? String(item.tipo_evento.id) : '',
     estado: item.estado && item.estado in ESTADO_LABELS ? item.estado : 'publicado',
     ganancia_eclesiastica_id: item.ganancia_eclesiastica_id ? String(item.ganancia_eclesiastica_id) : '',
+    cuenta_bancaria_id: item.cuenta_bancaria_id ? String(item.cuenta_bancaria_id) : '',
     capital: moneyInput(item.capital),
     logo: null as File | null,
     banner: null as File | null,
@@ -166,9 +177,10 @@ export function EventsPage() {
     rolName: ctx?.rol_name,
     organizacionId: ctx?.organizacion_id,
   })
+  const isSuper = Boolean(auth.user?.is_super || auth.user?.roles?.includes('super_admin'))
   const canChangeGanancia = canChangeClubEventGanancia({
     rolName: ctx?.rol_name,
-    isSuper: Boolean(auth.user?.is_super || auth.user?.roles?.includes('super_admin')),
+    isSuper,
   })
   const canTakeAttendance =
     canAccessClubAttendance({
@@ -190,6 +202,8 @@ export function EventsPage() {
       rolName: ctx?.rol_name,
       organizacionId: ctx?.organizacion_id,
     }) || auth.can('abonos.update')
+  const canEditAbonoAmount = isClubDirectorRole(ctx?.rol_name) || isSuper
+  const canDeleteAbonoAmount = canEditAbonoAmount
   const canCreateServices = canManageClubServices({
     can: auth.can,
     rolName: ctx?.rol_name,
@@ -772,23 +786,35 @@ export function EventsPage() {
     const row = participants.find((item) => item.persona_id === personaId)
     if (!row) return
     const ventas = participantDraft[personaId]?.ventas ?? {}
+    const products = abonoProductOptions(participantServices, ventas, row.abonos ?? [])
     const pendiente = saleTotals(participantServices, ventas).recaudo - (Number(row.abonado) || 0)
+    const montos =
+      products.length === 1 && products[0].pendiente > 0
+        ? { [String(products[0].id)]: String(Math.round(Math.min(pendiente, products[0].pendiente))) }
+        : {}
     setAbonoForId(personaId)
     setAbonoDraft({
       ...emptyAbonoPayDraft(),
-      monto: pendiente > 0 ? String(Math.round(pendiente)) : '',
+      montos,
+      monto: products.length === 0 && pendiente > 0 ? String(Math.round(pendiente)) : '',
     })
   }
 
   async function submitParticipantAbono(event?: FormEvent) {
     event?.preventDefault()
     if (!participantsFor || !canAbonar || !abonoForId || participantsFor.estado !== 'en_proceso') return
-    const monto = Number(abonoDraft.monto)
+    const products = abonoProducts
+    const partidas = abonoPayPartidas(abonoDraft, products)
+    const total = abonoPayTotal(abonoDraft, products)
+    if (products.length > 0 && partidas.length === 0) {
+      notices.warning('Indica cuánto abonas de cada producto.')
+      return
+    }
     if (!abonoDraft.metodo) {
       notices.warning('Elige un método de pago.')
       return
     }
-    if (!Number.isFinite(monto) || monto <= 0) {
+    if (total <= 0) {
       notices.warning('Escribe un monto mayor a cero.')
       return
     }
@@ -797,9 +823,10 @@ export function EventsPage() {
       const next = await abonosApi.store({
         evento_id: participantsFor.id,
         persona_id: abonoForId,
-        monto,
+        monto: products.length ? undefined : total,
         nota: composeAbonoNota(abonoDraft),
         modo: 'actividad',
+        partidas: products.length ? partidas : undefined,
         comprobante: abonoDraft.comprobante,
       })
       setParticipants((current) =>
@@ -822,6 +849,54 @@ export function EventsPage() {
     }
   }
 
+  function applyAbonoRevision(next: AbonoRevision) {
+    setParticipants((current) =>
+      current.map((row) => {
+        if (row.persona_id !== next.persona_id) return row
+        const previous = row.abonos ?? []
+        const abonos =
+          next.abono.estado === 'eliminado' && !isSuper
+            ? previous.filter((item) => item.id !== next.abono.id)
+            : previous.some((item) => item.id === next.abono.id)
+              ? previous.map((item) => (item.id === next.abono.id ? next.abono : item))
+              : [...previous, next.abono]
+        return {
+          ...row,
+          abonado: next.abonado,
+          abonos,
+        }
+      }),
+    )
+  }
+
+  async function updateParticipantAbonoAmount(abono: { id: number }, monto: number) {
+    if (!canEditAbonoAmount) return
+    if (!Number.isFinite(monto) || monto <= 0) {
+      notices.warning('Escribe un valor mayor a cero.')
+      return
+    }
+    try {
+      const next = await abonosApi.updateMonto(abono.id, monto)
+      applyAbonoRevision(next)
+      notices.success('Valor del abono actualizado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo cambiar el valor del abono'))
+      throw err
+    }
+  }
+
+  async function deleteParticipantAbono(abono: { id: number }) {
+    if (!canDeleteAbonoAmount) return
+    try {
+      const next = await abonosApi.review(abono.id, { estado: 'eliminado' })
+      applyAbonoRevision(next)
+      notices.success('Abono eliminado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo eliminar el abono'))
+      throw err
+    }
+  }
+
   async function reviewParticipantAbono(
     abono: { id: number },
     estado: 'aprobado' | 'rechazado',
@@ -834,16 +909,7 @@ export function EventsPage() {
     }
     try {
       const next = await abonosApi.review(abono.id, { estado, monto })
-      setParticipants((current) =>
-        current.map((row) => {
-          if (row.persona_id !== next.persona_id) return row
-          return {
-            ...row,
-            abonado: next.abonado,
-            abonos: (row.abonos ?? []).map((item) => (item.id === next.abono.id ? next.abono : item)),
-          }
-        }),
-      )
+      applyAbonoRevision(next)
       notices.success(estado === 'aprobado' ? 'Abono aprobado.' : 'Abono rechazado.')
     } catch (err) {
       notices.error(getApiErrorMessage(err, 'No se pudo revisar el abono'))
@@ -895,6 +961,7 @@ export function EventsPage() {
             ganancia_eclesiastica_id: form.ganancia_eclesiastica_id
               ? Number(form.ganancia_eclesiastica_id)
               : null,
+            cuenta_bancaria_id: form.cuenta_bancaria_id ? Number(form.cuenta_bancaria_id) : null,
             capital: Math.max(0, Math.round(Number(form.capital) || 0)),
           }
         : {}),
@@ -930,12 +997,14 @@ export function EventsPage() {
   }
 
   const abonoFor = participants.find((row) => row.persona_id === abonoForId) ?? null
-  const abonoMoney = abonoFor
-    ? saleTotals(participantServices, participantDraft[abonoFor.persona_id]?.ventas ?? {})
-    : { unidades: 0, recaudo: 0 }
+  const abonoVentas = abonoFor ? participantDraft[abonoFor.persona_id]?.ventas ?? {} : {}
+  const abonoMoney = abonoFor ? saleTotals(participantServices, abonoVentas) : { unidades: 0, recaudo: 0 }
   const abonoAbonado = Number(abonoFor?.abonado) || 0
   const abonoPendiente = abonoMoney.recaudo - abonoAbonado
-  const pendingProofCount = pendingProofs(participants).length
+  const abonoProducts = abonoFor
+    ? abonoProductOptions(participantServices, abonoVentas, abonoFor.abonos ?? [])
+    : []
+  const pendingProofCount = pendingProofGroups(participants).length
   const participantBody = participantTab === 'comprobantes' ? (
     loadingParticipants ? (
       <p className="app-panel__muted">Cargando comprobantes…</p>
@@ -943,7 +1012,11 @@ export function EventsPage() {
       <PendingProofsPanel
         members={participants}
         canReview={canAbonar}
+        canEditAmount={canEditAbonoAmount}
+        canDeleteAmount={canDeleteAbonoAmount}
         onReview={reviewParticipantAbono}
+        onChangeAmount={updateParticipantAbonoAmount}
+        onDeleteAmount={deleteParticipantAbono}
       />
     )
   ) : participantTab === 'ganancias' && canViewGanancias ? (
@@ -1045,6 +1118,7 @@ export function EventsPage() {
           {eventTab === 'ganancias' && formIsEconomic && canViewGanancias ? (
             <EventGananciasPanel
               value={form.ganancia_eclesiastica_id}
+              cuentaBancariaId={form.cuenta_bancaria_id}
               canChange={canChangeGanancia}
               services={serviceIds.flatMap((id) => {
                 const service = serviceCatalog.find((item) => item.id === id)
@@ -1073,6 +1147,13 @@ export function EventsPage() {
                   current.ganancia_eclesiastica_id === ganancia_eclesiastica_id
                     ? current
                     : { ...current, ganancia_eclesiastica_id },
+                )
+              }
+              onCuentaBancariaChange={(cuenta_bancaria_id) =>
+                setForm((current) =>
+                  current.cuenta_bancaria_id === cuenta_bancaria_id
+                    ? current
+                    : { ...current, cuenta_bancaria_id },
                 )
               }
               onCapital={(capital) => setForm((current) => ({ ...current, capital }))}
@@ -1322,7 +1403,12 @@ export function EventsPage() {
             <button
               type="button"
               className="app-panel__btn--primary"
-              disabled={payingId === abonoFor?.persona_id || abonoPendiente <= 0}
+              disabled={
+                payingId === abonoFor?.persona_id ||
+                abonoPendiente <= 0 ||
+                abonoPayTotal(abonoDraft, abonoProducts) <= 0 ||
+                !abonoDraft.metodo
+              }
               onClick={() => void submitParticipantAbono()}
             >
               <AdminIcon name="wallet" />
@@ -1351,6 +1437,8 @@ export function EventsPage() {
               id="participant-abono-form"
               draft={abonoDraft}
               pendiente={abonoPendiente}
+              products={abonoProducts}
+              cuenta={participantsFor?.cuenta_bancaria}
               saving={payingId === abonoFor.persona_id}
               showSubmit={false}
               onChange={setAbonoDraft}

@@ -140,6 +140,13 @@ export const ADMIN_MENU: AdminMenuItem[] = [
     description: 'Relaciona la asistencia de un evento con los integrantes del club.',
   },
   {
+    path: '/finanzas',
+    label: 'Finanzas',
+    permission: 'finanzas.view',
+    icon: 'coins',
+    description: 'Caja del club: ingresos, gastos, diezmo, ofrenda y distribución de todas las actividades.',
+  },
+  {
     path: '/abonos',
     label: 'Abonos',
     permission: 'abonos.view',
@@ -261,6 +268,13 @@ export function canAccessClubAbonos(options?: {
 }
 
 export function canAccessClubPresupuesto(options?: {
+  rolName?: string | null
+  organizacionId?: number | null
+}): boolean {
+  return canAccessClubAbonos(options)
+}
+
+export function canAccessClubFinanzas(options?: {
   rolName?: string | null
   organizacionId?: number | null
 }): boolean {
@@ -399,6 +413,9 @@ export function visibleMenu(
     }
     if (item.path === '/presupuesto') {
       return canAccessClubPresupuesto(options) || can(item.permission)
+    }
+    if (item.path === '/finanzas') {
+      return canAccessClubFinanzas(options) || can(item.permission) || can('abonos.view')
     }
     if (item.path === '/servicios') {
       return canManageClubServices({

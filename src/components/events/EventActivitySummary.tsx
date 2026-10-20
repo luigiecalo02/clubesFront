@@ -6,7 +6,14 @@ import { AppPanel } from '../../theme/AppPanel'
 import { downloadCsv } from '../../theme/csv'
 import { memberInitials } from '../attendance/AttendanceMarkList'
 import type { EventoGananciaRegistro } from '../../api/types'
-import { EventGainDistribution } from './EventGananciasPanel'
+import {
+  EventGainDistribution,
+  ParticipantIncomeSplit,
+  approvedAbonosByProduct,
+  participantShare,
+  productGainLines,
+  useIncomeReparto,
+} from './EventGananciasPanel'
 import { saleGain, saleTotals, type ParticipantDraft } from './ParticipantsMarkList'
 import { ProgressBar, SummaryIcon, summaryPercent as percent } from './SummaryCards'
 import '../../theme/attendance-mark.css'
@@ -46,6 +53,7 @@ type SummaryRow = {
   lineas: OrderLine[]
   recaudo: number
   abonado: number
+  abonosByProduct: Record<number, number>
   pendiente: number
   ganancia: number
 }
@@ -97,6 +105,7 @@ function buildRows(
         lineas,
         recaudo,
         abonado,
+        abonosByProduct: approvedAbonosByProduct(member.abonos),
         pendiente: Math.max(0, recaudo - abonado),
         ganancia: saleGain(services, billed),
       },
@@ -162,6 +171,8 @@ export function EventActivitySummary({
   onDeliver,
 }: EventActivitySummaryProps) {
   const [sort, setSort] = useState<PeopleSort>('nombre')
+  const [openIds, setOpenIds] = useState<number[]>([])
+  const [loadedIds, setLoadedIds] = useState<number[]>([])
   const [deliverId, setDeliverId] = useState<number | null>(null)
   const [deliverQty, setDeliverQty] = useState<Record<number, string>>({})
   const [delivering, setDelivering] = useState(false)
@@ -177,12 +188,30 @@ export function EventActivitySummary({
   const ganancia = proyeccion - capital
   const rows = buildRows(members, services, draft)
   const ordered = sortRows(rows, sort)
-  const deudores = ordered.filter((row) => row.pendiente > 0)
-  const porCobrar = deudores.reduce((sum, row) => sum + row.pendiente, 0)
+  const porCobrar = ordered.reduce((sum, row) => sum + row.pendiente, 0)
   const margen = proyeccion > 0 ? (ganancia / proyeccion) * 100 : 0
-  const gananciaParticipantes = rows.reduce((sum, row) => sum + row.ganancia, 0)
-  const proyectadoParticipantes = Number(gananciaRegistro?.participantes) || 0
-  const cobrado = proyectadoParticipantes > 0 ? gananciaParticipantes / proyectadoParticipantes : 0
+  const ingreso = rows.reduce((sum, row) => sum + row.abonado, 0)
+  const diezmoPrevisto = Number(gananciaRegistro?.diezmo) || 0
+  const ofrendaPrevista = Number(gananciaRegistro?.ofrenda) || 0
+  const gananciaDespues = ganancia - diezmoPrevisto - ofrendaPrevista
+  const restoPrevisto = Number(gananciaRegistro?.resto) || 0
+  const participantesParte = Number(gananciaRegistro?.participantes) || 0
+  const clubParte = Number(gananciaRegistro?.club) || 0
+  const otrosParte = Number(gananciaRegistro?.extras) || 0
+  const repartoDe = (parte: number) =>
+    restoPrevisto > 0 ? Math.round((gananciaDespues * parte) / restoPrevisto) : 0
+  const participantesReparto = repartoDe(participantesParte)
+  const clubReparto = repartoDe(clubParte)
+  const otrosReparto = restoPrevisto > 0 ? gananciaDespues - participantesReparto - clubReparto : 0
+  const partePct = (parte: number) => (restoPrevisto > 0 ? Math.round((parte / restoPrevisto) * 100) : 0)
+  const reparto = useIncomeReparto(gananciaConfigId)
+  const unitGains = productGainLines(
+    services.map((service) => ({ id: service.id, nombre: service.nombre, qty: 1 })),
+    services,
+  ).map((line) => ({
+    ...line,
+    gananciaUnidad: reparto ? participantShare(reparto, line.gananciaUnidad) : line.gananciaUnidad,
+  }))
   const deliverRow = ordered.find((row) => row.id === deliverId) ?? null
 
   function openDeliver(row: SummaryRow) {
@@ -239,6 +268,13 @@ export function EventActivitySummary({
         </header>
 
         <div className="event-summary__kpis">
+          <article className="event-summary__kpi is-cost">
+            <SummaryIcon name="wallet" tone="danger" />
+            <p>
+              <span>Capital (costos del evento)</span>
+              <strong>{formatMoney(capital)}</strong>
+            </p>
+          </article>
           <article className="event-summary__kpi is-highlight">
             <SummaryIcon name="coins" tone="gold" />
             <p>
@@ -247,24 +283,68 @@ export function EventActivitySummary({
             </p>
           </article>
           <article className="event-summary__kpi">
-            <SummaryIcon name="wallet" tone="gold" />
+            <SummaryIcon name="coins" tone="info" />
             <p>
-              <span>Capital (costos del evento)</span>
-              <strong>{formatMoney(capital)}</strong>
+              <span>Diezmo y ofrenda previstos</span>
+              <strong>{formatMoney(diezmoPrevisto + ofrendaPrevista)}</strong>
+            </p>
+            <ul className="event-summary__pair">
+              <li>
+                <span>Diezmo</span>
+                <strong>{formatMoney(diezmoPrevisto)}</strong>
+              </li>
+              <li>
+                <span>Ofrenda</span>
+                <strong>{formatMoney(ofrendaPrevista)}</strong>
+              </li>
+            </ul>
+          </article>
+          <article className="event-summary__kpi is-span">
+            <SummaryIcon name="chart" tone="ok" />
+            <p>
+              <span>Ganancia después de diezmo y ofrenda</span>
+              <strong>{formatMoney(gananciaDespues)}</strong>
             </p>
           </article>
+          {restoPrevisto > 0 ? (
+            <div className="event-summary__beside">
+              <article className="event-summary__kpi">
+                <SummaryIcon name="group" tone="ok" />
+                <p>
+                  <span>Participantes {partePct(participantesParte)}%</span>
+                  <strong>{formatMoney(participantesReparto)}</strong>
+                </p>
+              </article>
+              <article className="event-summary__kpi">
+                <SummaryIcon name="building" tone="info" />
+                <p>
+                  <span>Club {partePct(clubParte)}%</span>
+                  <strong>{formatMoney(clubReparto)}</strong>
+                </p>
+              </article>
+              {otrosParte > 0 ? (
+                <article className="event-summary__kpi">
+                  <SummaryIcon name="tags" tone="gold" />
+                  <p>
+                    <span>Otros {partePct(otrosParte)}%</span>
+                    <strong>{formatMoney(otrosReparto)}</strong>
+                  </p>
+                </article>
+              ) : null}
+            </div>
+          ) : null}
           <article className="event-summary__kpi">
             <SummaryIcon name="pie" tone="info" />
             <p>
               <span>Margen estimado</span>
               <strong>{margen.toLocaleString('es-CO', { maximumFractionDigits: 1 })}%</strong>
             </p>
-            {services.length ? (
+            {unitGains.length ? (
               <ul className="event-summary__units">
-                {services.map((service) => (
-                  <li key={service.id}>
-                    <span>{service.nombre}</span>
-                    <strong>{formatMoney(Number(service.ganancia_unidad) || 0)}</strong>
+                {unitGains.map((line) => (
+                  <li key={line.id}>
+                    <span>{line.nombre}</span>
+                    <strong>{formatMoney(line.gananciaUnidad)}</strong>
                     <small>por unidad</small>
                   </li>
                 ))}
@@ -282,6 +362,9 @@ export function EventActivitySummary({
         <header className="event-summary__head">
           <SummaryIcon name="users" tone="gold" />
           <h3>Ganancia por participante</h3>
+          <strong className="event-summary__total event-summary__total--faltante">
+            {formatMoney(porCobrar)}
+          </strong>
           {rows.length ? (
             <div className="event-summary__tools">
               <label className="event-summary__sort">
@@ -318,10 +401,25 @@ export function EventActivitySummary({
               const gananciaReal = memberGain(row)
               const avance = percent(gananciaReal, row.ganancia)
               return (
-                <div key={row.id} className="event-summary__row" role="row">
+                <div key={row.id} className={`event-summary__person${openIds.includes(row.id) ? ' is-open' : ''}`}>
+                <div className="event-summary__row" role="row">
                   <span className="event-summary__num" role="cell">{index + 1}</span>
                   <span className="event-summary__cell is-who" role="cell">
                     <PersonCell row={row} />
+                    <button
+                      type="button"
+                      className="event-summary__fold"
+                      aria-expanded={openIds.includes(row.id)}
+                      aria-label={`Reparto del abono de ${row.name}`}
+                      onClick={() => {
+                        setLoadedIds((current) => (current.includes(row.id) ? current : [...current, row.id]))
+                        setOpenIds((current) =>
+                          current.includes(row.id) ? current.filter((id) => id !== row.id) : [...current, row.id],
+                        )
+                      }}
+                    >
+                      <AdminIcon name="chevronRight" />
+                    </button>
                   </span>
                   <span className="event-summary__cell is-pedidos" role="cell">
                     <small>Pedidos</small>
@@ -377,54 +475,32 @@ export function EventActivitySummary({
                     </span>
                   </span>
                 </div>
+                {loadedIds.includes(row.id) ? (
+                  <div hidden={!openIds.includes(row.id)}>
+                  <ParticipantIncomeSplit
+                    configId={gananciaConfigId}
+                    ingreso={row.abonado}
+                    abonosByProduct={row.abonosByProduct}
+                    lines={productGainLines(
+                      row.lineas.map((line) => ({
+                        id: line.id,
+                        nombre: line.nombre,
+                        qty: line.entregada == null ? line.pedido : line.entregada,
+                      })),
+                      services,
+                    )}
+                  />
+                  </div>
+                ) : null}
+                </div>
               )
             })}
           </div>
         )}
       </section>
 
-      <section className="event-summary__block event-summary__block--debt">
-        <EventGainDistribution configId={gananciaConfigId} registro={gananciaRegistro} cobrado={cobrado} />
-        <header className="event-summary__head">
-          <SummaryIcon name="alert" tone="danger" />
-          <h3>Falta por cobrar</h3>
-          <strong className="event-summary__total">{formatMoney(porCobrar)}</strong>
-        </header>
-        {deudores.length === 0 ? (
-          <p className="app-panel__muted">Nadie tiene saldo pendiente.</p>
-        ) : (
-          <div className="event-summary__table event-summary__table--debt" role="table">
-            <div className="event-summary__row is-head" role="row">
-              <span role="columnheader">#</span>
-              <span role="columnheader">Participante</span>
-              <span role="columnheader">Aporte estimado</span>
-              <span role="columnheader">Pagado</span>
-              <span role="columnheader">Falta por cobrar</span>
-            </div>
-            {deudores.map((row, index) => (
-              <div key={row.id} className="event-summary__row" role="row">
-                <span className="event-summary__num" role="cell">{index + 1}</span>
-                <span className="event-summary__cell is-who" role="cell">
-                  <strong>{row.name}</strong>
-                </span>
-                <span className="event-summary__cell is-aporte" role="cell">
-                  <small>Aporte</small>
-                  <strong>{formatMoney(row.recaudo)}</strong>
-                </span>
-                <span className="event-summary__cell is-pagado" role="cell">
-                  <small>Pagado</small>
-                  <strong>{formatMoney(row.abonado)}</strong>
-                </span>
-                <span className="event-summary__cell is-falta" role="cell">
-                  <DebtPill
-                    value={row.pendiente}
-                    onPay={onStartAbono && row.pendiente > 0 ? () => onStartAbono(row.id) : undefined}
-                  />
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+      <section className="event-summary__block">
+        <EventGainDistribution configId={gananciaConfigId} registro={gananciaRegistro} ingreso={ingreso} />
       </section>
 
       {deliverRow ? (

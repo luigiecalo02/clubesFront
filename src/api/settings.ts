@@ -9,6 +9,7 @@ import type {
   ClubesInvitePreview,
   ClubesRegisterPayload,
   ClubesSettings,
+  CuentaBancariaClub,
   GananciaDistribucion,
   GananciaEclesiastica,
   MailSettings,
@@ -190,6 +191,55 @@ export const settingsApi = {
 
   async deleteEclesiastica(id: number): Promise<void> {
     await api.delete(`/api/v1/settings/clubes/ganancias/eclesiasticas/${id}`)
+  },
+
+  async cuentasBancarias(): Promise<CuentaBancariaClub[]> {
+    const { data } = await api.get<ApiEnvelope<CuentaBancariaClub[]>>(
+      '/api/v1/settings/clubes/cuentas-bancarias',
+    )
+    return data.data ?? []
+  },
+
+  async createCuentaBancaria(
+    payload: Omit<CuentaBancariaClub, 'id' | 'organizacion_id' | 'qr_url'>,
+  ): Promise<CuentaBancariaClub> {
+    const { data } = await api.post<ApiEnvelope<CuentaBancariaClub>>(
+      '/api/v1/settings/clubes/cuentas-bancarias',
+      payload,
+    )
+    return data.data
+  },
+
+  async updateCuentaBancaria(
+    id: number,
+    payload: Omit<CuentaBancariaClub, 'id' | 'organizacion_id' | 'qr_url'>,
+  ): Promise<CuentaBancariaClub> {
+    const { data } = await api.put<ApiEnvelope<CuentaBancariaClub>>(
+      `/api/v1/settings/clubes/cuentas-bancarias/${id}`,
+      payload,
+    )
+    return data.data
+  },
+
+  async deleteCuentaBancaria(id: number): Promise<void> {
+    await api.delete(`/api/v1/settings/clubes/cuentas-bancarias/${id}`)
+  },
+
+  async uploadCuentaBancariaQr(id: number, qr: File): Promise<CuentaBancariaClub> {
+    const body = new FormData()
+    body.append('qr', qr)
+    const { data } = await api.post<ApiEnvelope<CuentaBancariaClub>>(
+      `/api/v1/settings/clubes/cuentas-bancarias/${id}/qr`,
+      body,
+    )
+    return data.data
+  },
+
+  async deleteCuentaBancariaQr(id: number): Promise<CuentaBancariaClub> {
+    const { data } = await api.delete<ApiEnvelope<CuentaBancariaClub>>(
+      `/api/v1/settings/clubes/cuentas-bancarias/${id}/qr`,
+    )
+    return data.data
   },
 
   async resetAsset(asset: ClubesAssetKey): Promise<ClubesSettings> {

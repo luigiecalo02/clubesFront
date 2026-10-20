@@ -16,6 +16,7 @@ import { ModulePage } from './pages/ModulePage'
 import { AbonosPage } from './pages/AbonosPage'
 import { MyAbonosPage } from './pages/MyAbonosPage'
 import { AttendancePage } from './pages/AttendancePage'
+import { FinanzasPage } from './pages/FinanzasPage'
 import { PresupuestoPage } from './pages/PresupuestoPage'
 import { EventsPage } from './pages/EventsPage'
 import { MembersPage } from './pages/MembersPage'
@@ -86,6 +87,14 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/finanzas"
+                  element={
+                    <RequirePermission permission="finanzas.view" requireFinanzas>
+                      <FinanzasPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
                   path="/abonos"
                   element={
                     <RequirePermission permission="abonos.view">
@@ -133,6 +142,7 @@ export default function App() {
                     item.path !== '/mi-club' &&
                     item.path !== '/eventos' &&
                     item.path !== '/asistencia' &&
+                    item.path !== '/finanzas' &&
                     item.path !== '/abonos' &&
                     item.path !== MY_ABONOS &&
                     item.path !== '/presupuesto' &&

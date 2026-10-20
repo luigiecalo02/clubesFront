@@ -31,20 +31,26 @@ export const abonosApi = {
   async store(payload: {
     evento_id: number
     persona_id: number
-    monto: number
+    monto?: number
     nota?: string
     modo: AbonosModo
+    producto_servicio_id?: number | null
+    partidas?: Array<{ producto_servicio_id: number; monto: number }>
     comprobante?: File | null
   }): Promise<AbonosBoard> {
-    const { comprobante, ...fields } = payload
+    const { comprobante, partidas, ...fields } = payload
     if (!comprobante) {
-      const { data } = await api.post<ApiEnvelope<AbonosBoard>>('/api/v1/settings/clubes/abonos', fields)
+      const { data } = await api.post<ApiEnvelope<AbonosBoard>>('/api/v1/settings/clubes/abonos', {
+        ...fields,
+        partidas,
+      })
       return data.data
     }
     const body = new FormData()
     Object.entries(fields).forEach(([key, value]) => {
       if (value !== undefined && value !== null) body.append(key, String(value))
     })
+    if (partidas?.length) body.append('partidas', JSON.stringify(partidas))
     body.append('comprobante', comprobante)
     const { data } = await api.post<ApiEnvelope<AbonosBoard>>(
       '/api/v1/settings/clubes/abonos',
@@ -54,9 +60,14 @@ export const abonosApi = {
     return data.data
   },
 
-  async submitComprobante(eventoId: number, comprobante: File): Promise<AbonoRecaudo> {
+  async submitComprobante(
+    eventoId: number,
+    comprobante: File,
+    partidas?: Array<{ producto_servicio_id: number; monto: number }>,
+  ): Promise<AbonoRecaudo> {
     const body = new FormData()
     body.append('evento_id', String(eventoId))
+    if (partidas?.length) body.append('partidas', JSON.stringify(partidas))
     body.append('comprobante', comprobante)
     const { data } = await api.post<ApiEnvelope<AbonoRecaudo>>(
       '/api/v1/settings/clubes/abonos/comprobante',
@@ -66,9 +77,17 @@ export const abonosApi = {
     return data.data
   },
 
+  async updateMonto(abonoId: number, monto: number): Promise<AbonoRevision> {
+    const { data } = await api.patch<ApiEnvelope<AbonoRevision>>(
+      `/api/v1/settings/clubes/abonos/${abonoId}`,
+      { monto },
+    )
+    return data.data
+  },
+
   async review(
     abonoId: number,
-    payload: { estado: 'aprobado' | 'rechazado'; monto?: number },
+    payload: { estado: 'aprobado' | 'rechazado' | 'eliminado'; monto?: number },
   ): Promise<AbonoRevision> {
     const { data } = await api.patch<ApiEnvelope<AbonoRevision>>(
       `/api/v1/settings/clubes/abonos/${abonoId}/revision`,
