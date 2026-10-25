@@ -10,6 +10,7 @@ import {
   EventGainDistribution,
   ParticipantIncomeSplit,
   approvedAbonosByProduct,
+  participantGainFromLines,
   participantShare,
   productGainLines,
   useIncomeReparto,
@@ -117,6 +118,17 @@ function memberGain(row: Pick<SummaryRow, 'ganancia' | 'recaudo' | 'abonado'>): 
   if (row.recaudo <= 0 || row.ganancia <= 0) return 0
   const cobertura = Math.min(row.recaudo, Math.max(0, row.abonado)) / row.recaudo
   return Math.round(row.ganancia * cobertura)
+}
+
+function rowProductLines(row: SummaryRow, services: EventParticipantService[]) {
+  return productGainLines(
+    row.lineas.map((line) => ({
+      id: line.id,
+      nombre: line.nombre,
+      qty: line.entregada == null ? line.pedido : line.entregada,
+    })),
+    services,
+  )
 }
 
 function sortRows(rows: SummaryRow[], sort: PeopleSort): SummaryRow[] {
@@ -238,18 +250,21 @@ export function EventActivitySummary({
 
   function exportRows() {
     downloadCsv(`ganancias-${eventName || 'actividad'}`, [
-      ['#', 'Participante', 'Pedidos', 'Entregados', 'Aporte estimado', 'Pagado', 'Falta por cobrar', 'Ganancia', 'Ganancia estimada'],
-      ...ordered.map((row, index) => [
-        index + 1,
-        row.name,
-        row.pedidos,
-        row.entregado ? row.entregados : '',
-        row.recaudo,
-        row.abonado,
-        row.pendiente,
-        memberGain(row),
-        row.ganancia,
-      ]),
+      ['#', 'Participante', 'Pedidos', 'Entregados', 'Aporte estimado', 'Pagado', 'Falta por cobrar', 'Ganancia real', 'Ganancia estimada'],
+      ...ordered.map((row, index) => {
+        const prevista = participantGainFromLines(rowProductLines(row, services), reparto)
+        return [
+          index + 1,
+          row.name,
+          row.pedidos,
+          row.entregado ? row.entregados : '',
+          row.recaudo,
+          row.abonado,
+          row.pendiente,
+          memberGain({ ...row, ganancia: prevista }),
+          prevista,
+        ]
+      }),
     ])
   }
 
@@ -398,8 +413,10 @@ export function EventActivitySummary({
             </div>
             {ordered.map((row, index) => {
               const paid = percent(row.abonado, row.recaudo)
-              const gananciaReal = memberGain(row)
-              const avance = percent(gananciaReal, row.ganancia)
+              const productLines = rowProductLines(row, services)
+              const gananciaPrevista = participantGainFromLines(productLines, reparto)
+              const gananciaReal = memberGain({ ...row, ganancia: gananciaPrevista })
+              const avance = percent(gananciaReal, gananciaPrevista)
               return (
                 <div key={row.id} className={`event-summary__person${openIds.includes(row.id) ? ' is-open' : ''}`}>
                 <div className="event-summary__row" role="row">
@@ -467,11 +484,11 @@ export function EventActivitySummary({
                     />
                   </span>
                   <span className="event-summary__cell is-ganancia" role="cell">
-                    <small>Ganancia</small>
+                    <small>Ganancia real</small>
                     <strong>{formatMoney(gananciaReal)}</strong>
                     <span className="event-summary__paid">
                       <ProgressBar value={avance} />
-                      <small>{formatMoney(row.ganancia)}</small>
+                      <small>{formatMoney(gananciaPrevista)}</small>
                     </span>
                   </span>
                 </div>
@@ -481,14 +498,7 @@ export function EventActivitySummary({
                     configId={gananciaConfigId}
                     ingreso={row.abonado}
                     abonosByProduct={row.abonosByProduct}
-                    lines={productGainLines(
-                      row.lineas.map((line) => ({
-                        id: line.id,
-                        nombre: line.nombre,
-                        qty: line.entregada == null ? line.pedido : line.entregada,
-                      })),
-                      services,
-                    )}
+                    lines={productLines}
                   />
                   </div>
                 ) : null}

@@ -183,6 +183,37 @@ function incomeShare(total: number, percent: number): number {
   return Math.round((Math.max(0, total) * Math.max(0, percent)) / 100)
 }
 
+const INCOME_PART_ICONS: Record<string, AdminIconName> = {
+  ofrenda: 'star',
+  diezmo: 'coins',
+  resto: 'pie',
+  miembros: 'trendUp',
+  club: 'building',
+  extras: 'tags',
+}
+
+function SheetSumLine({
+  icon,
+  label,
+  amount,
+  className,
+}: {
+  icon: AdminIconName
+  label: string
+  amount: number
+  className?: string
+}) {
+  return (
+    <p className={className}>
+      <span>
+        <AdminIcon name={icon} />
+        {label}
+      </span>
+      <strong>{formatMoney(amount)}</strong>
+    </p>
+  )
+}
+
 export type IncomeReparto = {
   ofrenda: number
   diezmo: number
@@ -214,6 +245,17 @@ export function participantShare(reparto: IncomeReparto, ingreso: number, capita
   return incomePartsFrom(reparto, base).find((part) => part.key === 'miembros')?.amount ?? 0
 }
 
+export function participantGainFromLines(
+  lines: ProductGainLine[],
+  reparto?: IncomeReparto | null,
+): number {
+  if (!reparto) return productGainTotal(lines)
+  return lines.reduce(
+    (sum, line) => sum + participantShare(reparto, line.qty * line.gananciaUnidad),
+    0,
+  )
+}
+
 function incomeParts(current: GananciaEclesiastica, ingreso: number) {
   return incomePartsFrom(repartoFromConfig(current), ingreso)
 }
@@ -239,21 +281,39 @@ function IncomeFigures({
     return (
       <div className="event-summary__income">
         <p>
-          <span>Abonado</span>
+          <span>
+            <AdminIcon name="wallet" />
+            Abonado
+          </span>
           <strong>{formatMoney(ingreso)}</strong>
         </p>
         {capital > 0 ? (
           <p>
-            <span>Capital{capitalNote ? ` · ${capitalNote}` : ''}</span>
+            <span>
+              <AdminIcon name="wallet" />
+              Capital{capitalNote ? ` · ${capitalNote}` : ''}
+            </span>
             <strong>{formatMoney(capital)}</strong>
           </p>
         ) : null}
         {parts
-          .filter((part) => part.percent > 0)
+          .filter((part) => part.percent > 0 && part.key !== 'miembros')
           .map((part) => (
             <p key={part.key}>
               <span>
+                <AdminIcon name={INCOME_PART_ICONS[part.key] ?? 'chart'} />
                 {part.label} {formatPercent(part.percent)}
+              </span>
+              <strong>{formatMoney(part.amount)}</strong>
+            </p>
+          ))}
+        {parts
+          .filter((part) => part.key === 'miembros' && part.percent > 0)
+          .map((part) => (
+            <p key={part.key} className="is-gain">
+              <span>
+                <AdminIcon name="trendUp" />
+                Ganancia real {formatPercent(part.percent)}
               </span>
               <strong>{formatMoney(part.amount)}</strong>
             </p>
@@ -281,6 +341,9 @@ function IncomeFigures({
     ...part,
     amount: rows.reduce((sum, row) => sum + (row.parts.find((item) => item.key === part.key)?.amount ?? 0), 0),
   }))
+  const gananciaEstimada = sumParts.find((part) => part.key === 'miembros')?.amount ?? 0
+  const cobertura = sumVenta > 0 ? Math.min(1, Math.max(0, ingreso) / sumVenta) : 0
+  const gananciaReal = Math.round(gananciaEstimada * cobertura)
 
   return (
     <div
@@ -328,32 +391,25 @@ function IncomeFigures({
         </div>
       ))}
       <div className="event-summary__sheet-sum" role="cell" data-label="Sumatoria">
-        <p>
-          <span>Venta</span>
-          <strong>{formatMoney(sumVenta)}</strong>
-        </p>
-        <p>
-          <span>Capital</span>
-          <strong>{formatMoney(sumCapital)}</strong>
-        </p>
-        <p>
-          <span>Ganancia</span>
-          <strong>{formatMoney(sumGain)}</strong>
-        </p>
-        <p>
-          <span>Abonado productos</span>
-          <strong>{formatMoney(sumAbonadoProductos)}</strong>
-        </p>
-        {sumParts.map((part) => (
-          <p key={part.key}>
-            <span>{part.label}</span>
-            <strong>{formatMoney(part.amount)}</strong>
-          </p>
-        ))}
-        <p className="is-paid">
-          <span>Abonado</span>
-          <strong>{formatMoney(ingreso)}</strong>
-        </p>
+        <SheetSumLine icon="box" label="Venta" amount={sumVenta} />
+        <SheetSumLine icon="wallet" label="Capital" amount={sumCapital} />
+        <SheetSumLine icon="chart" label="Ganancia" amount={sumGain} />
+        <SheetSumLine icon="check" label="Abonado productos" amount={sumAbonadoProductos} />
+        {sumParts
+          .filter((part) => part.key !== 'miembros')
+          .map((part) => (
+            <SheetSumLine
+              key={part.key}
+              icon={INCOME_PART_ICONS[part.key] ?? 'chart'}
+              label={part.label}
+              amount={part.amount}
+            />
+          ))}
+        <SheetSumLine icon="wallet" label="Abonado" amount={ingreso} className="is-paid" />
+        {sumParts.some((part) => part.key === 'miembros') ? (
+          <SheetSumLine icon="chart" label="Ganancia estimada" amount={gananciaEstimada} />
+        ) : null}
+        <SheetSumLine icon="trendUp" label="Ganancia real" amount={gananciaReal} className="is-gain" />
       </div>
     </div>
   )

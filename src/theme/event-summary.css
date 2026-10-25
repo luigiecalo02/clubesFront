@@ -576,6 +576,19 @@ button.event-summary__pill.is-danger:hover {
   font-size: 0.72rem;
 }
 
+.event-summary__sheet-sum span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.event-summary__sheet-sum span .admin-icon {
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
 .event-summary__sheet-sum {
   display: grid;
   grid-column: var(--sheet-cols);
@@ -597,7 +610,8 @@ button.event-summary__pill.is-danger:hover {
   text-align: right;
 }
 
-.event-summary__sheet-sum p.is-paid {
+.event-summary__sheet-sum p.is-paid,
+.event-summary__sheet-sum p.is-gain {
   display: flex;
   grid-column: 1 / -1;
   align-items: baseline;
@@ -606,6 +620,11 @@ button.event-summary__pill.is-danger:hover {
   margin-top: 0.15rem;
   padding-top: 0.35rem;
   border-top: 1px solid var(--panel-input-border);
+}
+
+.event-summary__sheet-sum p.is-gain span,
+.event-summary__sheet-sum p.is-gain strong {
+  color: var(--summary-ok);
 }
 
 @container (max-width: 720px) {
@@ -701,8 +720,22 @@ button.event-summary__pill.is-danger:hover {
 
 .event-summary__income span,
 .event-summary__income-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   color: var(--panel-muted);
   font-size: 0.72rem;
+}
+
+.event-summary__income span .admin-icon {
+  flex: none;
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.event-summary__income p.is-gain span,
+.event-summary__income p.is-gain strong {
+  color: var(--summary-ok);
 }
 
 .event-summary__income.is-panel,
