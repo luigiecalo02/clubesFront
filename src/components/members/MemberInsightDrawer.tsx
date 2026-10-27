@@ -7,6 +7,7 @@ import type { AbonoFila, AbonosBoard, AttendanceEstado, AttendanceMemberHistory,
 import { CreateDrawer } from '../../theme/CreateDrawer'
 import { formatDate, formatDateRange } from '../../theme/dates'
 import { useNotice } from '../../theme/NoticeProvider'
+import { AbonoMoneyRow } from '../abonos/AbonoMoneyRow'
 import { memberInitials } from '../attendance/AttendanceMarkList'
 import '../../theme/abonos.css'
 import '../../theme/attendance-mark.css'
@@ -120,20 +121,11 @@ export function MemberInsightDrawer({ persona, kind, onClose }: MemberInsightDra
     >
       {kind === 'saldos' ? (
         <div className="abonos-detail">
-          <div className="abonos-deal__money">
-            <p className="event-countdown__cell">
-              <strong>{formatPrice(board.resumen.comprometido)}</strong>
-              <span>Comprometido</span>
-            </p>
-            <p className="event-countdown__cell">
-              <strong>{formatPrice(board.resumen.abonado)}</strong>
-              <span>Abonado</span>
-            </p>
-            <p className="event-countdown__cell">
-              <strong>{formatPrice(board.resumen.pendiente)}</strong>
-              <span>Pendiente</span>
-            </p>
-          </div>
+          <AbonoMoneyRow
+            comprometido={board.resumen.comprometido}
+            abonado={board.resumen.abonado}
+            pendiente={board.resumen.pendiente}
+          />
 
           {loading ? <p className="app-panel__muted">Cargando saldos…</p> : null}
 

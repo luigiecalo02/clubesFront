@@ -192,6 +192,14 @@
   grid-column: 1 / -1;
 }
 
+.abonos-status-row__figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem 0.85rem;
+}
+
 .abonos-status-row__money {
   display: grid;
   justify-items: end;
@@ -207,6 +215,11 @@
 }
 
 .abonos-status-row.is-ok .abonos-status-row__money strong {
+  color: var(--panel-ok-text);
+}
+
+.abonos-status-row__money.is-gain strong,
+.abonos-status-row.is-ok .abonos-status-row__money.is-gain strong {
   color: var(--panel-ok-text);
 }
 
@@ -444,11 +457,62 @@
   gap: 0.35rem;
 }
 
+.abonos-deal__money.is-settled,
+.create-drawer .abonos-deal__money.is-settled {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .abonos-deal__money p,
 .abonos-deal__money .event-countdown__cell {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.2rem;
   margin: 0;
   min-width: 0;
   padding: 0.55rem 0.25rem;
+}
+
+.abonos-deal__money-icon {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--panel-hint-bg);
+  color: var(--panel-gold);
+}
+
+.abonos-deal__money-icon .admin-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.abonos-deal__money-icon[data-tone='ok'] {
+  background: color-mix(in srgb, var(--panel-ok-text) 16%, var(--panel-input-bg));
+  color: var(--panel-ok-text);
+}
+
+.abonos-deal__money-icon[data-tone='alert'] {
+  background: var(--panel-alert-bg);
+  color: var(--panel-alert-text);
+}
+
+.abonos-deal__money .event-countdown__cell.is-paid {
+  border-color: color-mix(in srgb, var(--panel-ok-text) 38%, var(--panel-input-border));
+}
+
+.abonos-deal__money .event-countdown__cell.is-paid strong {
+  color: var(--panel-ok-text);
+}
+
+.abonos-deal__money .event-countdown__cell.is-debt {
+  border-color: var(--panel-alert-border);
+  background: var(--panel-alert-bg);
+}
+
+.abonos-deal__money .event-countdown__cell.is-debt strong {
+  color: var(--panel-alert-text);
 }
 
 .abonos-deal__money strong {
@@ -727,133 +791,6 @@
   font-weight: var(--panel-weight-strong);
 }
 
-.app-panel.abono-cuenta {
-  --panel-padding: 1rem 1.05rem 1.05rem;
-  --panel-shadow: none;
-  --panel-width: 100%;
-  --panel-max-width: none;
-}
-
-.app-panel.abono-cuenta--compact {
-  --panel-padding: 0.85rem 0.9rem 0.95rem;
-}
-
-.abono-cuenta .app-panel__kicker,
-.abono-cuenta .app-panel__title,
-.abono-cuenta .app-panel__subtitle {
-  text-align: left;
-}
-
-.abono-cuenta .app-panel__title {
-  font-size: 1.15rem;
-}
-
-.abono-cuenta .app-panel__subtitle {
-  margin-bottom: 0.85rem;
-}
-
-.abono-cuenta__body {
-  display: grid;
-  gap: 1rem;
-  align-items: start;
-}
-
-@media (min-width: 640px) {
-  .abono-cuenta--with-qr .abono-cuenta__body {
-    grid-template-columns: minmax(10.5rem, 13.5rem) minmax(0, 1fr);
-    gap: 1.15rem;
-  }
-}
-
-.abono-cuenta__facts {
-  display: grid;
-  gap: 0.85rem;
-  min-width: 0;
-  align-content: start;
-}
-
-.abono-cuenta__number {
-  display: grid;
-  gap: 0.35rem;
-  margin: 0;
-}
-
-.abono-cuenta__number .app-panel__muted {
-  margin: 0;
-  font-size: 0.78rem;
-}
-
-.abono-cuenta__number strong {
-  color: var(--panel-title);
-  font-size: 1.2rem;
-  font-weight: var(--panel-weight-strong);
-  letter-spacing: 0.03em;
-  word-break: break-all;
-}
-
-.abono-cuenta__number .app-panel__btn--ghost,
-.abono-cuenta__qr-wrap .app-panel__btn--ghost {
-  width: max-content;
-  min-height: 2.15rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-}
-
-.abono-cuenta__rows {
-  display: grid;
-  gap: 0.55rem;
-  margin: 0;
-}
-
-.abono-cuenta__rows div {
-  display: grid;
-  gap: 0.12rem;
-  min-width: 0;
-}
-
-.abono-cuenta__rows dt {
-  margin: 0;
-  color: var(--panel-muted);
-  font-size: 0.75rem;
-}
-
-.abono-cuenta__rows dd {
-  margin: 0;
-  color: var(--panel-title);
-  font-size: 0.95rem;
-  font-weight: var(--panel-weight-strong);
-  word-break: break-word;
-}
-
-.abono-cuenta__qr-wrap {
-  display: grid;
-  gap: 0.45rem;
-  margin: 0;
-  justify-items: stretch;
-}
-
-.abono-cuenta__qr {
-  width: 100%;
-  height: auto;
-  max-height: 14.5rem;
-  object-fit: contain;
-  border-radius: var(--panel-input-radius);
-  background: #fff;
-  padding: 0.55rem;
-}
-
-.abono-cuenta__qr-wrap .app-panel__muted {
-  margin: 0;
-  font-size: 0.78rem;
-}
-
-.abono-cuenta__qr-wrap .admin-icon {
-  width: 1rem;
-  height: 1rem;
-}
-
 .abonos-pay .app-panel__btn--primary {
   display: inline-flex;
   align-items: center;
@@ -949,6 +886,11 @@
   .abonos-deal__money,
   .create-drawer .abonos-deal__money {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .abonos-deal__money.is-settled,
+  .create-drawer .abonos-deal__money.is-settled {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .abonos-deal__money strong {
@@ -1060,10 +1002,18 @@
 
 .app-panel .abono-amount__edit,
 .abono-amount__edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   width: auto;
   min-height: 1.9rem;
   padding: 0.15rem 0.55rem;
   font-size: 0.72rem;
+}
+
+.abono-amount__edit svg {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .abono-amount.is-eliminado strong {

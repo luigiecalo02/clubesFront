@@ -53,6 +53,11 @@ const VALIDATION_MESSAGES: Record<string, string> = {
   'validation.unique': 'Ya está en uso.',
   'validation.in': 'El valor seleccionado no es válido.',
   'validation.integer': 'El valor no es válido.',
+  'validation.numeric': 'El valor no es válido.',
+  'validation.exists': 'El dato seleccionado no es válido.',
+  'validation.required_without': 'Completa los campos obligatorios.',
+  'validation.image': 'Adjunta una imagen JPG, PNG o WebP.',
+  'validation.mimes': 'Adjunta una imagen JPG, PNG o WebP.',
 }
 
 function humanizeApiMessage(message: string): string {

@@ -48,6 +48,7 @@ import {
   composeAbonoNota,
   emptyAbonoPayDraft,
 } from '../components/abonos/AbonoPayForm'
+import { AbonoMoneyRow } from '../components/abonos/AbonoMoneyRow'
 import {
   abonoProductOptions,
   emptyParticipantsDraft,
@@ -696,6 +697,33 @@ export function EventsPage() {
     queueParticipantSave(next)
   }
 
+  function applyParticipantEvent(evento?: EventSummary | null) {
+    if (!evento) return
+    const capital = Number(evento.capital)
+    const registro = evento.ganancia_registro ?? null
+    setParticipantsFor((current) =>
+      current && current.id === evento.id
+        ? {
+            ...current,
+            capital: Number.isFinite(capital) ? capital : current.capital,
+            ganancia_registro: registro ?? current.ganancia_registro,
+            ganancia_eclesiastica_id: evento.ganancia_eclesiastica_id ?? current.ganancia_eclesiastica_id,
+          }
+        : current,
+    )
+    setEvents((current) =>
+      current.map((item) =>
+        item.id === evento.id
+          ? {
+              ...item,
+              capital: Number.isFinite(capital) ? capital : item.capital,
+              ganancia_registro: registro ?? item.ganancia_registro,
+            }
+          : item,
+      ),
+    )
+  }
+
   function queueParticipantSave(nextDraft: ParticipantDraft) {
     if (!participantsFor || !canTakeAttendance) return
     const id = participantsFor.id
@@ -726,6 +754,7 @@ export function EventsPage() {
         }),
       )
       setParticipantServices(next.servicios ?? [])
+      applyParticipantEvent(next.evento)
       const saved = emptyParticipantsDraft(next.integrantes)
       participantDraftRef.current = saved
       setParticipantDraft(saved)
@@ -745,6 +774,8 @@ export function EventsPage() {
     try {
       const next = await serviciosApi.deliver(participantsFor.id, personaId, ventas)
       setParticipants(next.integrantes)
+      setParticipantServices(next.servicios ?? [])
+      applyParticipantEvent(next.evento)
       const nextDraft = emptyParticipantsDraft(next.integrantes)
       participantDraftRef.current = nextDraft
       setParticipantDraft(nextDraft)
@@ -827,6 +858,13 @@ export function EventsPage() {
     setParticipants((current) =>
       current.map((row) => {
         if (row.persona_id !== next.persona_id) return row
+        if (next.abonos) {
+          return {
+            ...row,
+            abonado: next.abonado,
+            abonos: next.abonos,
+          }
+        }
         const previous = row.abonos ?? []
         const abonos =
           next.abono.estado === 'eliminado' && !isSuper
@@ -841,6 +879,22 @@ export function EventsPage() {
         }
       }),
     )
+  }
+
+  async function attachParticipantAbonoProof(abonos: { id: number }[], file: File) {
+    if (!canAbonar || !abonos.length) return
+    try {
+      const next = await abonosApi.attachComprobante(
+        abonos[0].id,
+        file,
+        abonos.map((abono) => abono.id),
+      )
+      applyAbonoRevision(next)
+      notices.success('Comprobante adjuntado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo adjuntar el comprobante'))
+      throw err
+    }
   }
 
   async function updateParticipantAbonoAmount(abono: { id: number }, monto: number) {
@@ -991,6 +1045,7 @@ export function EventsPage() {
         onReview={reviewParticipantAbono}
         onChangeAmount={updateParticipantAbonoAmount}
         onDeleteAmount={deleteParticipantAbono}
+        onAttachProof={attachParticipantAbonoProof}
       />
     )
   ) : participantTab === 'ganancias' && canViewGanancias ? (
@@ -1132,6 +1187,7 @@ export function EventsPage() {
               }
               onCapital={(capital) => setForm((current) => ({ ...current, capital }))}
               registro={gainRecord}
+              contarEntregadas={editing?.estado === 'en_proceso' || editing?.estado === 'cerrado'}
             />
           ) : (
           <>
@@ -1393,20 +1449,11 @@ export function EventsPage() {
       >
         {abonoFor ? (
           <div className="abonos-detail">
-            <div className="abonos-deal__money">
-              <p className="event-countdown__cell">
-                <strong>{formatPrice(abonoMoney.recaudo)}</strong>
-                <span>Comprometido</span>
-              </p>
-              <p className="event-countdown__cell">
-                <strong>{formatPrice(abonoAbonado)}</strong>
-                <span>Abonado</span>
-              </p>
-              <p className="event-countdown__cell">
-                <strong>{formatPrice(abonoPendiente)}</strong>
-                <span>Pendiente</span>
-              </p>
-            </div>
+            <AbonoMoneyRow
+              comprometido={abonoMoney.recaudo}
+              abonado={abonoAbonado}
+              pendiente={abonoPendiente}
+            />
             <AbonoPayForm
               id="participant-abono-form"
               draft={abonoDraft}

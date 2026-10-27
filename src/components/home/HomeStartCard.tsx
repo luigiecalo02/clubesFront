@@ -233,7 +233,7 @@ export function HomeStartCard() {
         <AdminIcon name="coins" />
       </span>
       <span>
-        <small>Ganancia actual</small>
+        <small>Ganancia real</small>
         <strong>{hideGanancia ? '***' : formatMoney(ganancia)}</strong>
       </span>
       <span className="home-start__action-tools">

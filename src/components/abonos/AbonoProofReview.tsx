@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { resolveFileUrl } from '../../api/baseUrl'
 import type { AbonoMovimiento } from '../../api/types'
 import { AdminIcon } from '../../admin/AdminIcon'
+import { compressReceiptImage } from '../../theme/cropImage'
 import { ImagePreviewDialog } from '../../theme/ImagePreviewDialog'
 import { NumberPadInput } from '../../theme/NumberPad'
 import '../../theme/abonos.css'
@@ -25,6 +26,59 @@ export function AbonoShotButton({ abono }: { abono: AbonoMovimiento }) {
       {preview ? (
         <ImagePreviewDialog src={shot} alt="Pantallazo del abono" onClose={() => setPreview(false)} />
       ) : null}
+    </>
+  )
+}
+
+export function AbonoProofAttachButton({
+  disabled = false,
+  onAttach,
+}: {
+  disabled?: boolean
+  onAttach?: (file: File) => Promise<void>
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [saving, setSaving] = useState(false)
+  if (!onAttach) return null
+
+  async function pick(file: File | null) {
+    if (!file || !onAttach || saving) return
+    setSaving(true)
+    try {
+      let compact = file
+      try {
+        compact = await compressReceiptImage(file)
+      } catch {
+        compact = file
+      }
+      await onAttach(compact)
+    } finally {
+      setSaving(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        hidden
+        disabled={disabled || saving}
+        onChange={(event) => void pick(event.target.files?.[0] ?? null)}
+      />
+      <button
+        type="button"
+        className="app-panel__btn--ghost abono-amount__edit"
+        disabled={disabled || saving}
+        aria-label="Adjuntar comprobante"
+        title="Adjuntar comprobante"
+        onClick={() => inputRef.current?.click()}
+      >
+        <AdminIcon name="paperclip" />
+        {saving ? 'Adjuntando…' : 'Adjuntar'}
+      </button>
     </>
   )
 }

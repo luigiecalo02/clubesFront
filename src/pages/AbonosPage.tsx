@@ -3,7 +3,7 @@ import { abonosApi } from '../api/abonos'
 import { usersApi } from '../api/users'
 import { resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
-import type { AbonoFila, AbonoMovimiento, AbonosBoard, AbonosModo, AuthUser } from '../api/types'
+import type { AbonoFila, AbonoMovimiento, AbonosBoard, AbonosModo, AuthUser, EventSummary } from '../api/types'
 import { AdminIcon } from '../admin/AdminIcon'
 import {
   canAccessClubAbonos,
@@ -21,14 +21,15 @@ import {
   parseAbonoNota,
   type AbonoPayDraft,
 } from '../components/abonos/AbonoPayForm'
-import { AbonoCuentaInfo } from '../components/abonos/AbonoCuentaInfo'
 import { AbonoAmountControl, AbonoProofReview, abonoEstadoLabel } from '../components/abonos/AbonoProofReview'
+import { AbonoActividadDistribucion } from '../components/abonos/AbonoActividadDistribucion'
+import { AbonoMoneyRow } from '../components/abonos/AbonoMoneyRow'
+import { EventMemberJoin } from '../components/events/EventMemberJoin'
 import { memberInitials } from '../components/attendance/AttendanceMarkList'
 import { ServiceThumb } from '../components/services/ServiceVisual'
 import { AppPanel } from '../theme/AppPanel'
 import { AppTabs } from '../theme/AppTabs'
 import { CreateDrawer } from '../theme/CreateDrawer'
-import { compressReceiptImage } from '../theme/cropImage'
 import { formatDate } from '../theme/dates'
 import { useNotice } from '../theme/NoticeProvider'
 import '../theme/abonos.css'
@@ -89,6 +90,19 @@ function groupAbonosByShot(abonos: AbonoMovimiento[]): AbonoMovimiento[][] {
   return [...groups.values()]
 }
 
+function eventFromAbonoRow(row: AbonoFila): EventSummary | null {
+  if (!row.evento_id) return null
+  return {
+    id: row.evento_id,
+    name: row.evento_name || 'Actividad',
+    starts_at: row.starts_at,
+    estado: row.evento_estado,
+    banner_url: row.banner_url,
+    image_url: row.image_url,
+    cuenta_bancaria: row.cuenta_bancaria ?? null,
+  }
+}
+
 function findSessionAbono(rows: AbonoFila[], user: AuthUser, personaId: number | null, fullName: string | null) {
   if (personaId) {
     const byId = rows.find((row) => row.persona_id === personaId)
@@ -125,9 +139,15 @@ function DealStatusRow({
         <strong>{title || 'Sin nombre'}</strong>
         <small>{row.starts_at ? formatDate(row.starts_at) : '—'}</small>
       </span>
-      <span className="abonos-status-row__money">
-        <strong>{formatPrice(paid ? row.abonado : row.pendiente)}</strong>
-        <small>{paid ? 'Pagado' : 'Pendiente'}</small>
+      <span className="abonos-status-row__figures">
+        <span className="abonos-status-row__money">
+          <strong>{formatPrice(paid ? row.abonado : row.pendiente)}</strong>
+          <small>{paid ? 'Pagado' : 'Pendiente'}</small>
+        </span>
+        <span className="abonos-status-row__money is-gain">
+          <strong>{formatPrice(Number(row.ganancia) || 0)}</strong>
+          <small>Ganancia real</small>
+        </span>
       </span>
       <div className="abonos-deal__actions">
         {canPay ? (
@@ -180,12 +200,10 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<PayFilter>('pendientes')
   const [detailsKey, setDetailsKey] = useState<string | null>(null)
-  const [detailsTab, setDetailsTab] = useState<'servicios' | 'abonos'>('servicios')
+  const [detailsTab, setDetailsTab] = useState<'servicios' | 'abonos' | 'reparto'>('servicios')
   const [dealTab, setDealTab] = useState<DealTab>('abonar')
   const [payKey, setPayKey] = useState<string | null>(null)
   const [draft, setDraft] = useState<AbonoPayDraft>(emptyDraft)
-  const [proofFile, setProofFile] = useState<File | null>(null)
-  const [proofPreview, setProofPreview] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia(MOBILE_ABONOS).matches : false,
   )
@@ -219,17 +237,19 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   }, [filter, list.filas, query])
 
   const payRow = detail.filas.find((row) => pickKey(row) === payKey) ?? null
+  const payEvent = mine && payRow ? eventFromAbonoRow(payRow) : null
   const payTitle = modo === 'integrante' ? payRow?.evento_name : payRow?.full_name
   const payPersonName = payRow?.full_name || selectedRow?.full_name
   const payPhoto = payRow?.foto_url || selectedRow?.foto_url
   const payProducts = (payRow?.pedidos ?? []).map((pedido) => {
+    const productoId = Number(pedido.producto_servicio_id ?? pedido.id)
     const abonado = (payRow?.abonos ?? []).reduce((sum, abono) => {
-      if (Number(abono.producto_servicio_id) !== pedido.id) return sum
+      if (Number(abono.producto_servicio_id) !== productoId) return sum
       if (abono.estado && abono.estado !== 'aprobado') return sum
       return sum + (Number(abono.monto) || 0)
     }, 0)
     return {
-      id: pedido.id,
+      id: productoId,
       nombre: pedido.nombre,
       pendiente: Math.max(0, Number(pedido.total) - abonado),
     }
@@ -392,30 +412,9 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
     })
   }
 
-  function clearProof() {
-    setProofPreview((current) => {
-      if (current) URL.revokeObjectURL(current)
-      return null
-    })
-    setProofFile(null)
-  }
-
   function closePay() {
     setPayKey(null)
     setDraft(emptyDraft())
-    clearProof()
-  }
-
-  async function pickProof(file: File | null) {
-    clearProof()
-    if (!file) return
-    try {
-      const compact = await compressReceiptImage(file)
-      setProofFile(compact)
-      setProofPreview(URL.createObjectURL(compact))
-    } catch (err) {
-      notices.error(getApiErrorMessage(err, 'No se pudo preparar el pantallazo'))
-    }
   }
 
   async function reloadMine() {
@@ -425,26 +424,6 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
     })
     setDetail(nextDetail)
     setList(await abonosApi.board({ modo: 'integrante' }))
-  }
-
-  async function submitProof() {
-    if (!mine || !canSendProof || !payRow?.evento_id || !proofFile || saving) return
-    const partidas = abonoPayPartidas(draft, payProducts)
-    if (payProducts.length > 0 && partidas.length === 0) {
-      notices.warning('Indica cuánto abonas de cada producto.')
-      return
-    }
-    setSaving(true)
-    try {
-      await abonosApi.submitComprobante(payRow.evento_id, proofFile, partidas.length ? partidas : undefined)
-      await reloadMine()
-      closePay()
-      notices.success('Abono enviado. Queda pendiente hasta que la directiva lo apruebe.')
-    } catch (err) {
-      notices.error(getApiErrorMessage(err, 'No se pudo enviar el abono'))
-    } finally {
-      setSaving(false)
-    }
   }
 
   async function submitAbono(event?: FormEvent) {
@@ -820,7 +799,7 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
       <CreateDrawer
         open={Boolean(detailsRow)}
         stacked
-        size="half"
+        size={detailsTab === 'reparto' ? 'default' : 'half'}
         placement={drawerPlacement}
         title={detailsTitle || 'Detalle'}
         subtitle="Pedidos y abonos"
@@ -831,20 +810,11 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
       >
         {detailsRow ? (
           <div className="abonos-detail">
-            <div className="abonos-deal__money">
-              <p className="event-countdown__cell">
-                <strong>{formatPrice(detailsRow.comprometido)}</strong>
-                <span>Comprometido</span>
-              </p>
-              <p className="event-countdown__cell">
-                <strong>{formatPrice(detailsRow.abonado)}</strong>
-                <span>Abonado</span>
-              </p>
-              <p className="event-countdown__cell">
-                <strong>{formatPrice(detailsRow.pendiente)}</strong>
-                <span>Pendiente</span>
-              </p>
-            </div>
+            <AbonoMoneyRow
+              comprometido={detailsRow.comprometido}
+              abonado={detailsRow.abonado}
+              pendiente={detailsRow.pendiente}
+            />
             <AppTabs
               label="Detalle del compromiso"
               value={detailsTab}
@@ -852,12 +822,13 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
               tabs={[
                 { id: 'servicios', label: <><AdminIcon name="box" /> Servicios</> },
                 { id: 'abonos', label: <><AdminIcon name="wallet" /> Abonos</> },
+                { id: 'reparto', label: <><AdminIcon name="pie" /> Reparto</> },
               ]}
             >
             {detailsTab === 'servicios' && detailsRow.pedidos?.length ? (
               <ul className="abonos-pedidos">
                 {detailsRow.pedidos.map((pedido) => (
-                  <li key={pedido.id}>
+                  <li key={pedido.venta_id ?? pedido.producto_servicio_id ?? pedido.id}>
                     <span className="abonos-pedidos__name">
                       <ServiceThumb item={pedido} />
                       {pedido.nombre}
@@ -932,18 +903,40 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
             {detailsTab === 'abonos' && !detailsRow.abonos?.length ? (
               <p className="app-panel__muted">Todavía no hay abonos en este compromiso.</p>
             ) : null}
+            {detailsTab === 'reparto' && detailsRow.evento_id ? (
+              <AbonoActividadDistribucion
+                eventoId={detailsRow.evento_id}
+                personaId={detailsRow.persona_id}
+              />
+            ) : null}
+            {detailsTab === 'reparto' && !detailsRow.evento_id ? (
+              <p className="app-panel__muted">No se encontró la actividad de este compromiso.</p>
+            ) : null}
             </AppTabs>
           </div>
         ) : null}
       </CreateDrawer>
 
+      {payEvent ? (
+        <EventMemberJoin
+          event={payEvent}
+          onClose={() => {
+            closePay()
+            void reloadMine().catch(() => undefined)
+          }}
+          onChanged={() => {
+            void reloadMine().catch(() => undefined)
+          }}
+        />
+      ) : null}
+
       <CreateDrawer
-        open={Boolean(payRow)}
+        open={!mine && Boolean(payRow)}
         stacked
         size="half"
         placement={drawerPlacement}
-        title={mine ? payTitle || 'Enviar abono' : payTitle || 'Registrar abono'}
-        subtitle={mine ? 'Pantallazo del abono' : 'Recaudo'}
+        title={payTitle || 'Registrar abono'}
+        subtitle="Recaudo"
         cover={resolveFileUrl(payRow?.banner_url)}
         avatar={resolveFileUrl(payPhoto)}
         avatarFallback={memberInitials(payPersonName || payTitle || 'AB')}
@@ -959,93 +952,25 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
               disabled={
                 saving ||
                 !payRow ||
-                (mine
-                  ? !proofFile || (payProducts.length > 0 && abonoPayPartidas(draft, payProducts).length === 0)
-                  : payRow.pendiente <= 0 ||
-                    !draft.metodo ||
-                    abonoPayTotal(draft, payProducts) <= 0)
+                payRow.pendiente <= 0 ||
+                !draft.metodo ||
+                abonoPayTotal(draft, payProducts) <= 0
               }
-              onClick={() => void (mine ? submitProof() : submitAbono())}
+              onClick={() => void submitAbono()}
             >
               <AdminIcon name="wallet" />
-              {mine ? (saving ? 'Enviando…' : 'Enviar abono') : 'Registrar abono'}
+              Registrar abono
             </button>
           </>
         }
       >
-        {payRow && mine ? (
-          <form
-            className="abono-proof-form"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void submitProof()
-            }}
-          >
-            <AbonoCuentaInfo cuenta={payRow.cuenta_bancaria} />
-            <p className="app-panel__subtitle">
-              Sube un pantallazo y reparte cuánto va a cada producto. Queda pendiente hasta que la directiva lo
-              apruebe.
-            </p>
-            <label>
-              Pantallazo del abono
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                disabled={saving}
-                onChange={(event) => void pickProof(event.target.files?.[0] ?? null)}
-              />
-            </label>
-            {proofPreview ? <img className="abono-proof__shot" src={proofPreview} alt="Pantallazo listo para enviar" /> : null}
-            {payProducts.length ? (
-              <div className="abono-proof-form__splits">
-                <p className="abono-proof-form__splits-title">Valor por producto</p>
-                {payProducts.map((product) => (
-                  <label key={product.id} className="abono-proof-form__split">
-                    <span className="abono-proof-form__split-name">
-                      <strong>{product.nombre}</strong>
-                      <small>Falta {formatPrice(product.pendiente)}</small>
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      placeholder="0"
-                      disabled={saving}
-                      value={draft.montos[String(product.id)] ?? ''}
-                      onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          montos: { ...draft.montos, [String(product.id)]: event.target.value.replace(/\D/g, '') },
-                        })
-                      }
-                    />
-                  </label>
-                ))}
-                <p className="abono-proof-form__splits-total">
-                  <span>Total de esta captura</span>
-                  <strong>{formatPrice(abonoPayTotal(draft, payProducts))}</strong>
-                </p>
-              </div>
-            ) : null}
-          </form>
-        ) : null}
         {payRow && !mine ? (
           <div className="abonos-detail">
-            <div className="abonos-deal__money">
-              <p className="event-countdown__cell">
-                <strong>{formatPrice(payRow.comprometido)}</strong>
-                <span>Comprometido</span>
-              </p>
-              <p className="event-countdown__cell">
-                <strong>{formatPrice(payRow.abonado)}</strong>
-                <span>Abonado</span>
-              </p>
-              <p className="event-countdown__cell">
-                <strong>{formatPrice(payRow.pendiente)}</strong>
-                <span>Pendiente</span>
-              </p>
-            </div>
+            <AbonoMoneyRow
+              comprometido={payRow.comprometido}
+              abonado={payRow.abonado}
+              pendiente={payRow.pendiente}
+            />
             <AbonoPayForm
               draft={draft}
               pendiente={payRow.pendiente}

@@ -160,7 +160,7 @@ export function AbonoPayForm({
   return (
     <form id={id} className="abonos-pay" onSubmit={onSubmit}>
       <h3>Registrar abono</h3>
-      <AbonoCuentaInfo cuenta={cuenta} />
+      {pendiente > 0 ? <AbonoCuentaInfo cuenta={cuenta} className="is-wide" /> : null}
       <div className="abonos-pay__meta">
         <label>
           Método de pago

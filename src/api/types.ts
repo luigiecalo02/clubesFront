@@ -588,6 +588,7 @@ export interface AbonoRevision {
   persona_id: number
   evento_id: number
   abonado: number
+  abonos?: AbonoMovimiento[]
 }
 
 export interface AbonoRecaudo {
@@ -597,6 +598,8 @@ export interface AbonoRecaudo {
 
 export interface AbonoPedido {
   id: number
+  venta_id?: number
+  producto_servicio_id?: number
   nombre: string
   cantidad: number
   precio: number
@@ -677,6 +680,32 @@ export interface AbonosBoard {
   opciones_integrantes: AbonoOption[]
   opciones_actividades: AbonoOption[]
   filas: AbonoFila[]
+}
+
+export interface AbonoReparto {
+  ofrenda: number
+  diezmo: number
+  resto: number
+  miembros: number
+  club: number
+  extras: number
+}
+
+export interface AbonoActividadDistribucion {
+  evento_id: number
+  evento_name: string
+  ganancia_eclesiastica_id?: number | null
+  reparto?: AbonoReparto | null
+  ingreso: number
+  servicios: Array<{
+    id: number
+    nombre: string
+    precio: number
+    inversion: number
+    cantidad_proyectada: number
+  }>
+  lineas: Array<{ id: number; nombre: string; qty: number }>
+  abonos_por_producto: Record<string, number>
 }
 
 export type PresupuestoTipo = 'individual' | 'grupal'

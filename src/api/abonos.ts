@@ -1,5 +1,12 @@
 import { api } from './client'
-import type { AbonoRecaudo, AbonoRevision, AbonosBoard, AbonosModo, ApiEnvelope } from './types'
+import type {
+  AbonoActividadDistribucion,
+  AbonoRecaudo,
+  AbonoRevision,
+  AbonosBoard,
+  AbonosModo,
+  ApiEnvelope,
+} from './types'
 
 const formDataRequest = {
   transformRequest: [
@@ -25,6 +32,19 @@ export const abonosApi = {
         evento_id: params.eventoId || undefined,
       },
     })
+    return data.data
+  },
+
+  async distribucion(eventoId: number, personaId?: number | null): Promise<AbonoActividadDistribucion> {
+    const { data } = await api.get<ApiEnvelope<AbonoActividadDistribucion>>(
+      '/api/v1/settings/clubes/abonos/distribucion',
+      {
+        params: {
+          evento_id: eventoId,
+          persona_id: personaId || undefined,
+        },
+      },
+    )
     return data.data
   },
 
@@ -71,6 +91,22 @@ export const abonosApi = {
     body.append('comprobante', comprobante)
     const { data } = await api.post<ApiEnvelope<AbonoRecaudo>>(
       '/api/v1/settings/clubes/abonos/comprobante',
+      body,
+      formDataRequest,
+    )
+    return data.data
+  },
+
+  async attachComprobante(
+    abonoId: number,
+    comprobante: File,
+    ids: number[] = [],
+  ): Promise<AbonoRevision> {
+    const body = new FormData()
+    body.append('comprobante', comprobante)
+    ids.forEach((id) => body.append('ids[]', String(id)))
+    const { data } = await api.post<ApiEnvelope<AbonoRevision>>(
+      `/api/v1/settings/clubes/abonos/${abonoId}/comprobante`,
       body,
       formDataRequest,
     )

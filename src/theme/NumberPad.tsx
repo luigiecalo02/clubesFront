@@ -6,6 +6,16 @@ import './number-pad.css'
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 
+function tapHaptic(ms = 12) {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return
+  if (typeof window !== 'undefined' && !window.matchMedia('(pointer: coarse)').matches) return
+  try {
+    navigator.vibrate(ms)
+  } catch {
+    /* el navegador no permite vibrar */
+  }
+}
+
 type NumberPadDialogProps = {
   title: ReactNode
   value: number | string
@@ -41,6 +51,11 @@ export function NumberPadDialog({ title, value, maxDigits = 4, format, onConfirm
     setDraft((current) => (current === '0' ? digit : `${current}${digit}`).slice(0, maxDigits))
   }
 
+  function pressKey(action: () => void, ms = 12) {
+    tapHaptic(ms)
+    action()
+  }
+
   const amount = Number(draft) || 0
 
   return createPortal(
@@ -51,17 +66,17 @@ export function NumberPadDialog({ title, value, maxDigits = 4, format, onConfirm
         <strong className="number-pad__readout">{format ? format(amount) : draft}</strong>
         <div className="number-pad__keys">
           {DIGITS.map((digit) => (
-            <button key={digit} type="button" onClick={() => typeDigit(digit)}>
+            <button key={digit} type="button" onClick={() => pressKey(() => typeDigit(digit))}>
               {digit}
             </button>
           ))}
-          <button type="button" className="is-clear" onClick={() => setDraft('0')}>
+          <button type="button" className="is-clear" onClick={() => pressKey(() => setDraft('0'), 18)}>
             Borrar
           </button>
-          <button type="button" onClick={() => typeDigit('0')}>
+          <button type="button" onClick={() => pressKey(() => typeDigit('0'))}>
             0
           </button>
-          <button type="button" className="is-enter" onClick={() => onConfirm(amount)}>
+          <button type="button" className="is-enter" onClick={() => pressKey(() => onConfirm(amount), 24)}>
             Enter
           </button>
         </div>

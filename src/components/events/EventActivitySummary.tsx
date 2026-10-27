@@ -10,12 +10,14 @@ import {
   EventGainDistribution,
   ParticipantIncomeSplit,
   approvedAbonosByProduct,
+  liveGainSnapshot,
   participantGainFromLines,
+  participantGainFromPaidLines,
   participantShare,
   productGainLines,
   useIncomeReparto,
 } from './EventGananciasPanel'
-import { saleGain, saleTotals, type ParticipantDraft } from './ParticipantsMarkList'
+import { participantEventCounts, saleGain, saleTotals, type ParticipantDraft } from './ParticipantsMarkList'
 import { ProgressBar, SummaryIcon, summaryPercent as percent } from './SummaryCards'
 import '../../theme/attendance-mark.css'
 
@@ -114,13 +116,11 @@ function buildRows(
   })
 }
 
-function memberGain(row: Pick<SummaryRow, 'ganancia' | 'recaudo' | 'abonado'>): number {
-  if (row.recaudo <= 0 || row.ganancia <= 0) return 0
-  const cobertura = Math.min(row.recaudo, Math.max(0, row.abonado)) / row.recaudo
-  return Math.round(row.ganancia * cobertura)
-}
-
-function rowProductLines(row: SummaryRow, services: EventParticipantService[]) {
+function rowProductLines(
+  row: SummaryRow,
+  services: EventParticipantService[],
+  totales?: Record<number, number>,
+) {
   return productGainLines(
     row.lineas.map((line) => ({
       id: line.id,
@@ -128,6 +128,7 @@ function rowProductLines(row: SummaryRow, services: EventParticipantService[]) {
       qty: line.entregada == null ? line.pedido : line.entregada,
     })),
     services,
+    totales,
   )
 }
 
@@ -188,38 +189,29 @@ export function EventActivitySummary({
   const [deliverId, setDeliverId] = useState<number | null>(null)
   const [deliverQty, setDeliverQty] = useState<Record<number, string>>({})
   const [delivering, setDelivering] = useState(false)
-  const proyeccion = members.reduce((sum, member) => {
-    const current = draft[member.persona_id]
-    if (current?.participa !== true) return sum
-    const lineas = orderLines(member, services, draft)
-    const billed = Object.fromEntries(
-      lineas.map((line) => [line.id, line.entregada == null ? line.pedido : line.entregada]),
-    )
-    return sum + saleTotals(services, billed).recaudo
-  }, 0)
+  const counts = participantEventCounts(members, services, draft)
+  const totales = Object.fromEntries(counts.productos.map((product) => [product.id, product.unidades]))
+  const proyeccion = counts.recaudo
   const ganancia = proyeccion - capital
   const rows = buildRows(members, services, draft)
   const ordered = sortRows(rows, sort)
   const porCobrar = ordered.reduce((sum, row) => sum + row.pendiente, 0)
   const margen = proyeccion > 0 ? (ganancia / proyeccion) * 100 : 0
   const ingreso = rows.reduce((sum, row) => sum + row.abonado, 0)
-  const diezmoPrevisto = Number(gananciaRegistro?.diezmo) || 0
-  const ofrendaPrevista = Number(gananciaRegistro?.ofrenda) || 0
-  const gananciaDespues = ganancia - diezmoPrevisto - ofrendaPrevista
-  const restoPrevisto = Number(gananciaRegistro?.resto) || 0
-  const participantesParte = Number(gananciaRegistro?.participantes) || 0
-  const clubParte = Number(gananciaRegistro?.club) || 0
-  const otrosParte = Number(gananciaRegistro?.extras) || 0
-  const repartoDe = (parte: number) =>
-    restoPrevisto > 0 ? Math.round((gananciaDespues * parte) / restoPrevisto) : 0
-  const participantesReparto = repartoDe(participantesParte)
-  const clubReparto = repartoDe(clubParte)
-  const otrosReparto = restoPrevisto > 0 ? gananciaDespues - participantesReparto - clubReparto : 0
-  const partePct = (parte: number) => (restoPrevisto > 0 ? Math.round((parte / restoPrevisto) * 100) : 0)
   const reparto = useIncomeReparto(gananciaConfigId)
+  const snapshot = liveGainSnapshot(proyeccion, capital, reparto)
+  const diezmoPrevisto = reparto ? snapshot.diezmo : Number(gananciaRegistro?.diezmo) || 0
+  const ofrendaPrevista = reparto ? snapshot.ofrenda : Number(gananciaRegistro?.ofrenda) || 0
+  const gananciaDespues = ganancia - diezmoPrevisto - ofrendaPrevista
+  const restoPrevisto = reparto ? snapshot.resto : Number(gananciaRegistro?.resto) || 0
+  const participantesReparto = reparto ? snapshot.participantes : Number(gananciaRegistro?.participantes) || 0
+  const clubReparto = reparto ? snapshot.club : Number(gananciaRegistro?.club) || 0
+  const otrosReparto = reparto ? snapshot.extras : Number(gananciaRegistro?.extras) || 0
+  const partePct = (parte: number) => (restoPrevisto > 0 ? Math.round((parte / restoPrevisto) * 100) : 0)
   const unitGains = productGainLines(
-    services.map((service) => ({ id: service.id, nombre: service.nombre, qty: 1 })),
+    counts.productos.map((product) => ({ id: product.id, nombre: product.nombre, qty: 1 })),
     services,
+    totales,
   ).map((line) => ({
     ...line,
     gananciaUnidad: reparto ? participantShare(reparto, line.gananciaUnidad) : line.gananciaUnidad,
@@ -252,7 +244,8 @@ export function EventActivitySummary({
     downloadCsv(`ganancias-${eventName || 'actividad'}`, [
       ['#', 'Participante', 'Pedidos', 'Entregados', 'Aporte estimado', 'Pagado', 'Falta por cobrar', 'Ganancia real', 'Ganancia estimada'],
       ...ordered.map((row, index) => {
-        const prevista = participantGainFromLines(rowProductLines(row, services), reparto)
+        const lines = rowProductLines(row, services, totales)
+        const prevista = participantGainFromLines(lines, reparto)
         return [
           index + 1,
           row.name,
@@ -261,7 +254,7 @@ export function EventActivitySummary({
           row.recaudo,
           row.abonado,
           row.pendiente,
-          memberGain({ ...row, ganancia: prevista }),
+          participantGainFromPaidLines(lines, row.abonosByProduct, reparto),
           prevista,
         ]
       }),
@@ -326,22 +319,22 @@ export function EventActivitySummary({
               <article className="event-summary__kpi">
                 <SummaryIcon name="group" tone="ok" />
                 <p>
-                  <span>Participantes {partePct(participantesParte)}%</span>
+                  <span>Participantes {partePct(participantesReparto)}%</span>
                   <strong>{formatMoney(participantesReparto)}</strong>
                 </p>
               </article>
               <article className="event-summary__kpi">
                 <SummaryIcon name="building" tone="info" />
                 <p>
-                  <span>Club {partePct(clubParte)}%</span>
+                  <span>Club {partePct(clubReparto)}%</span>
                   <strong>{formatMoney(clubReparto)}</strong>
                 </p>
               </article>
-              {otrosParte > 0 ? (
+              {otrosReparto > 0 ? (
                 <article className="event-summary__kpi">
                   <SummaryIcon name="tags" tone="gold" />
                   <p>
-                    <span>Otros {partePct(otrosParte)}%</span>
+                    <span>Otros {partePct(otrosReparto)}%</span>
                     <strong>{formatMoney(otrosReparto)}</strong>
                   </p>
                 </article>
@@ -377,8 +370,9 @@ export function EventActivitySummary({
         <header className="event-summary__head">
           <SummaryIcon name="users" tone="gold" />
           <h3>Ganancia por participante</h3>
-          <strong className="event-summary__total event-summary__total--faltante">
-            {formatMoney(porCobrar)}
+          <strong className="event-summary__total event-summary__total--faltante" aria-label={`Falta por cobrar ${formatMoney(porCobrar)}`}>
+            <AdminIcon name="target" />
+            <span>{formatMoney(porCobrar)}</span>
           </strong>
           {rows.length ? (
             <div className="event-summary__tools">
@@ -413,9 +407,9 @@ export function EventActivitySummary({
             </div>
             {ordered.map((row, index) => {
               const paid = percent(row.abonado, row.recaudo)
-              const productLines = rowProductLines(row, services)
+              const productLines = rowProductLines(row, services, totales)
               const gananciaPrevista = participantGainFromLines(productLines, reparto)
-              const gananciaReal = memberGain({ ...row, ganancia: gananciaPrevista })
+              const gananciaReal = participantGainFromPaidLines(productLines, row.abonosByProduct, reparto)
               const avance = percent(gananciaReal, gananciaPrevista)
               return (
                 <div key={row.id} className={`event-summary__person${openIds.includes(row.id) ? ' is-open' : ''}`}>
@@ -510,7 +504,11 @@ export function EventActivitySummary({
       </section>
 
       <section className="event-summary__block">
-        <EventGainDistribution configId={gananciaConfigId} registro={gananciaRegistro} ingreso={ingreso} />
+        <EventGainDistribution
+          configId={gananciaConfigId}
+          registro={reparto ? snapshot : gananciaRegistro}
+          ingreso={ingreso}
+        />
       </section>
 
       {deliverRow ? (

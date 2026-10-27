@@ -67,6 +67,11 @@
   font-size: 1.2rem;
   font-weight: var(--panel-weight-strong);
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+.number-pad__keys button:active {
+  transform: scale(0.96);
 }
 
 .number-pad__keys button.is-clear,

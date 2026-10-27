@@ -53,6 +53,7 @@ const PATHS: Record<AdminIconName, string> = {
   chart: 'M5 20V12M10 20V7M15 20v-5M20 20V4M3 20h18',
   pie: 'M12 3a9 9 0 1 0 9 9h-9zM15 3.5A8 8 0 0 1 20.5 9H15z',
   alert: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5v5.5M12 16.5h.01',
+  paperclip: 'M8 7.4v8.3a3.3 3.3 0 0 0 6.6 0V6.2A2.2 2.2 0 0 0 10.2 4 2.2 2.2 0 0 0 8 6.2v8.3',
 }
 
 const PRIME_TO_NAME: Record<string, AdminIconName> = {

@@ -11,6 +11,7 @@ const STEP = 0.5
 type ImagePreviewDialogProps = {
   src: string
   alt: string
+  kicker?: string
   onClose: () => void
 }
 
@@ -26,7 +27,7 @@ function fitSize(natural: Size, box: Size): Size {
   return { width: natural.width * scale, height: natural.height * scale }
 }
 
-export function ImagePreviewDialog({ src, alt, onClose }: ImagePreviewDialogProps) {
+export function ImagePreviewDialog({ src, alt, kicker = 'Pantallazo', onClose }: ImagePreviewDialogProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
   const pointers = useRef(new Map<number, { x: number; y: number }>())
@@ -134,7 +135,7 @@ export function ImagePreviewDialog({ src, alt, onClose }: ImagePreviewDialogProp
       <button type="button" className="image-preview__backdrop" aria-label="Cerrar" onClick={onClose} />
       <AppPanel className="image-preview__panel" shine={false}>
         <div className="image-preview__head">
-          <p className="app-panel__kicker">Pantallazo</p>
+          <p className="app-panel__kicker">{kicker}</p>
           <div className="image-preview__zoom" role="group" aria-label="Zoom">
             <button type="button" aria-label="Alejar" disabled={zoom <= MIN_ZOOM} onClick={() => zoomAt(zoom - STEP)}>
               −

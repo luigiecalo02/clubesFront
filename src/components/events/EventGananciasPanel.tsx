@@ -5,6 +5,7 @@ import { getApiErrorMessage } from '../../api/client'
 import { settingsApi } from '../../api/settings'
 import type { CuentaBancariaClub, EventoGananciaRegistro, GananciaEclesiastica } from '../../api/types'
 import { useNotice } from '../../theme/NoticeProvider'
+import { ProgressBar, summaryPercent } from './SummaryCards'
 import { ServiceThumb } from '../services/ServiceVisual'
 
 export type GananciaServicioLine = {
@@ -33,6 +34,7 @@ type EventGananciasPanelProps = {
   loadingServices?: boolean
   canChange?: boolean
   registro?: EventoGananciaRegistro | null
+  contarEntregadas?: boolean
 }
 
 function formatPercent(value: number): string {
@@ -154,13 +156,14 @@ export function productGainLines(
     inversion?: number | string | null
     cantidad_proyectada?: number | null
   }[],
+  totales?: Record<number, number>,
 ): ProductGainLine[] {
   return lines.flatMap((line) => {
     if (line.qty <= 0) return []
     const service = services.find((item) => item.id === line.id)
     if (!service) return []
     const inversion = Number(service.inversion) || 0
-    const proyectada = Number(service.cantidad_proyectada) || 0
+    const proyectada = Number(totales?.[line.id] ?? service.cantidad_proyectada) || 0
     const precio = Math.round(Number(service.precio) || 0)
     const capitalUnidad = proyectada > 0 ? Math.round(inversion / proyectada) : 0
     return [
@@ -192,26 +195,37 @@ const INCOME_PART_ICONS: Record<string, AdminIconName> = {
   extras: 'tags',
 }
 
-function SheetSumLine({
-  icon,
-  label,
-  amount,
-  className,
-}: {
-  icon: AdminIconName
-  label: string
-  amount: number
-  className?: string
-}) {
+function SheetFill({ real, target }: { real: number; target: number }) {
   return (
-    <p className={className}>
-      <span>
-        <AdminIcon name={icon} />
-        {label}
-      </span>
-      <strong>{formatMoney(amount)}</strong>
-    </p>
+    <span className="event-summary__sheet-fill">
+      <strong className="is-real">{formatMoney(real)}</strong>
+      <ProgressBar value={summaryPercent(real, target)} />
+      <small className="is-previsto">{formatMoney(target)}</small>
+    </span>
   )
+}
+
+export function paidAfterCapital(abonado: number, capital: number): { covered: number; gain: number } {
+  const paid = Math.max(0, abonado)
+  const cost = Math.max(0, capital)
+  return {
+    covered: Math.min(paid, cost),
+    gain: Math.max(0, paid - cost),
+  }
+}
+
+export function participantGainFromPaidLines(
+  lines: ProductGainLine[],
+  abonosByProduct: Record<number, number> = {},
+  reparto?: IncomeReparto | null,
+): number {
+  return lines.reduce((sum, line) => {
+    const capital = line.qty * line.capitalUnidad
+    const abonado = Math.max(0, Number(abonosByProduct[line.id]) || 0)
+    const { gain } = paidAfterCapital(abonado, capital)
+    if (!reparto) return sum + gain
+    return sum + participantShare(reparto, gain)
+  }, 0)
 }
 
 export type IncomeReparto = {
@@ -243,6 +257,27 @@ function incomePartsFrom(reparto: IncomeReparto, ingreso: number) {
 export function participantShare(reparto: IncomeReparto, ingreso: number, capital = 0): number {
   const base = Math.max(0, ingreso - Math.max(0, capital))
   return incomePartsFrom(reparto, base).find((part) => part.key === 'miembros')?.amount ?? 0
+}
+
+export function liveGainSnapshot(
+  proyeccion: number,
+  capital: number,
+  reparto?: IncomeReparto | null,
+): EventoGananciaRegistro {
+  const ganancia = proyeccion - capital
+  const parts = reparto ? incomePartsFrom(reparto, Math.max(0, ganancia)) : []
+  const amountOf = (key: string) => parts.find((part) => part.key === key)?.amount ?? 0
+  return {
+    proyeccion,
+    capital,
+    ganancia,
+    ofrenda: amountOf('ofrenda'),
+    diezmo: amountOf('diezmo'),
+    resto: amountOf('resto'),
+    participantes: amountOf('miembros'),
+    club: amountOf('club'),
+    extras: amountOf('extras'),
+  }
 }
 
 export function participantGainFromLines(
@@ -324,32 +359,39 @@ function IncomeFigures({
 
   const rows = lines.map((line) => {
     const gain = line.qty * line.gananciaUnidad
+    const capitalAmount = line.qty * line.capitalUnidad
+    const abonado = Math.max(0, Number(abonosByProduct[line.id]) || 0)
+    const paid = paidAfterCapital(abonado, capitalAmount)
     return {
       line,
-      capitalAmount: line.qty * line.capitalUnidad,
+      capitalAmount,
       gain,
-      abonado: Math.max(0, Number(abonosByProduct[line.id]) || 0),
+      abonado,
+      covered: paid.covered,
+      realizedGain: paid.gain,
       parts: shareOf(gain).filter((part) => part.percent > 0),
+      realParts: shareOf(paid.gain).filter((part) => part.percent > 0),
     }
   })
   const partKeys = rows[0]?.parts ?? []
   const sumCapital = rows.reduce((sum, row) => sum + row.capitalAmount, 0)
   const sumGain = rows.reduce((sum, row) => sum + row.gain, 0)
   const sumVenta = sumCapital + sumGain
-  const sumAbonadoProductos = rows.reduce((sum, row) => sum + row.abonado, 0)
+  const sumCovered = rows.reduce((sum, row) => sum + row.covered, 0)
+  const sumRealized = rows.reduce((sum, row) => sum + row.realizedGain, 0)
+  const sumAbonado = rows.reduce((sum, row) => sum + row.abonado, 0)
   const sumParts = partKeys.map((part) => ({
     ...part,
     amount: rows.reduce((sum, row) => sum + (row.parts.find((item) => item.key === part.key)?.amount ?? 0), 0),
+    real: rows.reduce((sum, row) => sum + (row.realParts.find((item) => item.key === part.key)?.amount ?? 0), 0),
   }))
-  const gananciaEstimada = sumParts.find((part) => part.key === 'miembros')?.amount ?? 0
-  const cobertura = sumVenta > 0 ? Math.min(1, Math.max(0, ingreso) / sumVenta) : 0
-  const gananciaReal = Math.round(gananciaEstimada * cobertura)
+  const showSum = rows.length > 1
 
   return (
     <div
       className="event-summary__sheet"
       role="table"
-      style={{ ['--sheet-cols' as string]: String(5 + partKeys.length), ['--sheet-rows' as string]: String(rows.length) }}
+      style={{ ['--sheet-cols' as string]: String(4 + partKeys.length) }}
     >
       <div className="event-summary__sheet-head">
         <span role="columnheader">Producto</span>
@@ -361,7 +403,6 @@ function IncomeFigures({
             {part.label} {formatPercent(part.percent)}
           </span>
         ))}
-        <span role="columnheader">Sumatoria</span>
       </div>
       {rows.map((row) => (
         <div key={row.line.id} className="event-summary__sheet-row" role="row">
@@ -372,45 +413,55 @@ function IncomeFigures({
             </small>
           </span>
           <span role="cell" data-label="Capital">
-            <small>
+            <small className="is-unit">
               {row.line.qty} × {formatMoney(row.line.capitalUnidad)}
             </small>
-            <strong>{formatMoney(row.capitalAmount)}</strong>
+            <SheetFill real={row.covered} target={row.capitalAmount} />
           </span>
           <span role="cell" data-label="Ganancia">
-            <strong>{formatMoney(row.gain)}</strong>
+            <SheetFill real={row.realizedGain} target={row.gain} />
           </span>
           <span role="cell" data-label="Abonado" className="is-abonado">
             <strong>{formatMoney(row.abonado)}</strong>
           </span>
           {row.parts.map((part) => (
             <span key={part.key} role="cell" data-label={`${part.label} ${formatPercent(part.percent)}`}>
-              <strong>{formatMoney(part.amount)}</strong>
+              <SheetFill
+                real={row.realParts.find((item) => item.key === part.key)?.amount ?? 0}
+                target={part.amount}
+              />
             </span>
           ))}
         </div>
       ))}
-      <div className="event-summary__sheet-sum" role="cell" data-label="Sumatoria">
-        <SheetSumLine icon="box" label="Venta" amount={sumVenta} />
-        <SheetSumLine icon="wallet" label="Capital" amount={sumCapital} />
-        <SheetSumLine icon="chart" label="Ganancia" amount={sumGain} />
-        <SheetSumLine icon="check" label="Abonado productos" amount={sumAbonadoProductos} />
-        {sumParts
-          .filter((part) => part.key !== 'miembros')
-          .map((part) => (
-            <SheetSumLine
+      {showSum ? (
+        <div className="event-summary__sheet-row event-summary__sheet-sum" role="row">
+          <span role="cell" data-label="Venta" className="is-product">
+            <strong>Sumatoria</strong>
+            <small>Venta</small>
+            <SheetFill real={ingreso} target={sumVenta} />
+          </span>
+          <span role="cell" data-label="Capital">
+            <SheetFill real={sumCovered} target={sumCapital} />
+          </span>
+          <span role="cell" data-label="Ganancia">
+            <SheetFill real={sumRealized} target={sumGain} />
+          </span>
+          <span role="cell" data-label="Abonado" className="is-abonado">
+            <strong>{formatMoney(sumAbonado)}</strong>
+          </span>
+          {sumParts.map((part) => (
+            <span
               key={part.key}
-              icon={INCOME_PART_ICONS[part.key] ?? 'chart'}
-              label={part.label}
-              amount={part.amount}
-            />
+              role="cell"
+              data-label={`${part.label} ${formatPercent(part.percent)}`}
+              className={part.key === 'miembros' ? 'is-gain' : undefined}
+            >
+              <SheetFill real={part.real} target={part.amount} />
+            </span>
           ))}
-        <SheetSumLine icon="wallet" label="Abonado" amount={ingreso} className="is-paid" />
-        {sumParts.some((part) => part.key === 'miembros') ? (
-          <SheetSumLine icon="chart" label="Ganancia estimada" amount={gananciaEstimada} />
-        ) : null}
-        <SheetSumLine icon="trendUp" label="Ganancia real" amount={gananciaReal} className="is-gain" />
-      </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -711,6 +762,7 @@ export function EventGananciasPanel({
   loadingServices = false,
   canChange = false,
   registro = null,
+  contarEntregadas = false,
 }: EventGananciasPanelProps) {
   const notices = useNotice()
   const { items, loading } = useEclesiasticas()
@@ -859,7 +911,8 @@ export function EventGananciasPanel({
         <p className="event-ganancia__title">Ganancia por servicio</p>
         <p className="app-panel__muted">
           Cada servicio descuenta su propia inversión. De lo que queda, el{' '}
-          {formatPercent(dist?.miembros ?? 0)} es para los participantes y se divide entre las unidades pedidas.
+          {formatPercent(dist?.miembros ?? 0)} es para los participantes y se divide entre las unidades{' '}
+          {contarEntregadas ? 'entregadas' : 'pedidas'}.
         </p>
         {loadingServices ? <p className="app-panel__muted">Cargando servicios…</p> : null}
         {!loadingServices && lines.length === 0 ? (
@@ -915,6 +968,7 @@ export function EventGananciasPanel({
                       <small>Total del evento</small>
                       <em>
                         {line.cantidad} {line.cantidad === 1 ? 'unidad' : 'unidades'}
+                        {contarEntregadas ? ' entregadas' : ''}
                       </em>
                       <strong>{formatMoney(line.total)}</strong>
                     </span>

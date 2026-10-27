@@ -49,6 +49,7 @@ export type AdminIconName =
   | 'chart'
   | 'pie'
   | 'alert'
+  | 'paperclip'
 
 export const SESSION_HOME = '/mi-actividad'
 export const MY_ABONOS = '/mis-abonos'

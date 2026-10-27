@@ -13,6 +13,7 @@ import { AbonoCuentaInfo } from '../abonos/AbonoCuentaInfo'
 import {
   ParticipantIncomeSplit,
   approvedAbonosByProduct,
+  participantGainFromPaidLines,
   participantShare,
   productGainLines,
   productGainTotal,
@@ -36,6 +37,7 @@ import '../../theme/attendance-mark.css'
 type EventMemberJoinProps = {
   event: EventSummary
   onClose: () => void
+  onChanged?: () => void
 }
 
 function formatPrice(value: number | string): string {
@@ -81,7 +83,7 @@ function ventasPayload(ventas: Record<number, number>) {
     .filter((item) => item.cantidad > 0)
 }
 
-export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
+export function EventMemberJoin({ event, onClose, onChanged }: EventMemberJoinProps) {
   const notices = useNotice()
   const auth = useAuth()
   const canRegisterAbono = auth.can(MY_ABONOS_REGISTER_PERMISSION)
@@ -152,9 +154,8 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
   )
   const gain = productGainTotal(shares)
   const faltante = totals.recaudo - abonado
-  const coverage = totals.recaudo > 0 ? Math.min(1, Math.max(0, abonado) / totals.recaudo) : 0
   const ganancia = {
-    ganada: reparto ? participantShare(reparto, Math.round(gain * coverage)) : 0,
+    ganada: participantGainFromPaidLines(shares, approvedAbonosByProduct(abonos), reparto),
     proyectada: reparto ? participantShare(reparto, gain) : 0,
   }
   const locked = isEconomicParticipationLocked(event)
@@ -245,6 +246,7 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
       setProofFile(null)
       setProofPreview(null)
       setProofMontos({})
+      onChanged?.()
       notices.success('Abono enviado. Queda pendiente hasta que la directiva lo apruebe.')
     } catch (err) {
       notices.error(getApiErrorMessage(err, 'No se pudo enviar el abono'))
@@ -362,6 +364,7 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
               >
                 <SummaryDonut value={summaryPercent(Math.max(0, faltante), totals.recaudo)} label="del total" />
               </SummaryKpi>
+              {faltante > 0 ? <AbonoCuentaInfo cuenta={cuenta} className="is-wide" /> : null}
             </div>
             {canSendProof && faltante > 0 ? (
               <button type="button" className="app-panel__btn--primary" onClick={startAbono}>
@@ -450,7 +453,6 @@ export function EventMemberJoin({ event, onClose }: EventMemberJoinProps) {
                 void submitProof()
               }}
             >
-              <AbonoCuentaInfo cuenta={cuenta} />
               <p className="app-panel__subtitle">
                 Una sola captura puede cubrir varios productos: indica cuánto va a cada uno.
               </p>

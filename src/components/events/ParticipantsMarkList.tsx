@@ -6,7 +6,13 @@ import { AppPanel } from '../../theme/AppPanel'
 import { formatDate } from '../../theme/dates'
 import { ImagePreviewDialog } from '../../theme/ImagePreviewDialog'
 import { memberInitials } from '../attendance/AttendanceMarkList'
-import { AbonoAmountControl, AbonoProofReview, AbonoShotButton, abonoEstadoLabel } from '../abonos/AbonoProofReview'
+import {
+  AbonoAmountControl,
+  AbonoProofAttachButton,
+  AbonoProofReview,
+  AbonoShotButton,
+  abonoEstadoLabel,
+} from '../abonos/AbonoProofReview'
 import { ServiceThumb } from '../services/ServiceVisual'
 import { ProgressBar, SummaryDonut, SummaryKpi, summaryPercent } from './SummaryCards'
 import '../../theme/attendance-mark.css'
@@ -307,6 +313,7 @@ export function PendingProofsPanel({
   onReview,
   onChangeAmount,
   onDeleteAmount,
+  onAttachProof,
 }: {
   members: EventParticipant[]
   canReview?: boolean
@@ -315,6 +322,7 @@ export function PendingProofsPanel({
   onReview?: (abono: AbonoMovimiento, estado: 'aprobado' | 'rechazado', monto?: number) => Promise<void>
   onChangeAmount?: (abono: AbonoMovimiento, monto: number) => Promise<void>
   onDeleteAmount?: (abono: AbonoMovimiento) => Promise<void>
+  onAttachProof?: (abonos: AbonoMovimiento[], file: File) => Promise<void>
 }) {
   const [nameQuery, setNameQuery] = useState('')
   const [valueQuery, setValueQuery] = useState('')
@@ -371,7 +379,6 @@ export function PendingProofsPanel({
             <span role="columnheader">Valor abonado</span>
           </div>
           {filtered.map((group) => {
-            const photo = group.shot || group.photo
             const pendingItems = group.abonos.filter((abono) => abono.estado === 'pendiente')
             const allPending = pendingItems.length === group.abonos.length
             const estado =
@@ -389,12 +396,16 @@ export function PendingProofsPanel({
               .filter(Boolean)
               .join(' · ')
             const total = group.abonos.reduce((sum, abono) => sum + (Number(abono.monto) || 0), 0)
+            const canAttachShot =
+              Boolean(canReview && onAttachProof) &&
+              !group.shot &&
+              group.abonos.some((abono) => abono.estado !== 'eliminado')
             return (
               <div key={group.key} className="attendance-proofs__entry">
                 <div className="attendance-proofs__row" role="row">
                   <span className="attendance-proofs__cell is-photo" role="cell">
-                    {photo ? (
-                      <AbonoHistoryPhoto src={photo} label={`Foto del abono de ${group.name}`} />
+                    {group.photo ? (
+                      <AbonoHistoryPhoto src={group.photo} label={`Foto de ${group.name}`} />
                     ) : (
                       <span className="attendance-proofs__photo is-empty" aria-hidden="true">
                         {memberInitials(group.name)}
@@ -410,30 +421,36 @@ export function PendingProofsPanel({
                     {group.createdAt ? formatDate(group.createdAt) : '—'}
                   </span>
                   <span className="attendance-proofs__cell is-amount" role="cell">
-                    {allPending || pendingItems.length > 0 ? (
-                      <strong>{formatPrice(total)}</strong>
-                    ) : group.abonos.length === 1 ? (
-                      <AbonoAmountControl
-                        abono={group.abonos[0]}
-                        canEdit={canEditAmount}
-                        canDelete={canDeleteAmount}
-                        onSave={onChangeAmount}
-                        onDelete={onDeleteAmount}
-                      />
-                    ) : (
-                      <div className="attendance-proofs__amounts">
-                        {group.abonos.map((abono) => (
-                          <AbonoAmountControl
-                            key={abono.id}
-                            abono={abono}
-                            canEdit={canEditAmount}
-                            canDelete={canDeleteAmount}
-                            onSave={onChangeAmount}
-                            onDelete={onDeleteAmount}
-                          />
-                        ))}
-                      </div>
-                    )}
+                    <span className="attendance-proofs__amount-end">
+                      {group.shot ? <AbonoShotButton abono={group.abonos[0]} /> : null}
+                      {canAttachShot ? (
+                        <AbonoProofAttachButton onAttach={(file) => onAttachProof?.(group.abonos, file)} />
+                      ) : null}
+                      {allPending || pendingItems.length > 0 ? (
+                        <strong>{formatPrice(total)}</strong>
+                      ) : group.abonos.length === 1 ? (
+                        <AbonoAmountControl
+                          abono={group.abonos[0]}
+                          canEdit={canEditAmount}
+                          canDelete={canDeleteAmount}
+                          onSave={onChangeAmount}
+                          onDelete={onDeleteAmount}
+                        />
+                      ) : (
+                        <div className="attendance-proofs__amounts">
+                          {group.abonos.map((abono) => (
+                            <AbonoAmountControl
+                              key={abono.id}
+                              abono={abono}
+                              canEdit={canEditAmount}
+                              canDelete={canDeleteAmount}
+                              onSave={onChangeAmount}
+                              onDelete={onDeleteAmount}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </span>
                   </span>
                 </div>
                 <AbonoProofReview abonos={group.abonos} canReview={canReview} hideShot onReview={onReview} />
