@@ -59,8 +59,7 @@ export function AbonoActividadDistribucion({
   }
 
   return (
-    <section className="event-summary__income-block">
-      <p className="app-panel__kicker">Reparto de la actividad</p>
+    <div className="event-summary__person is-open">
       <ParticipantIncomeSplit
         ingreso={data.ingreso}
         configId={data.ganancia_eclesiastica_id}
@@ -68,6 +67,6 @@ export function AbonoActividadDistribucion({
         lines={lines}
         abonosByProduct={abonosByProduct}
       />
-    </section>
+    </div>
   )
 }

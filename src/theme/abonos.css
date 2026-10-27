@@ -634,12 +634,26 @@
   white-space: nowrap;
 }
 
+.abonos-history__end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .abonos-history__amounts {
   display: grid;
   gap: 0.35rem;
   justify-items: end;
 }
 
+.abonos-history > li > .abono-proof {
+  grid-column: 1 / -1;
+}
+
+.abonos-history__end > strong,
 .abonos-history > li > strong {
   color: var(--panel-title);
   font-weight: 500;
@@ -757,8 +771,11 @@
 
 .abonos-pay__split-name,
 .abono-proof-form__split-name {
-  display: grid;
-  gap: 0.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.2rem 0.85rem;
 }
 
 .abonos-pay__split-name strong,

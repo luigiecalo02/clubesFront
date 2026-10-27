@@ -112,12 +112,6 @@ function moneyInput(value?: number | string | null): string {
   return String(Math.round(amount))
 }
 
-function formatPrice(value: number | string): string {
-  const amount = Number(value)
-  if (!Number.isFinite(amount)) return String(value)
-  return amount.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
-}
-
 function defaultStart(): string {
   const next = new Date()
   next.setDate(next.getDate() + 7)

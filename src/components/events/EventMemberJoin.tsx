@@ -29,7 +29,7 @@ import { AppTabs } from '../../theme/AppTabs'
 import { CreateDrawer } from '../../theme/CreateDrawer'
 import { formatDate } from '../../theme/dates'
 import { useNotice } from '../../theme/NoticeProvider'
-import { NumberPadDialog } from '../../theme/NumberPad'
+import { NumberPadDialog, NumberPadInput } from '../../theme/NumberPad'
 import { ServiceThumb } from '../services/ServiceVisual'
 import { ProgressBar, SummaryDonut, SummaryKpi, summaryPercent } from './SummaryCards'
 import '../../theme/attendance-mark.css'
@@ -211,6 +211,16 @@ export function EventMemberJoin({ event, onClose, onChanged }: EventMemberJoinPr
 
   function startAbono() {
     setTab('historial')
+  }
+
+  function setProofMonto(productId: number, monto: string) {
+    setProofMontos((current) => ({ ...current, [String(productId)]: monto }))
+  }
+
+  function applyProofPercent(product: { id: number; pendiente: number }, percent: number) {
+    const base = Math.max(0, product.pendiente)
+    if (base <= 0) return
+    setProofMonto(product.id, String(Math.round((base * percent) / 100)))
   }
 
   async function pickProof(file: File | null) {
@@ -470,27 +480,39 @@ export function EventMemberJoin({ event, onClose, onChanged }: EventMemberJoinPr
                 <div className="abono-proof-form__splits">
                   <p className="abono-proof-form__splits-title">Valor por producto</p>
                   {productUnits.map((product) => (
-                    <label key={product.id} className="abono-proof-form__split">
+                    <div key={product.id} className="abono-proof-form__split">
                       <span className="abono-proof-form__split-name">
                         <strong>{product.nombre}</strong>
                         <small>Falta {formatPrice(product.pendiente)}</small>
                       </span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={1}
-                        inputMode="numeric"
-                        placeholder="0"
-                        disabled={sendingProof}
-                        value={proofMontos[String(product.id)] ?? ''}
-                        onChange={(event) =>
-                          setProofMontos((current) => ({
-                            ...current,
-                            [String(product.id)]: event.target.value.replace(/\D/g, ''),
-                          }))
-                        }
-                      />
-                    </label>
+                      <span className="abonos-pay__money">
+                        <span className="abonos-pay__currency" aria-hidden="true">
+                          <AdminIcon name="wallet" />
+                        </span>
+                        <NumberPadInput
+                          title={product.nombre}
+                          min={0}
+                          maxDigits={9}
+                          format={formatPrice}
+                          value={proofMontos[String(product.id)] ?? ''}
+                          disabled={sendingProof}
+                          onChange={(monto) => setProofMonto(product.id, monto)}
+                        />
+                      </span>
+                      <span className="abonos-pay__percents" role="group" aria-label={`Porcentaje de ${product.nombre}`}>
+                        {[25, 50, 100].map((percent) => (
+                          <button
+                            key={percent}
+                            type="button"
+                            className="app-panel__btn--ghost"
+                            disabled={sendingProof || product.pendiente <= 0}
+                            onClick={() => applyProofPercent(product, percent)}
+                          >
+                            {percent}%
+                          </button>
+                        ))}
+                      </span>
+                    </div>
                   ))}
                   <p className="abono-proof-form__splits-total">
                     <span>Total de esta captura</span>
@@ -533,15 +555,14 @@ export function EventMemberJoin({ event, onClose, onChanged }: EventMemberJoinPr
             </ul>
           ) : null}
           {tab === 'historial' && reparto ? (
-            <section className="event-summary__income-block">
-              <p className="app-panel__kicker">Reparto de tu abono</p>
+            <div className="event-summary__person is-open">
               <ParticipantIncomeSplit
                 ingreso={abonado}
                 reparto={reparto}
                 lines={shares}
                 abonosByProduct={approvedAbonosByProduct(abonos)}
               />
-            </section>
+            </div>
           ) : null}
           {saving ? <p className="app-panel__muted">Guardando…</p> : null}
           </AppTabs>

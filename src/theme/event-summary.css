@@ -648,7 +648,12 @@ button.event-summary__pill.is-danger:hover {
 
 .event-summary__sheet-sum > span {
   border-bottom: 0;
-  background: color-mix(in srgb, var(--summary-gold) 10%, var(--panel-input-bg));
+  border-top: 1px solid color-mix(in srgb, var(--summary-gold) 42%, var(--panel-input-border));
+  background: color-mix(in srgb, var(--summary-gold) 26%, var(--panel-input-bg));
+}
+
+.event-summary__sheet-sum > span.is-product strong {
+  color: var(--summary-gold);
 }
 
 .event-summary__sheet-sum > span.is-product .event-summary__sheet-fill {
@@ -734,10 +739,12 @@ button.event-summary__pill.is-danger:hover {
   }
 
   .event-summary__sheet-sum {
-    background: color-mix(in srgb, var(--summary-gold) 10%, var(--panel-input-bg));
+    border: 1px solid color-mix(in srgb, var(--summary-gold) 42%, var(--panel-input-border));
+    background: color-mix(in srgb, var(--summary-gold) 26%, var(--panel-input-bg));
   }
 
   .event-summary__sheet-sum > span {
+    border-top: 0;
     background: transparent;
   }
 
@@ -801,12 +808,6 @@ button.event-summary__pill.is-danger:hover {
 
 .event-summary__income-block {
   container-type: inline-size;
-  margin-bottom: 0.85rem;
-}
-
-.event-summary__income-block .event-summary__sheet {
-  width: 100%;
-  margin: 0.35rem 0 0;
 }
 
 .event-summary__person {

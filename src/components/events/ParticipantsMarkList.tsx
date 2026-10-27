@@ -424,7 +424,11 @@ export function PendingProofsPanel({
                     <span className="attendance-proofs__amount-end">
                       {group.shot ? <AbonoShotButton abono={group.abonos[0]} /> : null}
                       {canAttachShot ? (
-                        <AbonoProofAttachButton onAttach={(file) => onAttachProof?.(group.abonos, file)} />
+                        <AbonoProofAttachButton
+                          onAttach={async (file) => {
+                            await onAttachProof?.(group.abonos, file)
+                          }}
+                        />
                       ) : null}
                       {allPending || pendingItems.length > 0 ? (
                         <strong>{formatPrice(total)}</strong>

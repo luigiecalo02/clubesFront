@@ -21,7 +21,13 @@ import {
   parseAbonoNota,
   type AbonoPayDraft,
 } from '../components/abonos/AbonoPayForm'
-import { AbonoAmountControl, AbonoProofReview, abonoEstadoLabel } from '../components/abonos/AbonoProofReview'
+import {
+  AbonoAmountControl,
+  AbonoProofAttachButton,
+  AbonoProofReview,
+  AbonoShotButton,
+  abonoEstadoLabel,
+} from '../components/abonos/AbonoProofReview'
 import { AbonoActividadDistribucion } from '../components/abonos/AbonoActividadDistribucion'
 import { AbonoMoneyRow } from '../components/abonos/AbonoMoneyRow'
 import { EventMemberJoin } from '../components/events/EventMemberJoin'
@@ -505,6 +511,25 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
     }
   }
 
+  async function attachAbonoProof(abonos: { id: number }[], file: File) {
+    if (!canEdit || !abonos.length) return
+    setSaving(true)
+    try {
+      await abonosApi.attachComprobante(
+        abonos[0].id,
+        file,
+        abonos.map((abono) => abono.id),
+      )
+      await refreshAbonoBoards()
+      notices.success('Comprobante adjuntado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo adjuntar el comprobante'))
+      throw err
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function deleteAbonoAmount(abono: { id: number }) {
     if (!canDeleteAbonoAmount) return
     setSaving(true)
@@ -850,6 +875,9 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
                   const pending = group.filter((abono) => abono.estado === 'pendiente')
                   const products = group.map((abono) => abono.producto_nombre).filter(Boolean).join(' · ')
                   const total = group.reduce((sum, abono) => sum + (Number(abono.monto) || 0), 0)
+                  const shot = Boolean(resolveFileUrl(lead.comprobante_url))
+                  const canAttachShot =
+                    canEdit && !shot && group.some((abono) => abono.estado !== 'eliminado')
                   return (
                     <li key={group.map((abono) => abono.id).join('-')}>
                       <span className="abonos-history__who">
@@ -862,37 +890,48 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
                           {group.length > 1 ? <small>{group.length} productos · {formatPrice(total)}</small> : null}
                         </span>
                       </span>
-                      {pending.length ? (
-                        <strong>{pending.length > 1 ? `Pendiente · ${pending.length}` : abonoEstadoLabel(pending[0])}</strong>
-                      ) : group.every((abono) => abono.estado === 'eliminado') ? (
-                        <strong>Eliminado</strong>
-                      ) : group.every((abono) => abono.estado === 'rechazado') ? (
-                        <strong>Rechazado</strong>
-                      ) : group.length === 1 ? (
-                        <AbonoAmountControl
-                          abono={group[0]}
-                          canEdit={canEditAbonoAmount}
-                          canDelete={canDeleteAbonoAmount}
-                          onSave={updateAbonoAmount}
-                          onDelete={deleteAbonoAmount}
-                        />
-                      ) : (
-                        <span className="abonos-history__amounts">
-                          {group.map((abono) => (
-                            <AbonoAmountControl
-                              key={abono.id}
-                              abono={abono}
-                              canEdit={canEditAbonoAmount}
-                              canDelete={canDeleteAbonoAmount}
-                              onSave={updateAbonoAmount}
-                              onDelete={deleteAbonoAmount}
-                            />
-                          ))}
-                        </span>
-                      )}
+                      <span className="abonos-history__end">
+                        {shot ? <AbonoShotButton abono={lead} /> : null}
+                        {canAttachShot ? (
+                          <AbonoProofAttachButton
+                            onAttach={async (file) => {
+                              await attachAbonoProof(group, file)
+                            }}
+                          />
+                        ) : null}
+                        {pending.length ? (
+                          <strong>{pending.length > 1 ? `Pendiente · ${pending.length}` : abonoEstadoLabel(pending[0])}</strong>
+                        ) : group.every((abono) => abono.estado === 'eliminado') ? (
+                          <strong>Eliminado</strong>
+                        ) : group.every((abono) => abono.estado === 'rechazado') ? (
+                          <strong>Rechazado</strong>
+                        ) : group.length === 1 ? (
+                          <AbonoAmountControl
+                            abono={group[0]}
+                            canEdit={canEditAbonoAmount}
+                            canDelete={canDeleteAbonoAmount}
+                            onSave={updateAbonoAmount}
+                            onDelete={deleteAbonoAmount}
+                          />
+                        ) : (
+                          <span className="abonos-history__amounts">
+                            {group.map((abono) => (
+                              <AbonoAmountControl
+                                key={abono.id}
+                                abono={abono}
+                                canEdit={canEditAbonoAmount}
+                                canDelete={canDeleteAbonoAmount}
+                                onSave={updateAbonoAmount}
+                                onDelete={deleteAbonoAmount}
+                              />
+                            ))}
+                          </span>
+                        )}
+                      </span>
                       <AbonoProofReview
                         abonos={group}
                         canReview={canEdit}
+                        hideShot
                         onReview={reviewAbono}
                       />
                     </li>
