@@ -1209,39 +1209,57 @@
 }
 
 .abono-proof__batch {
-  display: grid;
-  gap: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.7rem;
   min-width: 0;
 }
 
 .abono-proof__batch-title {
+  flex: 0 1 auto;
   margin: 0;
   color: var(--panel-title);
   font-size: 0.84rem;
   font-weight: var(--panel-weight-strong);
 }
 
+.abono-proof label.abono-proof__batch-line,
 .abono-proof__batch-line {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 7.5rem;
-  gap: 0.45rem;
+  display: flex;
+  flex: 1 1 12rem;
   align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
   color: var(--panel-muted);
   font-size: 0.8rem;
 }
 
-.abono-proof__batch-line input {
-  width: 100%;
+.abono-proof__batch-line span {
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.abono-proof__batch-line input {
+  flex: 0 0 7.5rem;
+  width: 7.5rem;
+  min-width: 0;
+  min-height: 2.5rem;
+  height: 2.5rem;
 }
 
 .abono-proof__batch-total {
   display: flex;
+  flex: 1 1 12rem;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
   margin: 0;
-  padding-top: 0.25rem;
+  padding-top: 0.15rem;
   border-top: 1px solid var(--panel-input-border);
   color: var(--panel-muted);
   font-size: 0.8rem;
@@ -1252,96 +1270,44 @@
 }
 
 .abono-proof__actions {
-  display: grid;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.45rem;
 }
 
 .abono-proof__actions .app-panel__btn--primary,
 .abono-proof__actions .app-panel__btn--ghost {
-  width: 100%;
-  min-height: 2.4rem;
+  width: auto;
+  min-width: 6.6rem;
+  min-height: 2.5rem;
 }
 
-/* PC: título arriba; montos y botones centrados en rowspan */
-@container (min-width: 720px) {
-  .attendance-proofs .abono-proof.is-batch .abono-proof__batch,
-  .attendance-proofs .abono-proof:has(.abono-proof__batch) .abono-proof__batch {
-    grid-template-columns: minmax(0, 1fr) minmax(9.5rem, 11.5rem);
-    gap: 0.45rem 0.85rem;
-    align-items: center;
-  }
-
-  .attendance-proofs .abono-proof__batch-title {
-    grid-column: 1 / -1;
-  }
-
-  .attendance-proofs .abono-proof__batch-line,
-  .attendance-proofs .abono-proof__batch-total {
-    grid-column: 1;
-  }
-
-  .attendance-proofs .abono-proof__batch-line {
-    min-height: 2.5rem;
-  }
-
-  .attendance-proofs .abono-proof__batch-line span {
-    display: flex;
-    align-items: center;
-    min-height: 2.5rem;
-    line-height: 1.25;
-  }
-
-  .attendance-proofs .abono-proof__batch-line input {
-    min-height: 2.5rem;
-    height: 2.5rem;
-  }
-
-  .attendance-proofs .abono-proof__actions {
-    grid-column: 2;
-    grid-row: 2 / -1;
-    align-self: center;
-    align-content: center;
-    justify-content: center;
-  }
+.abono-proof.is-batch .abono-proof__batch-title,
+.abono-proof.is-batch .abono-proof__batch-line,
+.abono-proof.is-batch .abono-proof__batch-total {
+  flex: 1 1 100%;
 }
 
 @media (min-width: 720px) {
   .abono-proof.is-batch .abono-proof__batch {
-    grid-template-columns: minmax(0, 1fr) minmax(9.5rem, 11.5rem);
-    gap: 0.45rem 0.85rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
+    column-gap: 0.75rem;
   }
 
-  .abono-proof.is-batch .abono-proof__batch-title {
-    grid-column: 1 / -1;
-  }
-
+  .abono-proof.is-batch .abono-proof__batch-title,
   .abono-proof.is-batch .abono-proof__batch-line,
   .abono-proof.is-batch .abono-proof__batch-total {
     grid-column: 1;
-  }
-
-  .abono-proof.is-batch .abono-proof__batch-line {
-    min-height: 2.5rem;
-  }
-
-  .abono-proof.is-batch .abono-proof__batch-line span {
-    display: flex;
-    align-items: center;
-    min-height: 2.5rem;
-    line-height: 1.25;
-  }
-
-  .abono-proof.is-batch .abono-proof__batch-line input {
-    min-height: 2.5rem;
-    height: 2.5rem;
+    flex: none;
   }
 
   .abono-proof.is-batch .abono-proof__actions {
     grid-column: 2;
-    grid-row: 2 / -1;
+    grid-row: 2 / span 20;
     align-self: center;
-    align-content: center;
-    justify-content: center;
   }
 }

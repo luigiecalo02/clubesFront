@@ -4,43 +4,9 @@
   container-type: inline-size;
 }
 
-.finanzas__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.85rem;
-}
-
-.finanzas__filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  align-items: end;
-}
-
-.finanzas__filters label {
-  display: grid;
-  gap: 0.2rem;
-  color: var(--panel-muted);
-  font-size: 0.75rem;
-}
-
-.finanzas__filters input,
-.finanzas__filters select {
-  min-height: 2.45rem;
-  min-width: 10rem;
-  padding: 0.4rem 0.7rem;
-  border: 1.5px solid var(--panel-input-border);
-  border-radius: var(--panel-input-radius);
-  background: var(--panel-input-bg);
-  color: var(--panel-title);
-  font: inherit;
-}
-
 .finanzas__kpis {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(15rem, 1.15fr) repeat(4, minmax(0, 1fr));
   gap: 0.7rem;
 }
 
@@ -88,6 +54,43 @@
 .finanzas__kpi.is-info {
   border-color: color-mix(in srgb, var(--panel-icon) 35%, var(--panel-input-border));
   background: color-mix(in srgb, var(--panel-icon) 8%, var(--panel-input-bg));
+}
+
+.finanzas__kpi.is-period {
+  align-content: start;
+}
+
+.finanzas__period {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.finanzas__period label {
+  display: grid;
+  gap: 0.15rem;
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+  min-width: 0;
+}
+
+.finanzas__period input {
+  min-height: 2.35rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0.55rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  color: var(--panel-title);
+  font: inherit;
+}
+
+.finanzas__kpi.is-period .app-panel__btn--ghost {
+  justify-self: start;
+  min-height: 2.2rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
 }
 
 .finanzas__grid {
@@ -380,11 +383,21 @@
   gap: 0.55rem;
 }
 
-@container (max-width: 960px) {
+.finanzas__form .app-panel__muted {
+  margin: 0;
+}
+
+@container (max-width: 1100px) {
   .finanzas__kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .finanzas__kpi.is-period {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (max-width: 960px) {
   .finanzas__grid {
     grid-template-columns: 1fr;
   }
@@ -392,6 +405,10 @@
 
 @container (max-width: 640px) {
   .finanzas__kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .finanzas__period {
     grid-template-columns: 1fr;
   }
 

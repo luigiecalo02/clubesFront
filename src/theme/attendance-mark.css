@@ -389,8 +389,8 @@
 
 @container (min-width: 720px) {
   .attendance-proofs__entry:has(.abono-proof__batch) {
-    grid-template-columns: minmax(0, 1.35fr) minmax(17rem, 0.95fr);
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 1.2fr);
+    align-items: center;
     gap: 0.75rem 1rem;
   }
 
@@ -399,9 +399,9 @@
   }
 
   .attendance-proofs__entry:has(.abono-proof__batch) .abono-proof {
-    align-self: stretch;
-    height: 100%;
-    padding: 0.55rem 0.7rem;
+    align-self: center;
+    height: auto;
+    padding: 0.45rem 0.65rem;
     border: 1.5px solid var(--panel-input-border);
     border-radius: var(--panel-input-radius);
     background: color-mix(in srgb, var(--panel-ghost-bg) 72%, transparent);

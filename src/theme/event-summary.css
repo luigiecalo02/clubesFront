@@ -1,9 +1,16 @@
 .event-summary,
-.event-stats {
+.event-stats,
+.event-summary__person,
+.event-summary__sheet,
+.event-summary__income-block {
   --summary-ok: var(--panel-ok-text);
   --summary-danger: var(--panel-danger);
   --summary-info: var(--panel-icon);
   --summary-gold: var(--panel-gold);
+}
+
+.event-summary,
+.event-stats {
   container-type: inline-size;
   min-width: 0;
 }
@@ -369,9 +376,19 @@ button.event-summary__pill.is-danger:hover {
 }
 
 .event-summary__kpi > .event-summary__bar,
+.event-summary__kpi > .event-summary__sheet-fill,
 .event-summary__kpi > small,
 .event-summary__kpi > .event-summary__pair {
   grid-column: 1 / -1;
+}
+
+.event-summary__kpi > .event-summary__sheet-fill {
+  justify-items: start;
+}
+
+.event-summary__kpi > .event-summary__sheet-fill .event-summary__bar {
+  max-width: none;
+  margin-inline: 0;
 }
 
 .event-summary__pair {
@@ -466,8 +483,9 @@ button.event-summary__pill.is-danger:hover {
 .event-summary__bar > span {
   display: block;
   height: 100%;
+  min-height: inherit;
   border-radius: inherit;
-  background: var(--tone);
+  background: var(--tone, var(--panel-ok-text));
 }
 
 .event-summary__table {
@@ -612,6 +630,21 @@ button.event-summary__pill.is-danger:hover {
   color: var(--summary-ok);
 }
 
+.event-summary__sheet-row .event-summary__sheet-fill .is-faltante {
+  color: var(--summary-danger);
+  font-size: 0.68rem;
+  font-weight: inherit;
+}
+
+.event-summary__sheet-goal {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
 .event-summary__sheet-fill {
   display: grid;
   justify-items: inherit;
@@ -623,7 +656,7 @@ button.event-summary__pill.is-danger:hover {
 .event-summary__sheet-fill .event-summary__bar {
   width: 100%;
   max-width: 5.6rem;
-  height: 0.32rem;
+  height: 0.42rem;
   margin-inline: auto;
 }
 
@@ -648,8 +681,8 @@ button.event-summary__pill.is-danger:hover {
 
 .event-summary__sheet-sum > span {
   border-bottom: 0;
-  border-top: 1px solid color-mix(in srgb, var(--summary-gold) 42%, var(--panel-input-border));
-  background: color-mix(in srgb, var(--summary-gold) 26%, var(--panel-input-bg));
+  border-top: 1px solid color-mix(in srgb, var(--summary-gold) 58%, var(--panel-input-border));
+  background: color-mix(in srgb, var(--summary-gold) 34%, var(--panel-input-bg));
 }
 
 .event-summary__sheet-sum > span.is-product strong {
@@ -732,6 +765,10 @@ button.event-summary__pill.is-danger:hover {
     margin-inline: 0;
   }
 
+  .event-summary__sheet-row > span:not(.is-product) .event-summary__sheet-goal {
+    justify-content: flex-end;
+  }
+
   .event-summary__sheet-row > span:not(.is-product) > strong {
     margin-left: auto;
     text-align: right;
@@ -739,8 +776,8 @@ button.event-summary__pill.is-danger:hover {
   }
 
   .event-summary__sheet-sum {
-    border: 1px solid color-mix(in srgb, var(--summary-gold) 42%, var(--panel-input-border));
-    background: color-mix(in srgb, var(--summary-gold) 26%, var(--panel-input-bg));
+    border: 1px solid color-mix(in srgb, var(--summary-gold) 58%, var(--panel-input-border));
+    background: color-mix(in srgb, var(--summary-gold) 34%, var(--panel-input-bg));
   }
 
   .event-summary__sheet-sum > span {

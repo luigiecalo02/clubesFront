@@ -10,11 +10,13 @@ import {
   EventGainDistribution,
   ParticipantIncomeSplit,
   approvedAbonosByProduct,
+  coveredCapitalFromLines,
   liveGainSnapshot,
   participantGainFromLines,
   participantGainFromPaidLines,
   participantShare,
   productGainLines,
+  sumPaidIncomeParts,
   useIncomeReparto,
 } from './EventGananciasPanel'
 import { participantEventCounts, saleGain, saleTotals, type ParticipantDraft } from './ParticipantsMarkList'
@@ -196,9 +198,21 @@ export function EventActivitySummary({
   const rows = buildRows(members, services, draft)
   const ordered = sortRows(rows, sort)
   const porCobrar = ordered.reduce((sum, row) => sum + row.pendiente, 0)
+  const capitalCubierto = rows.reduce(
+    (sum, row) => sum + coveredCapitalFromLines(rowProductLines(row, services, totales), row.abonosByProduct),
+    0,
+  )
   const margen = proyeccion > 0 ? (ganancia / proyeccion) * 100 : 0
-  const ingreso = rows.reduce((sum, row) => sum + row.abonado, 0)
   const reparto = useIncomeReparto(gananciaConfigId)
+  const received = reparto
+    ? sumPaidIncomeParts(
+        rows.map((row) => ({
+          lines: rowProductLines(row, services, totales),
+          abonosByProduct: row.abonosByProduct,
+        })),
+        reparto,
+      )
+    : undefined
   const snapshot = liveGainSnapshot(proyeccion, capital, reparto)
   const diezmoPrevisto = reparto ? snapshot.diezmo : Number(gananciaRegistro?.diezmo) || 0
   const ofrendaPrevista = reparto ? snapshot.ofrenda : Number(gananciaRegistro?.ofrenda) || 0
@@ -282,6 +296,11 @@ export function EventActivitySummary({
               <span>Capital (costos del evento)</span>
               <strong>{formatMoney(capital)}</strong>
             </p>
+            <span className="event-summary__sheet-fill">
+              <strong className="is-real">{formatMoney(capitalCubierto)}</strong>
+              <ProgressBar value={percent(capitalCubierto, capital)} />
+              <small className="is-previsto">Cubierto</small>
+            </span>
           </article>
           <article className="event-summary__kpi is-highlight">
             <SummaryIcon name="coins" tone="gold" />
@@ -316,21 +335,25 @@ export function EventActivitySummary({
           </article>
           {restoPrevisto > 0 ? (
             <div className="event-summary__beside">
-              <article className="event-summary__kpi">
-                <SummaryIcon name="group" tone="ok" />
-                <p>
-                  <span>Participantes {partePct(participantesReparto)}%</span>
-                  <strong>{formatMoney(participantesReparto)}</strong>
-                </p>
-              </article>
-              <article className="event-summary__kpi">
-                <SummaryIcon name="building" tone="info" />
-                <p>
-                  <span>Club {partePct(clubReparto)}%</span>
-                  <strong>{formatMoney(clubReparto)}</strong>
-                </p>
-              </article>
-              {otrosReparto > 0 ? (
+              {(reparto ? reparto.miembros : participantesReparto) > 0 ? (
+                <article className="event-summary__kpi">
+                  <SummaryIcon name="group" tone="ok" />
+                  <p>
+                    <span>Participantes {partePct(participantesReparto)}%</span>
+                    <strong>{formatMoney(participantesReparto)}</strong>
+                  </p>
+                </article>
+              ) : null}
+              {(reparto ? reparto.club : clubReparto) > 0 ? (
+                <article className="event-summary__kpi">
+                  <SummaryIcon name="building" tone="info" />
+                  <p>
+                    <span>Club {partePct(clubReparto)}%</span>
+                    <strong>{formatMoney(clubReparto)}</strong>
+                  </p>
+                </article>
+              ) : null}
+              {(reparto ? reparto.extras : otrosReparto) > 0 ? (
                 <article className="event-summary__kpi">
                   <SummaryIcon name="tags" tone="gold" />
                   <p>
@@ -507,7 +530,7 @@ export function EventActivitySummary({
         <EventGainDistribution
           configId={gananciaConfigId}
           registro={reparto ? snapshot : gananciaRegistro}
-          ingreso={ingreso}
+          received={received}
         />
       </section>
 

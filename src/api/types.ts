@@ -799,6 +799,7 @@ export interface FinanzasMovimiento {
   monto: number
   concepto: string
   cuenta_id: number
+  cuenta_bancaria_id?: number | null
   cuenta_nombre?: string | null
   evento_id?: number | null
   evento_nombre?: string | null
@@ -823,6 +824,12 @@ export interface FinanzasEventoOption {
   id: number
   nombre: string
   starts_at?: string | null
+  capital?: number
+  diezmo?: number
+  ofrenda?: number
+  capital_recogido?: number
+  diezmo_recogido?: number
+  ofrenda_recogido?: number
 }
 
 export interface FinanzasCuentaBancariaOption {

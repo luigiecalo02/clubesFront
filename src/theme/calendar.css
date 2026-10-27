@@ -454,6 +454,12 @@
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
+
+  .app-panel.admin-calendar-pick__panel {
+    --panel-width: min(28rem, calc(100vw - 2.5rem));
+    width: min(28rem, calc(100vw - 2.5rem));
+    max-height: min(80vh, 38rem);
+  }
 }
 
 @media (max-width: 979px) {

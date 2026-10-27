@@ -17,6 +17,85 @@ function formatMoney(value: number): string {
   return value.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
 }
 
+const EGRESO_CONCEPTOS = [
+  { key: 'capital', label: 'Capital' },
+  { key: 'diezmo', label: 'Diezmo' },
+  { key: 'ofrenda', label: 'Ofrenda' },
+] as const
+
+type EgresoConceptoKey = (typeof EGRESO_CONCEPTOS)[number]['key']
+
+type MovimientoFormState = {
+  cuenta_bancaria_id: string
+  tipo: 'ingreso' | 'egreso'
+  monto: string
+  concepto: string
+  evento_id: string
+  concepto_clave: '' | EgresoConceptoKey
+}
+
+function moneyDigits(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return ''
+  return String(Math.round(value))
+}
+
+type ConceptoMontos = {
+  proyectado: number
+  recogido: number
+}
+
+function amountsForEvent(
+  eventoId: string,
+  eventos: FinanzasResumen['eventos'],
+  actividades: FinanzasResumen['actividades'],
+): Record<EgresoConceptoKey, ConceptoMontos> {
+  const evento = eventos.find((item) => String(item.id) === eventoId)
+  const actividad = actividades.find((item) => String(item.id) === eventoId)
+  return {
+    capital: {
+      proyectado: Number(evento?.capital) || 0,
+      recogido: Number(evento?.capital_recogido ?? actividad?.capital) || 0,
+    },
+    diezmo: {
+      proyectado: Number(evento?.diezmo) || 0,
+      recogido: Number(evento?.diezmo_recogido ?? actividad?.diezmo) || 0,
+    },
+    ofrenda: {
+      proyectado: Number(evento?.ofrenda) || 0,
+      recogido: Number(evento?.ofrenda_recogido ?? actividad?.ofrenda) || 0,
+    },
+  }
+}
+
+function montoConcepto(montos: ConceptoMontos): number {
+  return montos.recogido > 0 ? montos.recogido : montos.proyectado
+}
+
+function conceptoOptionLabel(label: string, montos: ConceptoMontos): string {
+  return `${label} · proyectado ${formatMoney(montos.proyectado)} · en caja ${formatMoney(montos.recogido)}`
+}
+
+function applyEgresoConcepto(
+  form: MovimientoFormState,
+  clave: '' | EgresoConceptoKey,
+  eventos: FinanzasResumen['eventos'],
+  actividades: FinanzasResumen['actividades'],
+): MovimientoFormState {
+  if (!clave || !form.evento_id) {
+    return { ...form, concepto_clave: '' }
+  }
+  const evento = eventos.find((item) => String(item.id) === form.evento_id)
+  const item = EGRESO_CONCEPTOS.find((row) => row.key === clave)
+  if (!evento || !item) return { ...form, concepto_clave: clave }
+  const monto = montoConcepto(amountsForEvent(form.evento_id, eventos, actividades)[clave])
+  return {
+    ...form,
+    concepto_clave: clave,
+    concepto: `${item.label} · ${evento.nombre}`,
+    monto: moneyDigits(monto) || form.monto,
+  }
+}
+
 function yearBounds(date = new Date()) {
   const y = date.getFullYear()
   return {
@@ -75,19 +154,19 @@ export function FinanzasPage() {
   const bounds = useMemo(() => yearBounds(), [])
   const [desde, setDesde] = useState(bounds.desde)
   const [hasta, setHasta] = useState(bounds.hasta)
-  const [cuentaBancariaId, setCuentaBancariaId] = useState<number | null>(null)
   const [tab, setTab] = useState<TabId>('resumen')
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<FinanzasResumen>(() => emptyResumen(bounds.desde, bounds.hasta))
   const [saving, setSaving] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
-  const [form, setForm] = useState({
-    cuenta_id: '',
-    tipo: 'egreso' as 'ingreso' | 'egreso',
+  const [form, setForm] = useState<MovimientoFormState>({
+    cuenta_bancaria_id: '',
+    tipo: 'egreso',
     monto: '',
     concepto: '',
     evento_id: '',
+    concepto_clave: '',
   })
 
   useEffect(() => {
@@ -95,7 +174,7 @@ export function FinanzasPage() {
     let cancelled = false
     setLoading(true)
     finanzasApi
-      .resumen({ desde, hasta, cuentaBancariaId })
+      .resumen({ desde, hasta })
       .then((next) => {
         if (!cancelled) setData(next)
       })
@@ -108,16 +187,24 @@ export function FinanzasPage() {
     return () => {
       cancelled = true
     }
-  }, [canView, desde, hasta, cuentaBancariaId, notices])
+  }, [canView, desde, hasta, notices])
 
   useEffect(() => {
-    if (!form.cuenta_id && data.cuentas[0]) {
-      setForm((current) => ({ ...current, cuenta_id: String(data.cuentas[0].id) }))
-    }
-  }, [data.cuentas, form.cuenta_id])
+    const cuentas = data.cuentas_bancarias ?? []
+    setForm((current) => {
+      if (current.cuenta_bancaria_id) {
+        const stillValid = cuentas.some((cuenta) => String(cuenta.id) === current.cuenta_bancaria_id)
+        return stillValid ? current : { ...current, cuenta_bancaria_id: '' }
+      }
+      if (cuentas.length === 1) {
+        return { ...current, cuenta_bancaria_id: String(cuentas[0].id) }
+      }
+      return current
+    })
+  }, [data.cuentas_bancarias, form.cuenta_bancaria_id])
 
   async function reload() {
-    const next = await finanzasApi.resumen({ desde, hasta, cuentaBancariaId })
+    const next = await finanzasApi.resumen({ desde, hasta })
     setData(next)
   }
 
@@ -140,14 +227,14 @@ export function FinanzasPage() {
     event.preventDefault()
     if (!canUpdate || saving) return
     const monto = Number(form.monto)
-    if (!form.cuenta_id || !form.concepto.trim() || !Number.isFinite(monto) || monto <= 0) {
-      notices.warning('Completa cuenta, concepto y un monto válido.')
+    if (!form.cuenta_bancaria_id || !form.concepto.trim() || !Number.isFinite(monto) || monto <= 0) {
+      notices.warning('Elige la cuenta, el concepto y un monto válido.')
       return
     }
     setSaving(true)
     try {
       await finanzasApi.storeMovimiento({
-        cuenta_id: Number(form.cuenta_id),
+        cuenta_bancaria_id: Number(form.cuenta_bancaria_id),
         tipo: form.tipo,
         origen: form.tipo === 'egreso' ? 'gasto' : 'manual',
         monto,
@@ -155,7 +242,7 @@ export function FinanzasPage() {
         evento_id: form.evento_id ? Number(form.evento_id) : null,
       })
       notices.success('Movimiento registrado.')
-      setForm((current) => ({ ...current, monto: '', concepto: '' }))
+      setForm((current) => ({ ...current, monto: '', concepto: '', concepto_clave: '' }))
       setDrawerOpen(false)
       await reload()
     } catch (err) {
@@ -186,16 +273,12 @@ export function FinanzasPage() {
   return (
     <section className="admin-page admin-page--finanzas">
       <div className="finanzas">
-        <AppPanel>
-          <div className="finanzas__head">
-            <div>
-              <p className="app-panel__kicker">Club</p>
-              <h2 className="app-panel__title">Finanzas del club</h2>
-              <p className="app-panel__subtitle">
-                Resumen general de ingresos, gastos y distribución de todas las actividades.
-              </p>
-            </div>
-            <div className="finanzas__filters">
+        {loading ? <p className="app-panel__muted">Cargando finanzas…</p> : null}
+
+        <div className="finanzas__kpis">
+          <article className="finanzas__kpi is-period">
+            <span>Periodo</span>
+            <div className="finanzas__period">
               <label>
                 Desde
                 <input type="date" value={desde} onChange={(event) => setDesde(event.target.value)} />
@@ -204,34 +287,13 @@ export function FinanzasPage() {
                 Hasta
                 <input type="date" value={hasta} onChange={(event) => setHasta(event.target.value)} />
               </label>
-              <label>
-                Cuenta bancaria
-                <select
-                  value={cuentaBancariaId ?? ''}
-                  onChange={(event) =>
-                    setCuentaBancariaId(event.target.value ? Number(event.target.value) : null)
-                  }
-                >
-                  <option value="">Todas las cuentas</option>
-                  {(data.cuentas_bancarias ?? []).map((cuenta) => (
-                    <option key={cuenta.id} value={cuenta.id}>
-                      {cuenta.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {canUpdate ? (
-                <button type="button" className="app-panel__btn--primary" onClick={() => setDrawerOpen(true)}>
-                  Registrar movimiento
-                </button>
-              ) : null}
             </div>
-          </div>
-        </AppPanel>
-
-        {loading ? <p className="app-panel__muted">Cargando finanzas…</p> : null}
-
-        <div className="finanzas__kpis">
+            {canUpdate ? (
+              <button type="button" className="app-panel__btn--ghost" onClick={() => setDrawerOpen(true)}>
+                Registrar movimiento
+              </button>
+            ) : null}
+          </article>
           <article className="finanzas__kpi is-ok">
             <span>Ingresos totales</span>
             <strong>{formatMoney(data.kpis.ingresos)}</strong>
@@ -425,8 +487,9 @@ export function FinanzasPage() {
               <MovimientoForm
                 form={form}
                 saving={saving}
-                cuentas={data.cuentas}
+                cuentasBancarias={data.cuentas_bancarias ?? []}
                 eventos={data.eventos}
+                actividades={data.actividades}
                 onChange={setForm}
                 onSubmit={(event) => void onSubmitMovimiento(event)}
               />
@@ -445,8 +508,9 @@ export function FinanzasPage() {
         <MovimientoForm
           form={form}
           saving={saving}
-          cuentas={data.cuentas}
+          cuentasBancarias={data.cuentas_bancarias ?? []}
           eventos={data.eventos}
+          actividades={data.actividades}
           onChange={setForm}
           onSubmit={(event) => void onSubmitMovimiento(event)}
         />
@@ -500,24 +564,46 @@ function MovimientoRow({
 function MovimientoForm({
   form,
   saving,
-  cuentas,
+  cuentasBancarias,
   eventos,
+  actividades,
   onChange,
   onSubmit,
 }: {
-  form: {
-    cuenta_id: string
-    tipo: 'ingreso' | 'egreso'
-    monto: string
-    concepto: string
-    evento_id: string
-  }
+  form: MovimientoFormState
   saving: boolean
-  cuentas: FinanzasResumen['cuentas']
+  cuentasBancarias: FinanzasResumen['cuentas_bancarias']
   eventos: FinanzasResumen['eventos']
-  onChange: (next: typeof form) => void
+  actividades: FinanzasResumen['actividades']
+  onChange: (next: MovimientoFormState) => void
   onSubmit: (event: FormEvent) => void
 }) {
+  const showEgresoConcepto = form.tipo === 'egreso' && Boolean(form.evento_id)
+  const amounts = showEgresoConcepto
+    ? amountsForEvent(form.evento_id, eventos, actividades)
+    : null
+
+  function setTipo(tipo: 'ingreso' | 'egreso') {
+    onChange({
+      ...form,
+      tipo,
+      concepto_clave: tipo === 'egreso' ? form.concepto_clave : '',
+    })
+  }
+
+  function setEvento(eventoId: string) {
+    const next = { ...form, evento_id: eventoId }
+    if (form.tipo !== 'egreso' || !eventoId || !form.concepto_clave) {
+      onChange({ ...next, concepto_clave: eventoId ? form.concepto_clave : '' })
+      return
+    }
+    onChange(applyEgresoConcepto(next, form.concepto_clave, eventos, actividades))
+  }
+
+  function setConceptoClave(clave: '' | EgresoConceptoKey) {
+    onChange(applyEgresoConcepto(form, clave, eventos, actividades))
+  }
+
   return (
     <form className="finanzas__form" onSubmit={onSubmit}>
       <div className="finanzas__form-row">
@@ -525,20 +611,22 @@ function MovimientoForm({
           Tipo
           <select
             value={form.tipo}
-            onChange={(event) => onChange({ ...form, tipo: event.target.value as 'ingreso' | 'egreso' })}
+            onChange={(event) => setTipo(event.target.value as 'ingreso' | 'egreso')}
           >
             <option value="ingreso">Ingreso</option>
             <option value="egreso">Gasto / egreso</option>
           </select>
         </label>
         <label>
-          Cuenta
+          Cuenta bancaria
           <select
-            value={form.cuenta_id}
-            onChange={(event) => onChange({ ...form, cuenta_id: event.target.value })}
+            value={form.cuenta_bancaria_id}
+            onChange={(event) => onChange({ ...form, cuenta_bancaria_id: event.target.value })}
             required
+            disabled={cuentasBancarias.length === 0}
           >
-            {cuentas.map((cuenta) => (
+            <option value="">Elige una cuenta</option>
+            {cuentasBancarias.map((cuenta) => (
               <option key={cuenta.id} value={cuenta.id}>
                 {cuenta.nombre}
               </option>
@@ -546,16 +634,70 @@ function MovimientoForm({
           </select>
         </label>
       </div>
+      {cuentasBancarias.length === 0 ? (
+        <p className="app-panel__muted">
+          Agrega una cuenta en Configuración → Cuentas bancarias para poder guardar el movimiento.
+        </p>
+      ) : null}
+      <div className="finanzas__form-row">
+        <label>
+          {form.tipo === 'egreso' ? 'Actividad' : 'Actividad (opcional)'}
+          <select value={form.evento_id} onChange={(event) => setEvento(event.target.value)}>
+            <option value="">Sin actividad</option>
+            {eventos.map((evento) => (
+              <option key={evento.id} value={evento.id}>
+                {evento.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+        {showEgresoConcepto ? (
+          <label>
+            Concepto de la actividad
+            <select
+              value={form.concepto_clave}
+              onChange={(event) => setConceptoClave(event.target.value as '' | EgresoConceptoKey)}
+            >
+              <option value="">Otro / personalizado</option>
+              {EGRESO_CONCEPTOS.map((item) => (
+                <option key={item.key} value={item.key}>
+                  {amounts ? conceptoOptionLabel(item.label, amounts[item.key]) : item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <label>
+            Monto
+            <NumberPadInput
+              title="Monto del movimiento"
+              min={1}
+              maxDigits={10}
+              format={formatMoney}
+              value={form.monto}
+              disabled={saving}
+              onChange={(monto) => onChange({ ...form, monto })}
+            />
+          </label>
+        )}
+      </div>
+      {showEgresoConcepto ? (
+        <p className="app-panel__muted">
+          {form.concepto_clave && amounts
+            ? `${EGRESO_CONCEPTOS.find((item) => item.key === form.concepto_clave)?.label}: proyectado ${formatMoney(amounts[form.concepto_clave].proyectado)} · en caja ${formatMoney(amounts[form.concepto_clave].recogido)}. El monto se llena con lo recogido y puedes ajustarlo.`
+            : 'Elige capital, diezmo u ofrenda para ver lo proyectado y lo ya recogido en caja de esta actividad.'}
+        </p>
+      ) : null}
       <label>
         Concepto
         <input
           value={form.concepto}
           onChange={(event) => onChange({ ...form, concepto: event.target.value })}
-          placeholder="Ej. Compra de materiales"
+          placeholder={showEgresoConcepto ? 'Se completa al elegir el concepto' : 'Ej. Compra de materiales'}
           required
         />
       </label>
-      <div className="finanzas__form-row">
+      {showEgresoConcepto ? (
         <label>
           Monto
           <NumberPadInput
@@ -568,22 +710,12 @@ function MovimientoForm({
             onChange={(monto) => onChange({ ...form, monto })}
           />
         </label>
-        <label>
-          Actividad (opcional)
-          <select
-            value={form.evento_id}
-            onChange={(event) => onChange({ ...form, evento_id: event.target.value })}
-          >
-            <option value="">Sin actividad</option>
-            {eventos.map((evento) => (
-              <option key={evento.id} value={evento.id}>
-                {evento.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <button type="submit" className="app-panel__btn--primary" disabled={saving}>
+      ) : null}
+      <button
+        type="submit"
+        className="app-panel__btn--primary"
+        disabled={saving || cuentasBancarias.length === 0}
+      >
         {saving ? 'Guardando…' : 'Guardar movimiento'}
       </button>
     </form>

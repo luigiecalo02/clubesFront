@@ -18,7 +18,7 @@ export const finanzasApi = {
   },
 
   async storeMovimiento(payload: {
-    cuenta_id: number
+    cuenta_bancaria_id: number
     tipo: 'ingreso' | 'egreso'
     origen?: 'manual' | 'gasto' | 'ajuste'
     monto: number

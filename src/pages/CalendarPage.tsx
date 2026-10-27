@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { resolveFileUrl } from '../api/baseUrl'
 import type { EventSummary, EventTipo } from '../api/types'
 import { CalendarDayPicker } from '../components/events/CalendarDayPicker'
@@ -17,7 +17,9 @@ import {
   toDateKey,
 } from './calendarMonth'
 
-const CALENDAR_COMPACT = '(max-width: 979px)'
+function isCancelledEvent(item: EventSummary): boolean {
+  return (item.estado || '').toLowerCase() === 'cancelado'
+}
 
 const WEEKDAYS = [
   { full: 'Dom', mini: 'D', label: 'Domingo' },
@@ -81,30 +83,20 @@ export function EventsCalendar({
   const [selectedDay, setSelectedDay] = useState(toDateKey(today))
   const [openId, setOpenId] = useState<number | null>(null)
   const [pickKey, setPickKey] = useState<string | null>(null)
-  const [compact, setCompact] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia(CALENDAR_COMPACT).matches : false,
+  const visibleEvents = useMemo(
+    () => events.filter((item) => !isCancelledEvent(item)),
+    [events],
   )
-
-  useEffect(() => {
-    const media = window.matchMedia(CALENDAR_COMPACT)
-    const sync = () => {
-      setCompact(media.matches)
-      if (!media.matches) setPickKey(null)
-    }
-    sync()
-    media.addEventListener('change', sync)
-    return () => media.removeEventListener('change', sync)
-  }, [])
 
   const days = useMemo(
     () => buildMonthGrid(cursor.year, cursor.month, today),
     [cursor.month, cursor.year],
   )
   const monthEvents = useMemo(
-    () => eventsForMonth(events, cursor.year, cursor.month),
-    [cursor.month, cursor.year, events],
+    () => eventsForMonth(visibleEvents, cursor.year, cursor.month),
+    [cursor.month, cursor.year, visibleEvents],
   )
-  const selected = events.find((item) => item.id === openId) ?? null
+  const selected = visibleEvents.find((item) => item.id === openId) ?? null
   const types = new Set(monthEvents.map((item) => item.tipo_evento?.nombre).filter(Boolean))
   const canEditSelected = Boolean(
     selected && canCreate && selected.organizacion?.id === organizacionId,
@@ -116,10 +108,12 @@ export function EventsCalendar({
 
   function openEvent(dayKey: string, items: EventSummary[], eventId: number | null) {
     setSelectedDay(dayKey)
-    if (compact && items.length > 1) {
+    if (items.length > 1) {
+      setOpenId(null)
       setPickKey(dayKey)
       return
     }
+    setPickKey(null)
     setOpenId(eventId)
   }
 
@@ -139,7 +133,7 @@ export function EventsCalendar({
   }
 
   const pickDate = pickKey ? days.find((day) => day.key === pickKey)?.date ?? null : null
-  const pickItems = pickDate ? eventsForDay(events, pickDate) : []
+  const pickItems = pickDate ? eventsForDay(visibleEvents, pickDate) : []
 
   return (
     <section className="admin-page admin-page--calendar">
@@ -194,7 +188,7 @@ export function EventsCalendar({
           </div>
           <div className="admin-calendar__grid">
             {days.map((day) => {
-              const items = eventsForDay(events, day.date)
+              const items = eventsForDay(visibleEvents, day.date)
               const fullDay = items.length === 1
               const splitDay = items.length >= 2
               const visible = items.slice(0, splitDay ? 2 : 1)
@@ -256,7 +250,7 @@ export function EventsCalendar({
         </div>
       </AppPanel>
 
-      {compact && pickDate && pickItems.length > 1 ? (
+      {pickDate && pickItems.length > 1 ? (
         <CalendarDayPicker
           title={formatDayLabel(pickDate)}
           items={pickItems}

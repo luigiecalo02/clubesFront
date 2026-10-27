@@ -195,12 +195,28 @@ const INCOME_PART_ICONS: Record<string, AdminIconName> = {
   extras: 'tags',
 }
 
-function SheetFill({ real, target }: { real: number; target: number }) {
+function SheetFill({
+  real,
+  target,
+  showFaltante = false,
+}: {
+  real: number
+  target: number
+  showFaltante?: boolean
+}) {
+  const falta = Math.max(0, target - real)
   return (
     <span className="event-summary__sheet-fill">
       <strong className="is-real">{formatMoney(real)}</strong>
       <ProgressBar value={summaryPercent(real, target)} />
-      <small className="is-previsto">{formatMoney(target)}</small>
+      {showFaltante ? (
+        <span className="event-summary__sheet-goal">
+          <small className={falta > 0 ? 'is-faltante' : 'is-previsto'}>{formatMoney(falta)}</small>
+          <small className="is-previsto">/ {formatMoney(target)}</small>
+        </span>
+      ) : (
+        <small className="is-previsto">{formatMoney(target)}</small>
+      )}
     </span>
   )
 }
@@ -212,6 +228,17 @@ export function paidAfterCapital(abonado: number, capital: number): { covered: n
     covered: Math.min(paid, cost),
     gain: Math.max(0, paid - cost),
   }
+}
+
+export function coveredCapitalFromLines(
+  lines: ProductGainLine[],
+  abonosByProduct: Record<number, number> = {},
+): number {
+  return lines.reduce((sum, line) => {
+    const cost = line.qty * line.capitalUnidad
+    const paid = Math.max(0, Number(abonosByProduct[line.id]) || 0)
+    return sum + paidAfterCapital(paid, cost).covered
+  }, 0)
 }
 
 export function participantGainFromPaidLines(
@@ -252,6 +279,37 @@ function incomePartsFrom(reparto: IncomeReparto, ingreso: number) {
     { key: 'club', label: 'Club', percent: reparto.club, amount: club },
     { key: 'extras', label: 'Otros', percent: reparto.extras, amount: otros },
   ]
+}
+
+export function paidIncomePartsFromLines(
+  lines: ProductGainLine[],
+  abonosByProduct: Record<number, number> = {},
+  reparto: IncomeReparto,
+): Record<string, number> {
+  const totals: Record<string, number> = {}
+  for (const line of lines) {
+    const capital = line.qty * line.capitalUnidad
+    const abonado = Math.max(0, Number(abonosByProduct[line.id]) || 0)
+    const { gain } = paidAfterCapital(abonado, capital)
+    for (const part of incomePartsFrom(reparto, gain)) {
+      totals[part.key] = (totals[part.key] ?? 0) + part.amount
+    }
+  }
+  return totals
+}
+
+export function sumPaidIncomeParts(
+  people: Array<{ lines: ProductGainLine[]; abonosByProduct?: Record<number, number> }>,
+  reparto: IncomeReparto,
+): Record<string, number> {
+  const totals: Record<string, number> = {}
+  for (const person of people) {
+    const parts = paidIncomePartsFromLines(person.lines, person.abonosByProduct ?? {}, reparto)
+    for (const key of Object.keys(parts)) {
+      totals[key] = (totals[key] ?? 0) + parts[key]
+    }
+  }
+  return totals
 }
 
 export function participantShare(reparto: IncomeReparto, ingreso: number, capital = 0): number {
@@ -416,7 +474,7 @@ function IncomeFigures({
             <small className="is-unit">
               {row.line.qty} × {formatMoney(row.line.capitalUnidad)}
             </small>
-            <SheetFill real={row.covered} target={row.capitalAmount} />
+            <SheetFill real={row.covered} target={row.capitalAmount} showFaltante />
           </span>
           <span role="cell" data-label="Ganancia">
             <SheetFill real={row.realizedGain} target={row.gain} />
@@ -442,7 +500,7 @@ function IncomeFigures({
             <SheetFill real={ingreso} target={sumVenta} />
           </span>
           <span role="cell" data-label="Capital">
-            <SheetFill real={sumCovered} target={sumCapital} />
+            <SheetFill real={sumCovered} target={sumCapital} showFaltante />
           </span>
           <span role="cell" data-label="Ganancia">
             <SheetFill real={sumRealized} target={sumGain} />
@@ -561,12 +619,12 @@ export function approvedAbonosByProduct(
 function GainCharts({
   current,
   registro,
-  ingreso,
+  received,
   children,
 }: {
   current: GananciaEclesiastica
   registro?: EventoGananciaRegistro | null
-  ingreso?: number
+  received?: Record<string, number>
   children?: ReactNode
 }) {
   const dist = current.distribucion ?? null
@@ -574,8 +632,7 @@ function GainCharts({
   const diezmo = registro?.diezmo ?? 0
   const ofrenda = registro?.ofrenda ?? 0
   const resto = registro?.resto ?? 0
-  const parts = ingreso == null ? null : incomeParts(current, ingreso)
-  const receivedOf = (key: string) => parts?.find((part) => part.key === key)?.amount
+  const receivedOf = (key: string) => (received ? received[key] ?? 0 : undefined)
   return (
     <div className="event-ganancia__charts">
       <DistributionChart
@@ -667,17 +724,17 @@ function GainCharts({
 export function EventGainDistribution({
   configId,
   registro,
-  ingreso,
+  received,
 }: {
   configId?: number | null
   registro?: EventoGananciaRegistro | null
-  ingreso?: number
+  received?: Record<string, number>
 }) {
   const { items, loading } = useEclesiasticas()
   const current = resolveConfig(items, configId)
   if (loading) return <p className="app-panel__muted">Cargando distribución…</p>
   if (!current || !registro) return null
-  return <GainCharts current={current} registro={registro} ingreso={ingreso} />
+  return <GainCharts current={current} registro={registro} received={received} />
 }
 
 function DistributionChart({
@@ -707,7 +764,7 @@ function DistributionChart({
         ))}
       </div>
       <ul className="event-ganancia__legend">
-        {slices.map((slice) => (
+        {visible.map((slice) => (
           <li key={slice.key}>
             <span className={`event-ganancia__swatch is-${slice.tone}`}>
               <AdminIcon name={slice.icon} />
