@@ -66,7 +66,6 @@ function emptyResumen(desde: string, hasta: string): FinanzasResumen {
 export function FinanzasPage() {
   const auth = useAuth()
   const notices = useNotice()
-  const ctx = auth.user?.contexto
   const access = clubAccessFromUser(auth.user, auth.can)
   const canView =
     canAccessClubFinanzas(access) || auth.can('finanzas.view') || auth.can('abonos.view')

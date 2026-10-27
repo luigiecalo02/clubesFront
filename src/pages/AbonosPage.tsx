@@ -164,7 +164,6 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const auth = useAuth()
   const ctx = auth.user?.contexto
   const access = clubAccessFromUser(auth.user, auth.can)
-  const isSuper = Boolean(access.isSuper)
   const canEdit = canAccessClubAbonos(access) || auth.can('abonos.update')
   const canEditAbonoAmount = isClubDirectorRole(access.rolName, access.isSuper)
   const canDeleteAbonoAmount = canEditAbonoAmount
