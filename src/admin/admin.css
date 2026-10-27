@@ -1500,6 +1500,37 @@
   margin-bottom: 0.85rem;
 }
 
+.admin-club__invite-qr {
+  display: grid;
+  justify-items: start;
+  gap: 0.55rem;
+  margin: 0.35rem 0 0.15rem;
+}
+
+.admin-club__invite-qr img {
+  width: min(100%, 13.5rem);
+  aspect-ratio: 1;
+  object-fit: contain;
+  padding: 0.55rem;
+  border-radius: var(--panel-input-radius);
+  background: #fff;
+}
+
+.admin-club__invite-qr .app-panel__muted {
+  margin: 0;
+}
+
+.admin-club__invite-qr .app-panel__btn--ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-club__invite-qr .admin-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
 .admin-club__heading {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1724,6 +1755,16 @@
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.cuenta-bancaria-qr {
+  display: block;
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: contain;
+  border-radius: calc(var(--panel-input-radius) - 4px);
+  background: #fff;
+  padding: 0.15rem;
 }
 
 .admin-club__who {

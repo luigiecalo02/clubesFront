@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
 import { settingsApi } from '../api/settings'
-import { isClubDirectorRole } from '../admin/menu'
+import { isClubDirectorRole, isSuperAdminUser } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { ImageUpload, type ImageUploadVariant } from '../theme/ImageUpload'
 import { BackgroundStylePicker } from '../theme/BackgroundStylePicker'
@@ -144,7 +144,8 @@ export function SettingsPage() {
   const auth = useAuth()
   const { settings, loading, update, uploadAsset, resetAsset } = useClubesSettings()
   const canUpdate =
-    auth.can('settings.update') || isClubDirectorRole(auth.user?.contexto?.rol_name)
+    auth.can('settings.update') ||
+    isClubDirectorRole(auth.user?.contexto?.rol_name, isSuperAdminUser(auth.user))
   const [form, setForm] = useState(INITIAL)
   const [mail, setMail] = useState(INITIAL_MAIL)
   const [mailSet, setMailSet] = useState(false)
@@ -303,10 +304,10 @@ export function SettingsPage() {
         onChange={setTab}
         tabs={[
           { id: 'apariencia', label: 'Apariencia' },
+          { id: 'cuentas', label: 'Cuentas bancarias' },
           { id: 'imagenes', label: 'Imágenes' },
           { id: 'correo', label: 'Correo' },
           { id: 'ganancias', label: 'Ganancias' },
-          { id: 'cuentas', label: 'Cuentas bancarias' },
           { id: 'eclesiastica', label: 'Distribución de ganancias' },
         ]}
       >

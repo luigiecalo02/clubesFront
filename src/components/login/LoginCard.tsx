@@ -19,7 +19,6 @@ type LoginCardProps = {
   onSubmit: (event: FormEvent) => void
   onGoogle: () => void
   onForgotPassword: () => void
-  onCreateAccount: () => void
 }
 
 function GoogleMark() {
@@ -61,7 +60,6 @@ export function LoginCard({
   onSubmit,
   onGoogle,
   onForgotPassword,
-  onCreateAccount,
 }: LoginCardProps) {
   const [showPassword, setShowPassword] = useState(false)
   const pwa = usePwaInstall()
@@ -165,9 +163,6 @@ export function LoginCard({
       <div className="login-card__links">
         <button type="button" className="login-card__link" onClick={onForgotPassword}>
           ¿Olvidaste tu contraseña?
-        </button>
-        <button type="button" className="login-card__link login-card__link--accent" onClick={onCreateAccount}>
-          Crear una cuenta
         </button>
       </div>
       {pwa.canInstall ? (

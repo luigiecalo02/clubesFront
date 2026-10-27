@@ -11,7 +11,6 @@ import { parseBackgroundStyle } from '../theme/backgroundStyle'
 import { AnimatedSky } from '../components/login/AnimatedSky'
 import { ForgotPasswordCard } from '../components/login/ForgotPasswordCard'
 import { LoginCard } from '../components/login/LoginCard'
-import { RegisterCard } from '../components/login/RegisterCard'
 import { SceneThemeToggle } from '../theme/SceneThemeToggle'
 import { useSceneTheme } from '../theme/sceneTheme'
 
@@ -32,7 +31,7 @@ export function LoginPage() {
   const { theme, toggleTheme } = useSceneTheme()
   const [branding, setBranding] = useState<ClubesPublicBranding>(DEFAULT_LOGIN_BRANDING)
 
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
+  const [mode, setMode] = useState<'login' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -95,9 +94,7 @@ export function LoginPage() {
       backgroundStyle={parseBackgroundStyle(branding.clubes.background_style)}
     >
       <SceneThemeToggle theme={theme} onToggle={toggleTheme} />
-      <div
-        className={`login-scene__content${mode === 'register' ? ' login-scene__content--form' : ''}`}
-      >
+      <div className="login-scene__content">
         {mode === 'forgot' ? (
           <ForgotPasswordCard
             logoUrl={resolveFileUrl(branding.clubes.logo_url || branding.logo_url)}
@@ -107,20 +104,6 @@ export function LoginPage() {
               setMode('login')
               setError('')
               setHint('')
-            }}
-          />
-        ) : mode === 'register' ? (
-          <RegisterCard
-            logoUrl={resolveFileUrl(branding.clubes.logo_url || branding.logo_url)}
-            onCancel={() => {
-              setMode('login')
-              setError('')
-              setHint('')
-            }}
-            onRegistered={(nextEmail) => {
-              setEmail(nextEmail)
-              setPassword('')
-              setHint('Confirma tu correo para activar la cuenta. Hasta entonces permanecerá inactiva.')
             }}
           />
         ) : (
@@ -146,11 +129,6 @@ export function LoginPage() {
               setError('')
               setHint('')
               setMode('forgot')
-            }}
-            onCreateAccount={() => {
-              setError('')
-              setHint('')
-              setMode('register')
             }}
           />
         )}

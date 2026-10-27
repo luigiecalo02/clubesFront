@@ -311,6 +311,28 @@
   color: var(--panel-danger);
 }
 
+.finanzas__move-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.finanzas__move-del {
+  border: 0;
+  padding: 0.15rem 0;
+  background: transparent;
+  color: var(--panel-danger);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.finanzas__move-del:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .finanzas__total {
   display: flex;
   justify-content: space-between;

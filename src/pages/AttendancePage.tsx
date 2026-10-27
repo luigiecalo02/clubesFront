@@ -10,7 +10,7 @@ import type {
   AttendanceRanking,
 } from '../api/types'
 import { AdminIcon } from '../admin/AdminIcon'
-import { canAccessClubAttendance } from '../admin/menu'
+import { canAccessClubAttendance, clubAccessFromUser } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import {
   AttendanceMarkList,
@@ -42,10 +42,7 @@ export function AttendancePage() {
   const auth = useAuth()
   const ctx = auth.user?.contexto
   const canEdit =
-    canAccessClubAttendance({
-      rolName: ctx?.rol_name,
-      organizacionId: ctx?.organizacion_id,
-    }) || auth.can('asistencia.update')
+    canAccessClubAttendance(clubAccessFromUser(auth.user, auth.can)) || auth.can('asistencia.update')
 
   const [tab, setTab] = useState<AttendanceTab>('resultados')
   const [events, setEvents] = useState<AttendanceEvent[]>([])

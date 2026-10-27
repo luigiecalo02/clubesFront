@@ -5,7 +5,12 @@ import { resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
 import type { AbonoFila, AbonoMovimiento, AbonosBoard, AbonosModo, AuthUser } from '../api/types'
 import { AdminIcon } from '../admin/AdminIcon'
-import { canAccessClubAbonos, isClubDirectorRole, MY_ABONOS_REGISTER_PERMISSION } from '../admin/menu'
+import {
+  canAccessClubAbonos,
+  clubAccessFromUser,
+  isClubDirectorRole,
+  MY_ABONOS_REGISTER_PERMISSION,
+} from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import {
   AbonoPayForm,
@@ -158,13 +163,10 @@ function AbonosAvatar({
 export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const auth = useAuth()
   const ctx = auth.user?.contexto
-  const isSuper = Boolean(auth.user?.is_super || auth.user?.roles?.includes('super_admin'))
-  const canEdit =
-    canAccessClubAbonos({
-      rolName: ctx?.rol_name,
-      organizacionId: ctx?.organizacion_id,
-    }) || auth.can('abonos.update')
-  const canEditAbonoAmount = isClubDirectorRole(ctx?.rol_name) || isSuper
+  const access = clubAccessFromUser(auth.user, auth.can)
+  const isSuper = Boolean(access.isSuper)
+  const canEdit = canAccessClubAbonos(access) || auth.can('abonos.update')
+  const canEditAbonoAmount = isClubDirectorRole(access.rolName, access.isSuper)
   const canDeleteAbonoAmount = canEditAbonoAmount
   const canSendProof = auth.can(MY_ABONOS_REGISTER_PERMISSION)
   const notices = useNotice()
@@ -197,8 +199,9 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const selectedRow = listedRow
   const selectedName =
     modo === 'integrante' ? selectedRow?.full_name : selectedRow?.evento_name
-  const pendingDeals = detail.filas.filter((row) => row.pendiente > 0)
-  const paidDeals = detail.filas.filter((row) => row.pendiente <= 0)
+  const liveDetailRows = detail.filas.filter((row) => (row.evento_estado || '').toLowerCase() !== 'cancelado')
+  const pendingDeals = liveDetailRows.filter((row) => row.pendiente > 0)
+  const paidDeals = liveDetailRows.filter((row) => row.pendiente <= 0)
   const pendingTotal = pendingDeals.reduce((sum, row) => sum + Number(row.pendiente || 0), 0)
   const paidTotal = paidDeals.reduce((sum, row) => sum + Number(row.abonado || 0), 0)
   const pendingHint =
@@ -208,6 +211,7 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return list.filas.filter((row) => {
+      if ((row.evento_estado || '').toLowerCase() === 'cancelado') return false
       if (filter === 'pendientes' && row.pendiente <= 0) return false
       if (!needle) return true
       const haystack = `${row.full_name ?? ''} ${row.evento_name ?? ''}`.toLowerCase()

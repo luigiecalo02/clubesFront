@@ -170,9 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const can = useCallback(
     (permission: string) => {
       if (!user) return false
-      const platformMode =
-        Boolean(user.is_super || user.roles?.includes('super_admin')) && !user.contexto?.organizacion_id
-      if (platformMode && !user.requires_context) return true
+      if (Boolean(user.is_super || user.roles?.includes('super_admin'))) return true
       return (user.permissions ?? []).includes(permission)
     },
     [user],

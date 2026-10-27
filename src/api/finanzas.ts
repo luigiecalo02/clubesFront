@@ -5,13 +5,13 @@ export const finanzasApi = {
   async resumen(params?: {
     desde?: string | null
     hasta?: string | null
-    eventoId?: number | null
+    cuentaBancariaId?: number | null
   }): Promise<FinanzasResumen> {
     const { data } = await api.get<ApiEnvelope<FinanzasResumen>>('/api/v1/settings/clubes/finanzas', {
       params: {
         desde: params?.desde || undefined,
         hasta: params?.hasta || undefined,
-        evento_id: params?.eventoId || undefined,
+        cuenta_bancaria_id: params?.cuentaBancariaId || undefined,
       },
     })
     return data.data
@@ -31,5 +31,9 @@ export const finanzasApi = {
       payload,
     )
     return data.data
+  },
+
+  async deleteMovimiento(id: number): Promise<void> {
+    await api.delete(`/api/v1/settings/clubes/finanzas/movimientos/${id}`)
   },
 }

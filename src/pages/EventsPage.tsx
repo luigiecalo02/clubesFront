@@ -31,6 +31,7 @@ import {
   canManageClubInscriptions,
   canManageClubServices,
   canUpdateClubEvent,
+  clubAccessFromUser,
   isClubDirectorRole,
 } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
@@ -166,49 +167,22 @@ export function EventsPage() {
   const hasListFilters =
     view === 'cuadricula' &&
     (Boolean(estado || tipo) || desde !== dateRange.desde || hasta !== dateRange.hasta)
-  const eventAccess = {
-    can: auth.can,
-    rolName: ctx?.rol_name,
-    organizacionId: ctx?.organizacion_id,
-  }
+  const eventAccess = clubAccessFromUser(auth.user, auth.can)
   const canCreate = canCreateClubEvent(eventAccess)
   const canEditEvents = canUpdateClubEvent(eventAccess)
-  const canViewGanancias = canViewClubEventGanancias({
-    rolName: ctx?.rol_name,
-    organizacionId: ctx?.organizacion_id,
-  })
-  const isSuper = Boolean(auth.user?.is_super || auth.user?.roles?.includes('super_admin'))
-  const canChangeGanancia = canChangeClubEventGanancia({
-    rolName: ctx?.rol_name,
-    isSuper,
-  })
+  const canViewGanancias = canViewClubEventGanancias(eventAccess)
+  const isSuper = Boolean(eventAccess.isSuper)
+  const canChangeGanancia = canChangeClubEventGanancia(eventAccess)
   const canTakeAttendance =
-    canAccessClubAttendance({
-      rolName: ctx?.rol_name,
-      organizacionId: ctx?.organizacion_id,
-    }) || auth.can('asistencia.update')
-  const canJoinEconomic = canJoinClubEconomicEvent({
-    organizacionId: ctx?.organizacion_id,
-    personaId: auth.user?.persona_id,
-  })
-  const canJoinInscription = canJoinClubInscriptionEvent({
-    organizacionId: ctx?.organizacion_id,
-    personaId: auth.user?.persona_id,
-  })
+    canAccessClubAttendance(eventAccess) || auth.can('asistencia.update')
+  const canJoinEconomic = canJoinClubEconomicEvent(eventAccess)
+  const canJoinInscription = canJoinClubInscriptionEvent(eventAccess)
   const canManageInscriptions = canManageClubInscriptions(eventAccess)
   const canJoinEvent = canJoinEconomic || canJoinInscription
-  const canAbonar =
-    canAccessClubAbonos({
-      rolName: ctx?.rol_name,
-      organizacionId: ctx?.organizacion_id,
-    }) || auth.can('abonos.update')
-  const canEditAbonoAmount = isClubDirectorRole(ctx?.rol_name) || isSuper
+  const canAbonar = canAccessClubAbonos(eventAccess) || auth.can('abonos.update')
+  const canEditAbonoAmount = isClubDirectorRole(eventAccess.rolName, eventAccess.isSuper)
   const canDeleteAbonoAmount = canEditAbonoAmount
-  const canCreateServices = canManageClubServices({
-    can: auth.can,
-    rolName: ctx?.rol_name,
-    organizacionId: ctx?.organizacion_id,
-  })
+  const canCreateServices = canManageClubServices(eventAccess)
   const [events, setEvents] = useState<EventSummary[]>([])
   const [tipos, setTipos] = useState<EventTipo[]>([])
   const [loading, setLoading] = useState(true)

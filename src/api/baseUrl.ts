@@ -19,7 +19,10 @@ export function resolveApiBaseUrl(): string {
 export function resolveClubRootId(): number | null {
   const hostname = currentHostname()
   if (hostname) {
-    const fromHost = parseClubHosts(clubHostsSource()).get(hostname)
+    const hosts = parseClubHosts(clubHostsSource())
+    const fromHost = hostLookupKeys(hostname)
+      .map((key) => hosts.get(key))
+      .find((id) => id && id > 0)
     if (fromHost) return fromHost
   }
 
@@ -30,7 +33,7 @@ export function resolveClubRootId(): number | null {
   const fromEnv = Number(import.meta.env.VITE_CLUB_ID)
   if (Number.isInteger(fromEnv) && fromEnv > 0) return fromEnv
 
-  return null
+  return sessionOrganizationId()
 }
 
 export function resolveFileUrl(value: string | null | undefined): string | null {
@@ -72,6 +75,28 @@ function parseClubHosts(raw: string | undefined): Map<string, number> {
 function currentHostname(): string | null {
   if (typeof window === 'undefined') return null
   return normalizeHost(window.location.hostname) || null
+}
+
+function hostLookupKeys(host: string): string[] {
+  const keys = [host]
+  if (host === 'localhost') keys.push('127.0.0.1')
+  if (host === '127.0.0.1') keys.push('localhost')
+  if (host.startsWith('www.')) keys.push(host.slice(4))
+  else keys.push(`www.${host}`)
+  return [...new Set(keys)]
+}
+
+function sessionOrganizationId(): number | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem('clubes_user')
+    if (!raw) return null
+    const user = JSON.parse(raw) as { contexto?: { organizacion_id?: number | null } }
+    const id = Number(user?.contexto?.organizacion_id)
+    return Number.isInteger(id) && id > 0 ? id : null
+  } catch {
+    return null
+  }
 }
 
 function normalizeHost(value: string): string {

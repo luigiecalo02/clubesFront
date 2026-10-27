@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import axios from 'axios'
-import { canEditOwnProfilePhoto } from '../admin/menu'
+import { canEditOwnProfilePhoto, clubAccessFromUser } from '../admin/menu'
 import { resolveFileUrl } from '../api/baseUrl'
 import { authApi } from '../api/auth'
 import { getApiErrorMessage } from '../api/client'
@@ -101,10 +101,7 @@ export function ProfilePage() {
 
   if (!user) return null
 
-  const canEditPhoto = canEditOwnProfilePhoto({
-    can: auth.can,
-    rolName: user.contexto?.rol_name,
-  })
+  const canEditPhoto = canEditOwnProfilePhoto(clubAccessFromUser(user, auth.can))
   const userId = user.id
   const currentName = user.name
   const currentEmail = user.email

@@ -3,7 +3,7 @@ import { resolveFileUrl } from '../api/baseUrl'
 import { getApiErrorMessage } from '../api/client'
 import { serviciosApi } from '../api/servicios'
 import type { ClubServicio } from '../api/types'
-import { canManageClubServices } from '../admin/menu'
+import { canManageClubServices, clubAccessFromUser } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
 import { AppTabs } from '../theme/AppTabs'
@@ -47,11 +47,7 @@ function formFromServicio(item: ClubServicio) {
 export function ServicesPage() {
   const auth = useAuth()
   const ctx = auth.user?.contexto
-  const canManage = canManageClubServices({
-    can: auth.can,
-    rolName: ctx?.rol_name,
-    organizacionId: ctx?.organizacion_id,
-  })
+  const canManage = canManageClubServices(clubAccessFromUser(auth.user, auth.can))
   const [items, setItems] = useState<ClubServicio[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)

@@ -14,24 +14,27 @@ import {
 } from './cropImage'
 import './image-upload.css'
 
-type ImageUploadVariant = 'avatar' | 'logo' | 'banner'
+type ImageUploadVariant = 'avatar' | 'logo' | 'banner' | 'image'
 
 const ASPECT: Record<ImageUploadVariant, number> = {
   avatar: 1,
   logo: 1,
   banner: 16 / 7,
+  image: 1,
 }
 
 const OUTPUT: Record<ImageUploadVariant, { width: number; quality: number; maxBytes: number }> = {
   avatar: { width: 480, quality: 0.78, maxBytes: 120_000 },
   logo: { width: 512, quality: 0.82, maxBytes: 160_000 },
   banner: { width: 1600, quality: 0.72, maxBytes: 280_000 },
+  image: { width: 1200, quality: 0.82, maxBytes: 280_000 },
 }
 
 const CROP_COPY: Record<ImageUploadVariant, string> = {
   avatar: 'Arrastra para moverla. Aleja para verla entera o acerca para un recorte. Se comprime al guardar.',
   logo: 'Así queda el emblema del login. Arrastra y usa el tamaño para encuadrarlo. Se comprime al guardar.',
   banner: 'Arrastra para moverla. Aleja para verla entera o acerca para un recorte. Se comprime al guardar.',
+  image: 'Arrastra para moverla. Aleja para verla entera o acerca para un recorte. Se comprime al guardar.',
 }
 
 type ImageCropDialogProps = {

@@ -88,6 +88,17 @@
   aspect-ratio: 16 / 7;
 }
 
+.image-upload--image .image-upload__drop {
+  min-height: 14rem;
+  max-height: 22rem;
+  background: #fff;
+}
+
+.image-upload--image .image-upload__preview {
+  object-fit: contain;
+  background: #fff;
+}
+
 .image-upload__drop:hover:not(:has(input:disabled)),
 .image-upload__drop:focus-within,
 .image-upload__drop.is-over {
@@ -209,7 +220,8 @@
   height: 1rem;
 }
 
-.app-panel .image-upload--banner .image-upload__clear {
+.app-panel .image-upload--banner .image-upload__clear,
+.app-panel .image-upload--image .image-upload__clear {
   position: absolute;
   top: auto;
   right: 0.55rem;

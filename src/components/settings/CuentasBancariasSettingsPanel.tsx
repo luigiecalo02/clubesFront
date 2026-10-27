@@ -159,6 +159,17 @@ export function CuentasBancariasSettingsPanel({ canUpdate }: CuentasBancariasSet
   const canSubmit = form.numero_cuenta.trim() !== '' && form.titular.trim() !== ''
   const qrPreview = form.removeQr ? null : resolveFileUrl(editing?.qr_url)
 
+  async function copyNumero() {
+    const numero = form.numero_cuenta.trim()
+    if (!numero) return
+    try {
+      await navigator.clipboard.writeText(numero)
+      notices.success('Número de cuenta copiado.')
+    } catch {
+      notices.warning(numero)
+    }
+  }
+
   return (
     <>
       <CreateDrawer
@@ -182,12 +193,13 @@ export function CuentasBancariasSettingsPanel({ canUpdate }: CuentasBancariasSet
         <form id="cuenta-bancaria-form" className="admin-form" onSubmit={(event) => void onSave(event)}>
           <ImageUpload
             label="Imagen QR"
-            hint="Pantallazo del QR de consignación. JPG, PNG o WebP."
-            variant="logo"
+            hint="Pantallazo del QR de consignación. Se muestra al registrar abonos. JPG, PNG o WebP."
+            variant="image"
             file={form.qr}
             previewUrl={qrPreview}
             emptyText="Sin QR"
             disabled={!canUpdate}
+            skipCrop
             onSelect={(qr) => setForm((current) => ({ ...current, qr, removeQr: false }))}
             onClear={() => setForm((current) => ({ ...current, qr: null, removeQr: true }))}
           />
@@ -213,6 +225,11 @@ export function CuentasBancariasSettingsPanel({ canUpdate }: CuentasBancariasSet
               onChange={(event) => setForm((current) => ({ ...current, numero_cuenta: event.target.value }))}
             />
           </label>
+          {form.numero_cuenta.trim() ? (
+            <button type="button" className="app-panel__btn--ghost" onClick={() => void copyNumero()}>
+              Copiar número
+            </button>
+          ) : null}
           <label>
             Nombre del representante
             <input
@@ -329,15 +346,9 @@ export function CuentasBancariasSettingsPanel({ canUpdate }: CuentasBancariasSet
                       <td>
                         {qr ? (
                           <img
+                            className="cuenta-bancaria-qr"
                             src={qr}
                             alt={`QR ${item.banco || item.nombre}`}
-                            style={{
-                              width: '2.5rem',
-                              height: '2.5rem',
-                              objectFit: 'contain',
-                              borderRadius: '0.35rem',
-                              background: '#fff',
-                            }}
                           />
                         ) : (
                           '—'

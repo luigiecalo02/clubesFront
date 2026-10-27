@@ -10,7 +10,14 @@ import { parseBackgroundStyle } from '../theme/backgroundStyle'
 import { useSceneTheme } from '../theme/sceneTheme'
 import { AdminIcon } from './AdminIcon'
 import { UserMenu } from './UserMenu'
-import { MY_ABONOS, resolveAdminPage, SESSION_HOME, visibleMenu, type AdminIconName } from './menu'
+import {
+  clubAccessFromUser,
+  MY_ABONOS,
+  resolveAdminPage,
+  SESSION_HOME,
+  visibleMenu,
+  type AdminIconName,
+} from './menu'
 import './admin.css'
 
 const SIDEBAR_KEY = 'clubes_sidebar_collapsed'
@@ -58,10 +65,7 @@ export function AdminLayout() {
   const user = auth.user
   const ctx = user?.contexto
   const kicker = settings?.clubes.kicker || ctx?.tipo_nombre || 'Club de Conquistadores'
-  const items = visibleMenu(auth.can, {
-    rolName: ctx?.rol_name,
-    organizacionId: ctx?.organizacion_id,
-  })
+  const items = visibleMenu(auth.can, clubAccessFromUser(user, auth.can))
   const current = resolveAdminPage(location.pathname) ?? items[0]
   const brand = resolveFileUrl(settings?.clubes.logo_url || (ctx?.is_club ? ctx.club_logo_url : null))
 

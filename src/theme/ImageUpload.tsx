@@ -6,7 +6,7 @@ const ACCEPT = 'image/jpeg,image/png,image/webp'
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_BYTES = 8 * 1024 * 1024
 
-export type ImageUploadVariant = 'avatar' | 'logo' | 'banner'
+export type ImageUploadVariant = 'avatar' | 'logo' | 'banner' | 'image'
 
 type ImageUploadProps = {
   label: string
@@ -18,6 +18,7 @@ type ImageUploadProps = {
   actionLabel?: string
   disabled?: boolean
   readOnly?: boolean
+  skipCrop?: boolean
   onSelect: (file: File) => void
   onClear?: () => void
 }
@@ -47,6 +48,7 @@ export function ImageUpload({
   actionLabel,
   disabled = false,
   readOnly = false,
+  skipCrop = false,
   onSelect,
   onClear,
 }: ImageUploadProps) {
@@ -72,6 +74,10 @@ export function ImageUpload({
       return
     }
     setError('')
+    if (skipCrop) {
+      onSelect(file)
+      return
+    }
     setDraft(file)
   }
 

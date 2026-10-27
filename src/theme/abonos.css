@@ -727,78 +727,131 @@
   font-weight: var(--panel-weight-strong);
 }
 
-.abono-cuenta {
+.app-panel.abono-cuenta {
+  --panel-padding: 1rem 1.05rem 1.05rem;
+  --panel-shadow: none;
+  --panel-width: 100%;
+  --panel-max-width: none;
+}
+
+.app-panel.abono-cuenta--compact {
+  --panel-padding: 0.85rem 0.9rem 0.95rem;
+}
+
+.abono-cuenta .app-panel__kicker,
+.abono-cuenta .app-panel__title,
+.abono-cuenta .app-panel__subtitle {
+  text-align: left;
+}
+
+.abono-cuenta .app-panel__title {
+  font-size: 1.15rem;
+}
+
+.abono-cuenta .app-panel__subtitle {
+  margin-bottom: 0.85rem;
+}
+
+.abono-cuenta__body {
   display: grid;
-  gap: 0.55rem;
-  padding: 0.85rem 0.95rem;
-  border: 1.5px solid color-mix(in srgb, var(--panel-border) 80%, transparent);
-  border-radius: var(--panel-input-radius);
-  background: color-mix(in srgb, var(--panel-surface) 88%, transparent);
+  gap: 1rem;
+  align-items: start;
 }
 
-.abono-cuenta--compact {
-  padding: 0.7rem 0.8rem;
+@media (min-width: 640px) {
+  .abono-cuenta--with-qr .abono-cuenta__body {
+    grid-template-columns: minmax(10.5rem, 13.5rem) minmax(0, 1fr);
+    gap: 1.15rem;
+  }
 }
 
-.abono-cuenta__kicker {
+.abono-cuenta__facts {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+  align-content: start;
+}
+
+.abono-cuenta__number {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.abono-cuenta__number .app-panel__muted {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.abono-cuenta__number strong {
+  color: var(--panel-title);
+  font-size: 1.2rem;
+  font-weight: var(--panel-weight-strong);
+  letter-spacing: 0.03em;
+  word-break: break-all;
+}
+
+.abono-cuenta__number .app-panel__btn--ghost,
+.abono-cuenta__qr-wrap .app-panel__btn--ghost {
+  width: max-content;
+  min-height: 2.15rem;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
-  margin: 0;
-  color: var(--panel-muted);
-  font-size: 0.78rem;
-  font-weight: var(--panel-weight-strong);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 
-.abono-cuenta__kicker .admin-icon {
-  width: 0.95rem;
-  height: 0.95rem;
-}
-
-.abono-cuenta__bank {
-  margin: 0;
-  color: var(--panel-title);
-  font-size: 1.05rem;
-  font-weight: var(--panel-weight-strong);
-}
-
-.abono-cuenta__grid {
+.abono-cuenta__rows {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem 0.75rem;
+  gap: 0.55rem;
   margin: 0;
 }
 
-.abono-cuenta__grid div {
+.abono-cuenta__rows div {
   display: grid;
-  gap: 0.15rem;
+  gap: 0.12rem;
   min-width: 0;
 }
 
-.abono-cuenta__grid dt {
+.abono-cuenta__rows dt {
   margin: 0;
   color: var(--panel-muted);
   font-size: 0.75rem;
 }
 
-.abono-cuenta__grid dd {
+.abono-cuenta__rows dd {
   margin: 0;
   color: var(--panel-title);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: var(--panel-weight-strong);
   word-break: break-word;
 }
 
+.abono-cuenta__qr-wrap {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  justify-items: stretch;
+}
+
 .abono-cuenta__qr {
-  width: min(100%, 9.5rem);
-  aspect-ratio: 1;
+  width: 100%;
+  height: auto;
+  max-height: 14.5rem;
   object-fit: contain;
-  border-radius: calc(var(--panel-input-radius) - 2px);
+  border-radius: var(--panel-input-radius);
   background: #fff;
-  padding: 0.35rem;
-  justify-self: start;
+  padding: 0.55rem;
+}
+
+.abono-cuenta__qr-wrap .app-panel__muted {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.abono-cuenta__qr-wrap .admin-icon {
+  width: 1rem;
+  height: 1rem;
 }
 
 .abonos-pay .app-panel__btn--primary {

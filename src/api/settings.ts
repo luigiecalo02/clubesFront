@@ -16,6 +16,17 @@ import type {
   PublicOrgBrowse,
 } from './types'
 
+const formDataRequest = {
+  transformRequest: [
+    (value: unknown, headers: Record<string, unknown>) => {
+      if (value instanceof FormData) {
+        delete headers['Content-Type']
+      }
+      return value
+    },
+  ],
+}
+
 export const settingsApi = {
   async publicOrgs(padreId?: number | null): Promise<PublicOrgBrowse> {
     const { data } = await api.get<ApiEnvelope<PublicOrgBrowse>>(
@@ -29,8 +40,18 @@ export const settingsApi = {
     await api.post('/api/v1/settings/clubes/public/register', payload)
   },
 
+  async inviteLink(): Promise<ClubesInviteLink> {
+    const { data } = await api.get<ApiEnvelope<ClubesInviteLink>>('/api/v1/settings/clubes/invite-link')
+    return data.data
+  },
+
   async createInviteLink(): Promise<ClubesInviteLink> {
     const { data } = await api.post<ApiEnvelope<ClubesInviteLink>>('/api/v1/settings/clubes/invite-link')
+    return data.data
+  },
+
+  async disableInviteLink(): Promise<ClubesInviteLink> {
+    const { data } = await api.delete<ApiEnvelope<ClubesInviteLink>>('/api/v1/settings/clubes/invite-link')
     return data.data
   },
 
@@ -93,16 +114,7 @@ export const settingsApi = {
     const { data } = await api.post<ApiEnvelope<ClubesSettings>>(
       `/api/v1/settings/clubes/assets/${asset}`,
       body,
-      {
-        transformRequest: [
-          (value, headers) => {
-            if (value instanceof FormData) {
-              delete headers['Content-Type']
-            }
-            return value
-          },
-        ],
-      },
+      formDataRequest,
     )
     return data.data
   },
@@ -231,6 +243,7 @@ export const settingsApi = {
     const { data } = await api.post<ApiEnvelope<CuentaBancariaClub>>(
       `/api/v1/settings/clubes/cuentas-bancarias/${id}/qr`,
       body,
+      formDataRequest,
     )
     return data.data
   },

@@ -19,6 +19,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  config.headers['X-Clubes-Client'] = 'clubes'
   const rootId = resolveClubRootId()
   if (rootId) {
     config.headers['X-Clubes-Root-Id'] = String(rootId)

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { resolveFileUrl } from '../api/baseUrl'
 import { AdminIcon } from '../admin/AdminIcon'
-import { SESSION_HOME, visibleMenu } from '../admin/menu'
+import { clubAccessFromUser, SESSION_HOME, visibleMenu } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
 
@@ -11,10 +11,9 @@ export function DashboardPage() {
   const user = auth.user
   const ctx = user?.contexto
   const copy = settings?.clubes
-  const modules = visibleMenu(auth.can, {
-    rolName: ctx?.rol_name,
-    organizacionId: ctx?.organizacion_id,
-  }).filter((item) => item.path !== '/' && item.path !== SESSION_HOME)
+  const modules = visibleMenu(auth.can, clubAccessFromUser(user, auth.can)).filter(
+    (item) => item.path !== '/' && item.path !== SESSION_HOME,
+  )
 
   const banner = resolveFileUrl(copy?.banner_url)
 

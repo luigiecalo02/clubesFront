@@ -7,6 +7,7 @@ import {
   canCreateClubMember,
   canImpersonateClubMember,
   canUpdateClubMember,
+  clubAccessFromUser,
 } from '../admin/menu'
 import { MemberNameCell, MemberRow } from '../components/members/MemberActions'
 import { MemberDrawer, type MemberDrawerMode } from '../components/members/MemberDrawer'
@@ -18,11 +19,7 @@ import { useNotice } from '../theme/NoticeProvider'
 export function MembersPage() {
   const auth = useAuth()
   const ctx = auth.user?.contexto
-  const access = {
-    can: auth.can,
-    rolName: ctx?.rol_name,
-    organizacionId: ctx?.organizacion_id,
-  }
+  const access = clubAccessFromUser(auth.user, auth.can)
   const canCreate = canCreateClubMember(access)
   const canUpdate = canUpdateClubMember(access)
   const canImpersonate = canImpersonateClubMember(access)

@@ -77,8 +77,9 @@ export interface LoginResult {
 }
 
 export interface ClubesInviteLink {
-  url: string
-  expires_at: string
+  activo: boolean
+  url: string | null
+  expires_at?: string | null
   organizacion_id: number
   organizacion_nombre: string
 }
@@ -86,7 +87,8 @@ export interface ClubesInviteLink {
 export interface ClubesInvitePreview {
   organizacion_id: number
   organizacion_nombre: string
-  expires_at: string
+  expires_at?: string | null
+  path?: PublicOrg[]
 }
 
 export interface ClubesInvitePersona {
@@ -125,7 +127,7 @@ export interface PublicOrgBrowse {
 }
 
 export interface ClubesRegisterPayload {
-  organizacion_id: number
+  token: string
   nombre1: string
   apellido1: string
   correo: string
@@ -612,6 +614,7 @@ export interface AbonoFila {
   image_url?: string | null
   banner_url?: string | null
   starts_at?: string | null
+  evento_estado?: string | null
   comprometido: number
   abonado: number
   pendiente: number
@@ -793,10 +796,17 @@ export interface FinanzasEventoOption {
   starts_at?: string | null
 }
 
+export interface FinanzasCuentaBancariaOption {
+  id: number
+  nombre: string
+  banco?: string | null
+  numero_cuenta?: string | null
+}
+
 export interface FinanzasResumen {
   desde: string
   hasta: string
-  evento_id?: number | null
+  cuenta_bancaria_id?: number | null
   kpis: FinanzasKpis
   distribucion: FinanzasParte[]
   serie_mensual: FinanzasSerieMes[]
@@ -804,4 +814,5 @@ export interface FinanzasResumen {
   movimientos: FinanzasMovimiento[]
   actividades: FinanzasActividad[]
   eventos: FinanzasEventoOption[]
+  cuentas_bancarias: FinanzasCuentaBancariaOption[]
 }

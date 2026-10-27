@@ -1,35 +1,32 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { authApi } from '../../api/auth'
 import { getApiErrorMessage } from '../../api/client'
 import { settingsApi } from '../../api/settings'
-import type { PublicOrg } from '../../api/types'
+import type { ClubesInvitePreview, PublicOrg } from '../../api/types'
 import { AppPanel } from '../../theme/AppPanel'
 import { LoginCardEmblem } from './LoginCardEmblem'
 
-type Step = {
-  options: PublicOrg[]
-  selectedId: number | null
-}
-
 type RegisterCardProps = {
   logoUrl?: string | null
+  token: string
+  preview: ClubesInvitePreview
   onCancel: () => void
-  onRegistered: (email: string) => void
+  onRegistered?: (email: string) => void
 }
 
-function stepLabel(options: PublicOrg[]): string {
-  const types = [...new Set(options.map((item) => item.tipo_nombre).filter(Boolean))]
-  if (types.length === 1) return types[0]
-  if (options.every((item) => item.is_club)) return 'Club'
-  return 'Organización'
-}
-
-export function RegisterCard({ logoUrl, onCancel, onRegistered }: RegisterCardProps) {
-  const [locked, setLocked] = useState<PublicOrg[]>([])
-  const [steps, setSteps] = useState<Step[]>([])
-  const [clubId, setClubId] = useState<number | null>(null)
-  const [loadingTree, setLoadingTree] = useState(true)
-  const [treeError, setTreeError] = useState('')
+export function RegisterCard({ logoUrl, token, preview, onCancel, onRegistered }: RegisterCardProps) {
+  const locked: PublicOrg[] =
+    preview.path && preview.path.length > 0
+      ? preview.path
+      : [
+          {
+            id: preview.organizacion_id,
+            nombre: preview.organizacion_nombre,
+            tipo_organizacion_id: 0,
+            tipo_nombre: 'Club',
+            is_club: true,
+          },
+        ]
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [registeredEmail, setRegisteredEmail] = useState('')
@@ -43,65 +40,8 @@ export function RegisterCard({ logoUrl, onCancel, onRegistered }: RegisterCardPr
   const [identificacion, setIdentificacion] = useState('')
   const [telefono, setTelefono] = useState('')
 
-  useEffect(() => {
-    let cancelled = false
-    settingsApi
-      .publicOrgs()
-      .then((data) => {
-        if (cancelled) return
-        setLocked(data.path)
-        const root = data.path[data.path.length - 1]
-        if (root?.is_club && data.children.length === 0) {
-          setSteps([])
-          setClubId(root.id)
-          return
-        }
-        setSteps([{ options: data.children, selectedId: null }])
-        setClubId(null)
-      })
-      .catch((err) => {
-        if (!cancelled) setTreeError(getApiErrorMessage(err, 'No se pudieron cargar las organizaciones'))
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingTree(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  async function onPick(index: number, rawId: string) {
-    const id = Number(rawId)
-    const current = steps[index]
-    const chosen = current?.options.find((item) => item.id === id)
-    if (!chosen) return
-
-    const nextSteps = steps.slice(0, index + 1).map((step, stepIndex) =>
-      stepIndex === index ? { ...step, selectedId: id } : step,
-    )
-
-    if (chosen.is_club) {
-      setSteps(nextSteps)
-      setClubId(chosen.id)
-      return
-    }
-
-    setClubId(null)
-    try {
-      const data = await settingsApi.publicOrgs(chosen.id)
-      setSteps([...nextSteps, { options: data.children, selectedId: null }])
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'No se pudieron cargar las organizaciones hijas'))
-      setSteps(nextSteps)
-    }
-  }
-
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!clubId) {
-      setError('Elige el club al que perteneces.')
-      return
-    }
     if (password !== passwordConfirmation) {
       setError('Las contraseñas no coinciden.')
       return
@@ -111,7 +51,7 @@ export function RegisterCard({ logoUrl, onCancel, onRegistered }: RegisterCardPr
     try {
       const nextEmail = correo.trim()
       await settingsApi.register({
-        organizacion_id: clubId,
+        token,
         nombre1: nombre1.trim(),
         apellido1: apellido1.trim(),
         correo: nextEmail,
@@ -123,7 +63,7 @@ export function RegisterCard({ logoUrl, onCancel, onRegistered }: RegisterCardPr
       })
       setRegisteredEmail(nextEmail)
       setOk('Revisa tu correo y confirma la cuenta. Mientras no lo hagas, permanecerá inactiva.')
-      onRegistered(nextEmail)
+      onRegistered?.(nextEmail)
     } catch (err) {
       setError(getApiErrorMessage(err, 'No se pudo crear la cuenta'))
     } finally {
@@ -180,23 +120,21 @@ export function RegisterCard({ logoUrl, onCancel, onRegistered }: RegisterCardPr
   return (
     <AppPanel className="login-card login-card--register">
       <LoginCardEmblem logoUrl={logoUrl} />
-      <p className="login-card__kicker">Registro</p>
+      <p className="login-card__kicker">Inscripción</p>
       <h1>Crear cuenta</h1>
       <p className="login-card__subtitle">
-        Las organizaciones padre ya están definidas. Elige las hijas hasta tu club.
+        El director habilitó este enlace para {preview.organizacion_nombre}. Completa tus datos para unirte al club.
       </p>
 
-      {treeError || error ? (
+      {error ? (
         <p className="login-card__alert" role="alert">
-          {treeError || error}
+          {error}
         </p>
       ) : null}
 
       <form className="login-card__form" onSubmit={onSubmit} aria-busy={submitting}>
-        {loadingTree ? <p className="app-panel__muted">Cargando organizaciones…</p> : null}
-
         {locked.length ? (
-          <div className="login-card__path" aria-label="Organizaciones padre">
+          <div className="login-card__path" aria-label="Organizaciones">
             {locked.map((org) => (
               <p key={org.id} className="login-card__path-item">
                 <span>{org.tipo_nombre}</span>
@@ -204,30 +142,6 @@ export function RegisterCard({ logoUrl, onCancel, onRegistered }: RegisterCardPr
               </p>
             ))}
           </div>
-        ) : null}
-
-        <div className="login-card__grid">
-          {steps.map((step, index) => (
-            <label key={`${step.options[0]?.tipo_nombre ?? 'org'}-${index}`}>
-              {stepLabel(step.options)}
-              <select
-                value={step.selectedId ?? ''}
-                onChange={(event) => void onPick(index, event.target.value)}
-                required
-              >
-                <option value="">Selecciona…</option>
-                {step.options.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.nombre}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
-        </div>
-
-        {!loadingTree && !clubId && steps.some((step) => step.options.length === 0) ? (
-          <p className="app-panel__hint">No hay clubes hijos en esta organización.</p>
         ) : null}
 
         <div className="login-card__grid">
@@ -293,7 +207,7 @@ export function RegisterCard({ logoUrl, onCancel, onRegistered }: RegisterCardPr
           </label>
         </div>
 
-        <button type="submit" className="login-card__submit" disabled={submitting || !clubId}>
+        <button type="submit" className="login-card__submit" disabled={submitting}>
           {submitting ? 'Creando cuenta…' : 'Registrarme'}
         </button>
       </form>

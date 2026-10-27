@@ -6,6 +6,7 @@ import {
   canAccessClubPresupuesto,
   canAccessClubSettings,
   canManageClubServices,
+  clubAccessFromUser,
 } from './menu'
 import { useAuth } from '../auth/AuthProvider'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
@@ -29,55 +30,32 @@ export function RequirePermission({
 }) {
   const auth = useAuth()
   const { loading } = useClubesSettings()
-  const ctx = auth.user?.contexto
+  const access = clubAccessFromUser(auth.user, auth.can)
 
   if (requireOrgSettings) {
     if (loading) return null
-    if (
-      !canAccessClubSettings({
-        rolName: ctx?.rol_name,
-        organizacionId: ctx?.organizacion_id,
-      })
-    ) {
+    if (!canAccessClubSettings(access)) {
       return <Navigate to="/" replace />
     }
     return children
   }
 
   if (requireAttendance) {
-    if (
-      canAccessClubAttendance({
-        rolName: ctx?.rol_name,
-        organizacionId: ctx?.organizacion_id,
-      }) ||
-      auth.can(permission)
-    ) {
+    if (canAccessClubAttendance(access) || auth.can(permission)) {
       return children
     }
     return <Navigate to="/" replace />
   }
 
   if (requireServices) {
-    if (
-      canManageClubServices({
-        can: auth.can,
-        rolName: ctx?.rol_name,
-        organizacionId: ctx?.organizacion_id,
-      })
-    ) {
+    if (canManageClubServices(access)) {
       return children
     }
     return <Navigate to="/" replace />
   }
 
   if (requirePresupuesto) {
-    if (
-      canAccessClubPresupuesto({
-        rolName: ctx?.rol_name,
-        organizacionId: ctx?.organizacion_id,
-      }) ||
-      auth.can(permission)
-    ) {
+    if (canAccessClubPresupuesto(access) || auth.can(permission)) {
       return children
     }
     return <Navigate to="/" replace />
@@ -85,10 +63,7 @@ export function RequirePermission({
 
   if (requireFinanzas) {
     if (
-      canAccessClubFinanzas({
-        rolName: ctx?.rol_name,
-        organizacionId: ctx?.organizacion_id,
-      }) ||
+      canAccessClubFinanzas(access) ||
       auth.can(permission) ||
       auth.can('abonos.view')
     ) {

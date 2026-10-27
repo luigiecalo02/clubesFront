@@ -17,11 +17,13 @@ import {
   canImpersonateClubMember,
   canManageClubDirectors,
   canUpdateClubMember,
+  clubAccessFromUser,
   isClubDirectorRole,
 } from '../admin/menu'
 import { MemberNameCell, MemberRow } from '../components/members/MemberActions'
 import { MemberDrawer, type MemberDrawerMode } from '../components/members/MemberDrawer'
 import { MemberInsightDrawer, type MemberInsightKind } from '../components/members/MemberInsightDrawer'
+import { InviteLinkQr, inviteQrFileName } from '../components/club/InviteLinkQr'
 import { PersonSearchSelect } from '../components/members/PersonSearchSelect'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
@@ -67,12 +69,8 @@ export function MyClubPage() {
   const [invite, setInvite] = useState<ClubesInviteLink | null>(null)
   const [creatingInvite, setCreatingInvite] = useState(false)
   const [savingBoard, setSavingBoard] = useState<ClubBoardPosition | null>(null)
-  const access = {
-    can: auth.can,
-    rolName: ctx?.rol_name,
-    organizacionId: ctx?.organizacion_id,
-  }
-  const canInvite = isClubDirectorRole(ctx?.rol_name)
+  const access = clubAccessFromUser(auth.user, auth.can)
+  const canInvite = isClubDirectorRole(access.rolName, access.isSuper)
   const canAssignBoard = canManageClubDirectors(access)
   const canCreateMembers = canCreateClubMember(access)
   const canUpdateMembers = canUpdateClubMember(access)
@@ -108,14 +106,46 @@ export function MyClubPage() {
     }
   }, [ctx?.organizacion_id, ctx?.rol_id, notices])
 
+  useEffect(() => {
+    if (!canInvite) {
+      setInvite(null)
+      return
+    }
+    let cancelled = false
+    settingsApi
+      .inviteLink()
+      .then((next) => {
+        if (!cancelled) setInvite(next)
+      })
+      .catch(() => {
+        if (!cancelled) setInvite(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canInvite, ctx?.organizacion_id])
+
   async function onCreateInvite() {
     setCreatingInvite(true)
     try {
       const next = await settingsApi.createInviteLink()
       setInvite(next)
-      notices.success('Comparte este enlace. Quien lo abra solo escribe su identificación.')
+      notices.success('Enlace habilitado. Quien lo abra ve el formulario de crear cuenta de este club.')
     } catch (err) {
       notices.error(getApiErrorMessage(err, 'No se pudo generar el enlace'))
+    } finally {
+      setCreatingInvite(false)
+    }
+  }
+
+  async function onDisableInvite() {
+    setCreatingInvite(true)
+    try {
+      const next = await settingsApi.disableInviteLink()
+      setInvite(next)
+      notices.success('Enlace desactivado. Ya no se puede inscribir con ese vínculo.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo desactivar el enlace'))
     } finally {
       setCreatingInvite(false)
     }
@@ -420,18 +450,23 @@ export function MyClubPage() {
 
           {canInvite ? (
             <AppPanel className="admin-club__card">
-              <p className="app-panel__kicker">Activar usuarios</p>
-              <h2 className="app-panel__title">Enlace para integrantes</h2>
+              <p className="app-panel__kicker">Inscripción</p>
+              <h2 className="app-panel__title">Enlace para crear cuenta</h2>
               <p className="app-panel__subtitle">
-                Genera un enlace de este club. La persona escribe su identificación, completa lo que
-                falte y queda como usuario con rol miembro, sin elegir organización.
+                Solo el director puede habilitarlo. Mientras esté activo, quien abra el enlace ve el
+                formulario de registro de este club. Si lo desactivas, ese vínculo deja de funcionar.
               </p>
-              {invite ? (
-                <label>
-                  Enlace
-                  <input value={invite.url} readOnly />
-                </label>
-              ) : null}
+              {invite?.activo && invite.url ? (
+                <>
+                  <label>
+                    Enlace
+                    <input value={invite.url} readOnly />
+                  </label>
+                  <InviteLinkQr url={invite.url} fileName={inviteQrFileName(club?.nombre)} />
+                </>
+              ) : (
+                <p className="app-panel__hint">El enlace está desactivado. Nadie puede inscribirse por ahora.</p>
+              )}
               <div className="admin-form__actions">
                 <button
                   type="button"
@@ -439,11 +474,25 @@ export function MyClubPage() {
                   disabled={creatingInvite}
                   onClick={() => void onCreateInvite()}
                 >
-                  {creatingInvite ? 'Generando…' : invite ? 'Generar otro' : 'Generar enlace'}
+                  {creatingInvite
+                    ? 'Guardando…'
+                    : invite?.activo
+                      ? 'Generar otro'
+                      : 'Generar enlace'}
                 </button>
-                {invite ? (
+                {invite?.activo && invite.url ? (
                   <button type="button" className="app-panel__btn--ghost" onClick={() => void onCopyInvite()}>
                     Copiar
+                  </button>
+                ) : null}
+                {invite?.activo ? (
+                  <button
+                    type="button"
+                    className="app-panel__btn--ghost"
+                    disabled={creatingInvite}
+                    onClick={() => void onDisableInvite()}
+                  >
+                    Desactivar
                   </button>
                 ) : null}
               </div>

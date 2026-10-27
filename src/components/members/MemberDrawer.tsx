@@ -10,6 +10,7 @@ import {
   canImpersonateClubMember,
   canManageMemberPhotos,
   canUpdateClubMember,
+  clubAccessFromUser,
   SESSION_HOME,
 } from '../../admin/menu'
 import { useAuth } from '../../auth/AuthProvider'
@@ -121,11 +122,9 @@ export function MemberDrawer({
   const auth = useAuth()
   const notices = useNotice()
   const navigate = useNavigate()
-  const ctx = auth.user?.contexto
   const access = {
-    can: auth.can,
-    rolName: ctx?.rol_name,
-    organizacionId: organizacionId ?? ctx?.organizacion_id,
+    ...clubAccessFromUser(auth.user, auth.can),
+    organizacionId: organizacionId ?? auth.user?.contexto?.organizacion_id,
   }
   const canCreate = canCreateClubMember(access)
   const canUpdate = canUpdateClubMember(access)

@@ -12,7 +12,7 @@ import type {
   PresupuestoTipo,
 } from '../api/types'
 import { AdminIcon } from '../admin/AdminIcon'
-import { canAccessClubPresupuesto } from '../admin/menu'
+import { canAccessClubPresupuesto, clubAccessFromUser } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { AttendanceEventSelect, formatEventChipDate } from '../components/attendance/AttendanceEventSelect'
 import { PresupuestoStudio } from '../components/presupuesto/PresupuestoStudio'
@@ -80,10 +80,8 @@ export function PresupuestoPage() {
   const auth = useAuth()
   const ctx = auth.user?.contexto
   const canEdit =
-    canAccessClubPresupuesto({
-      rolName: ctx?.rol_name,
-      organizacionId: ctx?.organizacion_id,
-    }) || auth.can('presupuesto.update')
+    canAccessClubPresupuesto(clubAccessFromUser(auth.user, auth.can)) ||
+    auth.can('presupuesto.update')
   const notices = useNotice()
 
   const [events, setEvents] = useState<PresupuestoEvento[]>([])

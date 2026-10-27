@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { getApiErrorMessage } from '../api/client'
 import { finanzasApi } from '../api/finanzas'
 import type { FinanzasMovimiento, FinanzasParte, FinanzasResumen } from '../api/types'
-import { canAccessClubFinanzas } from '../admin/menu'
+import { canAccessClubFinanzas, clubAccessFromUser, isSuperAdminUser } from '../admin/menu'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
 import { AppTabs } from '../theme/AppTabs'
@@ -59,6 +59,7 @@ function emptyResumen(desde: string, hasta: string): FinanzasResumen {
     movimientos: [],
     actividades: [],
     eventos: [],
+    cuentas_bancarias: [],
   }
 }
 
@@ -66,26 +67,22 @@ export function FinanzasPage() {
   const auth = useAuth()
   const notices = useNotice()
   const ctx = auth.user?.contexto
+  const access = clubAccessFromUser(auth.user, auth.can)
   const canView =
-    canAccessClubFinanzas({
-      rolName: ctx?.rol_name,
-      organizacionId: ctx?.organizacion_id,
-    }) || auth.can('finanzas.view') || auth.can('abonos.view')
-  const canUpdate =
-    canAccessClubFinanzas({
-      rolName: ctx?.rol_name,
-      organizacionId: ctx?.organizacion_id,
-    }) || auth.can('finanzas.update')
+    canAccessClubFinanzas(access) || auth.can('finanzas.view') || auth.can('abonos.view')
+  const canUpdate = canAccessClubFinanzas(access) || auth.can('finanzas.update')
+  const canDeleteMovimiento = isSuperAdminUser(auth.user)
 
   const bounds = useMemo(() => yearBounds(), [])
   const [desde, setDesde] = useState(bounds.desde)
   const [hasta, setHasta] = useState(bounds.hasta)
-  const [eventoId, setEventoId] = useState<number | null>(null)
+  const [cuentaBancariaId, setCuentaBancariaId] = useState<number | null>(null)
   const [tab, setTab] = useState<TabId>('resumen')
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<FinanzasResumen>(() => emptyResumen(bounds.desde, bounds.hasta))
   const [saving, setSaving] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [form, setForm] = useState({
     cuenta_id: '',
     tipo: 'egreso' as 'ingreso' | 'egreso',
@@ -99,7 +96,7 @@ export function FinanzasPage() {
     let cancelled = false
     setLoading(true)
     finanzasApi
-      .resumen({ desde, hasta, eventoId })
+      .resumen({ desde, hasta, cuentaBancariaId })
       .then((next) => {
         if (!cancelled) setData(next)
       })
@@ -112,7 +109,7 @@ export function FinanzasPage() {
     return () => {
       cancelled = true
     }
-  }, [canView, desde, hasta, eventoId, notices])
+  }, [canView, desde, hasta, cuentaBancariaId, notices])
 
   useEffect(() => {
     if (!form.cuenta_id && data.cuentas[0]) {
@@ -121,8 +118,23 @@ export function FinanzasPage() {
   }, [data.cuentas, form.cuenta_id])
 
   async function reload() {
-    const next = await finanzasApi.resumen({ desde, hasta, eventoId })
+    const next = await finanzasApi.resumen({ desde, hasta, cuentaBancariaId })
     setData(next)
+  }
+
+  async function onDeleteMovimiento(mov: FinanzasMovimiento) {
+    if (!canDeleteMovimiento || deletingId) return
+    if (!window.confirm(`¿Eliminar el movimiento “${mov.concepto}”? Esta acción no se puede deshacer.`)) return
+    setDeletingId(mov.id)
+    try {
+      await finanzasApi.deleteMovimiento(mov.id)
+      notices.success('Movimiento eliminado.')
+      await reload()
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo eliminar el movimiento'))
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   async function onSubmitMovimiento(event: FormEvent) {
@@ -194,15 +206,17 @@ export function FinanzasPage() {
                 <input type="date" value={hasta} onChange={(event) => setHasta(event.target.value)} />
               </label>
               <label>
-                Actividad
+                Cuenta bancaria
                 <select
-                  value={eventoId ?? ''}
-                  onChange={(event) => setEventoId(event.target.value ? Number(event.target.value) : null)}
+                  value={cuentaBancariaId ?? ''}
+                  onChange={(event) =>
+                    setCuentaBancariaId(event.target.value ? Number(event.target.value) : null)
+                  }
                 >
-                  <option value="">Todas las actividades</option>
-                  {data.eventos.map((evento) => (
-                    <option key={evento.id} value={evento.id}>
-                      {evento.nombre}
+                  <option value="">Todas las cuentas</option>
+                  {(data.cuentas_bancarias ?? []).map((cuenta) => (
+                    <option key={cuenta.id} value={cuenta.id}>
+                      {cuenta.nombre}
                     </option>
                   ))}
                 </select>
@@ -339,7 +353,13 @@ export function FinanzasPage() {
                   <h3>Últimos movimientos</h3>
                   <ul className="finanzas__moves">
                     {data.movimientos.slice(0, 8).map((mov) => (
-                      <MovimientoRow key={mov.id} mov={mov} />
+                      <MovimientoRow
+                        key={mov.id}
+                        mov={mov}
+                        canDelete={canDeleteMovimiento}
+                        deleting={deletingId === mov.id}
+                        onDelete={(item) => void onDeleteMovimiento(item)}
+                      />
                     ))}
                     {data.movimientos.length === 0 ? (
                       <li>
@@ -382,7 +402,13 @@ export function FinanzasPage() {
               <h3>Movimientos de caja</h3>
               <ul className="finanzas__moves">
                 {data.movimientos.map((mov) => (
-                  <MovimientoRow key={mov.id} mov={mov} />
+                  <MovimientoRow
+                    key={mov.id}
+                    mov={mov}
+                    canDelete={canDeleteMovimiento}
+                    deleting={deletingId === mov.id}
+                    onDelete={(item) => void onDeleteMovimiento(item)}
+                  />
                 ))}
                 {data.movimientos.length === 0 ? (
                   <li>
@@ -430,17 +456,44 @@ export function FinanzasPage() {
   )
 }
 
-function MovimientoRow({ mov }: { mov: FinanzasMovimiento }) {
+function movimientoLabel(mov: FinanzasMovimiento): string {
+  const concepto = mov.concepto.trim()
+  const evento = mov.evento_nombre?.trim()
+  if (!evento) return concepto
+  if (concepto.toLowerCase().includes(evento.toLowerCase())) return concepto
+  return `${concepto} · ${evento}`
+}
+
+function MovimientoRow({
+  mov,
+  canDelete = false,
+  deleting = false,
+  onDelete,
+}: {
+  mov: FinanzasMovimiento
+  canDelete?: boolean
+  deleting?: boolean
+  onDelete?: (mov: FinanzasMovimiento) => void
+}) {
   return (
     <li>
-      <span>
-        {mov.concepto}
-        {mov.evento_nombre ? ` · ${mov.evento_nombre}` : ''}
+      <span>{movimientoLabel(mov)}</span>
+      <span className="finanzas__move-end">
+        <strong className={mov.tipo === 'egreso' ? 'is-out' : 'is-in'}>
+          {mov.tipo === 'egreso' ? '-' : '+'}
+          {formatMoney(mov.monto)}
+        </strong>
+        {canDelete ? (
+          <button
+            type="button"
+            className="finanzas__move-del"
+            disabled={deleting}
+            onClick={() => onDelete?.(mov)}
+          >
+            {deleting ? 'Eliminando…' : 'Eliminar'}
+          </button>
+        ) : null}
       </span>
-      <strong className={mov.tipo === 'egreso' ? 'is-out' : 'is-in'}>
-        {mov.tipo === 'egreso' ? '-' : '+'}
-        {formatMoney(mov.monto)}
-      </strong>
     </li>
   )
 }
