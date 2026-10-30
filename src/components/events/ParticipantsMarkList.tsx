@@ -468,7 +468,7 @@ export function PendingProofsPanel({
   )
 }
 
-function billedVentas(row: EventParticipant, draft: ParticipantDraft): Record<number, number> {
+export function billedVentas(row: EventParticipant, draft: ParticipantDraft): Record<number, number> {
   const requested = draft[row.persona_id]?.ventas ?? {}
   const saved = new Map((row.ventas ?? []).map((venta) => [venta.producto_servicio_id, venta]))
   const ids = new Set<number>([...Object.keys(requested).map(Number), ...saved.keys()])

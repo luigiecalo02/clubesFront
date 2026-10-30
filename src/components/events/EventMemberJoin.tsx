@@ -94,6 +94,7 @@ export function EventMemberJoin({ event, onClose, onChanged }: EventMemberJoinPr
   const [entregadas, setEntregadas] = useState<Record<number, number | null>>({})
   const [already, setAlready] = useState(false)
   const [abonado, setAbonado] = useState(0)
+  const [ajusteParticipantes, setAjusteParticipantes] = useState(0)
   const [abonos, setAbonos] = useState<AbonoMovimiento[]>([])
   const [reparto, setReparto] = useState<IncomeReparto | null>(null)
   const [tab, setTab] = useState<'servicios' | 'historial'>('servicios')
@@ -155,7 +156,12 @@ export function EventMemberJoin({ event, onClose, onChanged }: EventMemberJoinPr
   const gain = productGainTotal(shares)
   const faltante = totals.recaudo - abonado
   const ganancia = {
-    ganada: participantGainFromPaidLines(shares, approvedAbonosByProduct(abonos), reparto),
+    ganada: participantGainFromPaidLines(
+      shares,
+      approvedAbonosByProduct(abonos),
+      reparto,
+      Number(ajusteParticipantes) || 0,
+    ),
     proyectada: reparto ? participantShare(reparto, gain) : 0,
   }
   const locked = isEconomicParticipationLocked(event)
@@ -182,6 +188,7 @@ export function EventMemberJoin({ event, onClose, onChanged }: EventMemberJoinPr
           ),
         )
         setAbonado(Number(data.recaudo?.abonado) || 0)
+        setAjusteParticipantes(Number(data.recaudo?.ajuste_participantes) || 0)
         setAbonos(data.recaudo?.abonos ?? [])
         setReparto(data.ganancia?.reparto ?? null)
         setCuenta(data.evento?.cuenta_bancaria ?? event.cuenta_bancaria ?? null)
@@ -561,6 +568,7 @@ export function EventMemberJoin({ event, onClose, onChanged }: EventMemberJoinPr
                 reparto={reparto}
                 lines={shares}
                 abonosByProduct={approvedAbonosByProduct(abonos)}
+                ajusteParticipantes={ajusteParticipantes}
               />
             </div>
           ) : null}

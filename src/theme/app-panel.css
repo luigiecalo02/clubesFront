@@ -21,6 +21,7 @@
   --panel-kicker: rgb(240 193 75 / 0.78);
   --panel-label: #e8eef8;
   --panel-icon: #93a4be;
+  --panel-info: #60a5fa;
   --panel-placeholder: #7f8da3;
   --panel-input-bg: rgb(6 10 18 / 0.45);
   --panel-input-bg-focus: rgb(8 14 24 / 0.7);
@@ -471,6 +472,7 @@
   --panel-kicker: color-mix(in srgb, var(--panel-gold) 72%, #0c2340);
   --panel-label: #1a2f48;
   --panel-icon: #5a7190;
+  --panel-info: #2563eb;
   --panel-placeholder: #7a8ea6;
   --panel-input-bg: rgb(241 247 255 / 0.95);
   --panel-input-bg-focus: #fff;

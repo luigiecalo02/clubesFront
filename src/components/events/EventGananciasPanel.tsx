@@ -245,14 +245,16 @@ export function participantGainFromPaidLines(
   lines: ProductGainLine[],
   abonosByProduct: Record<number, number> = {},
   reparto?: IncomeReparto | null,
+  ajusteParticipantes = 0,
 ): number {
-  return lines.reduce((sum, line) => {
+  const base = lines.reduce((sum, line) => {
     const capital = line.qty * line.capitalUnidad
     const abonado = Math.max(0, Number(abonosByProduct[line.id]) || 0)
     const { gain } = paidAfterCapital(abonado, capital)
     if (!reparto) return sum + gain
     return sum + participantShare(reparto, gain)
   }, 0)
+  return base + (Number(ajusteParticipantes) || 0)
 }
 
 export type IncomeReparto = {
@@ -532,6 +534,7 @@ function ParticipantIncomeFromConfig({
   lines = [],
   abonosByProduct = {},
   base,
+  ajusteParticipantes = 0,
 }: {
   configId?: number | null
   ingreso: number
@@ -540,6 +543,7 @@ function ParticipantIncomeFromConfig({
   lines?: ProductGainLine[]
   abonosByProduct?: Record<number, number>
   base: number
+  ajusteParticipantes?: number
 }) {
   const { items, loading } = useEclesiasticas()
   const current = resolveConfig(items, configId)
@@ -553,9 +557,19 @@ function ParticipantIncomeFromConfig({
       capitalNote={capitalNote}
       lines={lines}
       abonosByProduct={abonosByProduct}
-      parts={incomeParts(current, base)}
+      parts={withAjusteParticipantes(incomeParts(current, base), ajusteParticipantes)}
       shareOf={(amount) => incomeParts(current, amount)}
     />
+  )
+}
+
+function withAjusteParticipantes(
+  parts: ReturnType<typeof incomePartsFrom>,
+  ajuste = 0,
+): ReturnType<typeof incomePartsFrom> {
+  if (!ajuste) return parts
+  return parts.map((part) =>
+    part.key === 'miembros' ? { ...part, amount: part.amount + ajuste } : part,
   )
 }
 
@@ -567,6 +581,7 @@ export function ParticipantIncomeSplit({
   capitalNote,
   lines = [],
   abonosByProduct = {},
+  ajusteParticipantes = 0,
 }: {
   configId?: number | null
   ingreso: number
@@ -575,6 +590,7 @@ export function ParticipantIncomeSplit({
   capitalNote?: string
   lines?: ProductGainLine[]
   abonosByProduct?: Record<number, number>
+  ajusteParticipantes?: number
 }) {
   const base = lines.length > 0 ? Math.max(0, productGainTotal(lines)) : Math.max(0, ingreso - Math.max(0, capital))
   if (reparto) {
@@ -585,7 +601,7 @@ export function ParticipantIncomeSplit({
         capitalNote={capitalNote}
         lines={lines}
         abonosByProduct={abonosByProduct}
-        parts={incomePartsFrom(reparto, base)}
+        parts={withAjusteParticipantes(incomePartsFrom(reparto, base), ajusteParticipantes)}
         shareOf={(amount) => incomePartsFrom(reparto, amount)}
       />
     )
@@ -599,6 +615,7 @@ export function ParticipantIncomeSplit({
       lines={lines}
       abonosByProduct={abonosByProduct}
       base={base}
+      ajusteParticipantes={ajusteParticipantes}
     />
   )
 }

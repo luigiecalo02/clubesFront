@@ -1,4 +1,5 @@
 import { api } from './client'
+import { notifyFinanzasChanged } from './finanzasLive'
 import type {
   AbonoActividadDistribucion,
   AbonoRecaudo,
@@ -64,6 +65,7 @@ export const abonosApi = {
         ...fields,
         partidas,
       })
+      notifyFinanzasChanged()
       return data.data
     }
     const body = new FormData()
@@ -77,6 +79,7 @@ export const abonosApi = {
       body,
       formDataRequest,
     )
+    notifyFinanzasChanged()
     return data.data
   },
 
@@ -94,6 +97,7 @@ export const abonosApi = {
       body,
       formDataRequest,
     )
+    notifyFinanzasChanged()
     return data.data
   },
 
@@ -110,6 +114,7 @@ export const abonosApi = {
       body,
       formDataRequest,
     )
+    notifyFinanzasChanged()
     return data.data
   },
 
@@ -118,6 +123,7 @@ export const abonosApi = {
       `/api/v1/settings/clubes/abonos/${abonoId}`,
       { monto },
     )
+    notifyFinanzasChanged()
     return data.data
   },
 
@@ -129,6 +135,7 @@ export const abonosApi = {
       `/api/v1/settings/clubes/abonos/${abonoId}/revision`,
       payload,
     )
+    notifyFinanzasChanged()
     return data.data
   },
 }

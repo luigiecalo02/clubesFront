@@ -66,6 +66,7 @@ export function AbonoActividadDistribucion({
         reparto={data.reparto}
         lines={lines}
         abonosByProduct={abonosByProduct}
+        ajusteParticipantes={Number(data.ajuste_participantes) || 0}
       />
     </div>
   )

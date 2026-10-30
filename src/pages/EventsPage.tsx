@@ -51,6 +51,7 @@ import {
 import { AbonoMoneyRow } from '../components/abonos/AbonoMoneyRow'
 import {
   abonoProductOptions,
+  billedVentas,
   emptyParticipantsDraft,
   participantsPayloadFromDraft,
   ParticipantEventStats,
@@ -127,6 +128,10 @@ function dateFromApi(value?: string | null): string {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return defaultStart()
   return toDateInput(parsed)
+}
+
+function hidesEconomicParticipantsTab(item?: EventSummary | null) {
+  return Boolean(item && isEconomicEvent(item) && item.estado === 'en_proceso')
 }
 
 function formFromEvent(item: EventSummary) {
@@ -233,6 +238,11 @@ export function EventsPage() {
   useEffect(() => {
     if ((!formIsEconomic || !canViewGanancias) && eventTab === 'ganancias') setEventTab('ficha')
   }, [canViewGanancias, eventTab, formIsEconomic])
+
+  useEffect(() => {
+    if (!hidesEconomicParticipantsTab(participantsFor) || participantTab !== 'participantes') return
+    setParticipantTab(canViewGanancias ? 'ganancias' : 'comprobantes')
+  }, [canViewGanancias, participantTab, participantsFor])
 
   useEffect(() => {
     if (!canViewGanancias || !showForm || !formIsEconomic || form.ganancia_eclesiastica_id) return undefined
@@ -420,7 +430,9 @@ export function EventsPage() {
       closeForm()
       closeAttendance()
       closeJoin()
-      setParticipantTab('participantes')
+      setParticipantTab(
+        hidesEconomicParticipantsTab(item) ? (canViewGanancias ? 'ganancias' : 'comprobantes') : 'participantes',
+      )
       setParticipantsFor(item)
       return
     }
@@ -786,7 +798,7 @@ export function EventsPage() {
     if (participantsFor?.estado !== 'en_proceso') return
     const row = participants.find((item) => item.persona_id === personaId)
     if (!row) return
-    const ventas = participantDraft[personaId]?.ventas ?? {}
+    const ventas = billedVentas(row, participantDraft)
     const products = abonoProductOptions(participantServices, ventas, row.abonos ?? [])
     const pendiente = saleTotals(participantServices, ventas).recaudo - (Number(row.abonado) || 0)
     const montos =
@@ -1021,7 +1033,7 @@ export function EventsPage() {
   }
 
   const abonoFor = participants.find((row) => row.persona_id === abonoForId) ?? null
-  const abonoVentas = abonoFor ? participantDraft[abonoFor.persona_id]?.ventas ?? {} : {}
+  const abonoVentas = abonoFor ? billedVentas(abonoFor, participantDraft) : {}
   const abonoMoney = abonoFor ? saleTotals(participantServices, abonoVentas) : { unidades: 0, recaudo: 0 }
   const abonoAbonado = Number(abonoFor?.abonado) || 0
   const abonoPendiente = abonoMoney.recaudo - abonoAbonado
@@ -1029,7 +1041,8 @@ export function EventsPage() {
     ? abonoProductOptions(participantServices, abonoVentas, abonoFor.abonos ?? [])
     : []
   const pendingProofCount = pendingProofGroups(participants).length
-  const participantBody = participantTab === 'comprobantes' ? (
+  const showParticipantsTab = !hidesEconomicParticipantsTab(participantsFor)
+  const participantBody = participantTab === 'comprobantes' || (!showParticipantsTab && !canViewGanancias) ? (
     loadingParticipants ? (
       <p className="app-panel__muted">Cargando comprobantes…</p>
     ) : (
@@ -1044,7 +1057,7 @@ export function EventsPage() {
         onAttachProof={attachParticipantAbonoProof}
       />
     )
-  ) : participantTab === 'ganancias' && canViewGanancias ? (
+  ) : canViewGanancias && (participantTab === 'ganancias' || !showParticipantsTab) ? (
     loadingParticipants ? (
       <p className="app-panel__muted">Cargando integrantes…</p>
     ) : (
@@ -1396,7 +1409,7 @@ export function EventsPage() {
             value={participantTab}
             onChange={setParticipantTab}
             tabs={[
-              { id: 'participantes', label: 'Participantes' },
+              ...(showParticipantsTab ? [{ id: 'participantes' as const, label: 'Participantes' }] : []),
               ...(canViewGanancias ? [{ id: 'ganancias' as const, label: 'Ganancias' }] : []),
               {
                 id: 'comprobantes' as const,

@@ -59,6 +59,7 @@ type SummaryRow = {
   recaudo: number
   abonado: number
   abonosByProduct: Record<number, number>
+  ajusteParticipantes: number
   pendiente: number
   ganancia: number
 }
@@ -111,6 +112,7 @@ function buildRows(
         recaudo,
         abonado,
         abonosByProduct: approvedAbonosByProduct(member.abonos),
+        ajusteParticipantes: Number(member.ajuste_participantes) || 0,
         pendiente: Math.max(0, recaudo - abonado),
         ganancia: saleGain(services, billed),
       },
@@ -205,13 +207,18 @@ export function EventActivitySummary({
   const margen = proyeccion > 0 ? (ganancia / proyeccion) * 100 : 0
   const reparto = useIncomeReparto(gananciaConfigId)
   const received = reparto
-    ? sumPaidIncomeParts(
-        rows.map((row) => ({
-          lines: rowProductLines(row, services, totales),
-          abonosByProduct: row.abonosByProduct,
-        })),
-        reparto,
-      )
+    ? (() => {
+        const parts = sumPaidIncomeParts(
+          rows.map((row) => ({
+            lines: rowProductLines(row, services, totales),
+            abonosByProduct: row.abonosByProduct,
+          })),
+          reparto,
+        )
+        const extra = rows.reduce((sum, row) => sum + row.ajusteParticipantes, 0)
+        if (extra) parts.miembros = (parts.miembros ?? 0) + extra
+        return parts
+      })()
     : undefined
   const snapshot = liveGainSnapshot(proyeccion, capital, reparto)
   const diezmoPrevisto = reparto ? snapshot.diezmo : Number(gananciaRegistro?.diezmo) || 0
@@ -268,7 +275,7 @@ export function EventActivitySummary({
           row.recaudo,
           row.abonado,
           row.pendiente,
-          participantGainFromPaidLines(lines, row.abonosByProduct, reparto),
+          participantGainFromPaidLines(lines, row.abonosByProduct, reparto, row.ajusteParticipantes),
           prevista,
         ]
       }),
@@ -432,7 +439,12 @@ export function EventActivitySummary({
               const paid = percent(row.abonado, row.recaudo)
               const productLines = rowProductLines(row, services, totales)
               const gananciaPrevista = participantGainFromLines(productLines, reparto)
-              const gananciaReal = participantGainFromPaidLines(productLines, row.abonosByProduct, reparto)
+              const gananciaReal = participantGainFromPaidLines(
+                productLines,
+                row.abonosByProduct,
+                reparto,
+                row.ajusteParticipantes,
+              )
               const avance = percent(gananciaReal, gananciaPrevista)
               return (
                 <div key={row.id} className={`event-summary__person${openIds.includes(row.id) ? ' is-open' : ''}`}>
@@ -516,6 +528,7 @@ export function EventActivitySummary({
                     ingreso={row.abonado}
                     abonosByProduct={row.abonosByProduct}
                     lines={productLines}
+                    ajusteParticipantes={row.ajusteParticipantes}
                   />
                   </div>
                 ) : null}

@@ -508,6 +508,7 @@ export interface EventParticipant {
   participa?: boolean | null
   ventas?: EventParticipantVenta[]
   abonado?: number
+  ajuste_participantes?: number
   abonos?: AbonoMovimiento[]
 }
 
@@ -543,6 +544,7 @@ export interface EventSelfParticipation {
   integrante: EventParticipant
   recaudo?: {
     abonado: number
+    ajuste_participantes?: number
     abonos: AbonoMovimiento[]
   }
   ganancia?: {
@@ -697,6 +699,7 @@ export interface AbonoActividadDistribucion {
   ganancia_eclesiastica_id?: number | null
   reparto?: AbonoReparto | null
   ingreso: number
+  ajuste_participantes?: number
   servicios: Array<{
     id: number
     nombre: string
@@ -803,21 +806,34 @@ export interface FinanzasMovimiento {
   cuenta_nombre?: string | null
   evento_id?: number | null
   evento_nombre?: string | null
+  destino?: string | null
+  persona_id?: number | null
+  persona_nombre?: string | null
   occurred_at?: string | null
 }
 
-export interface FinanzasActividad {
-  id: number
-  nombre: string
-  starts_at?: string | null
-  abonado: number
-  proyeccion: number
+export interface FinanzasActividadPartes {
   participantes: number
   diezmo: number
   ofrenda: number
   club: number
   extras: number
   capital: number
+}
+
+export interface FinanzasActividad extends FinanzasActividadPartes {
+  id: number
+  nombre: string
+  starts_at?: string | null
+  image_url?: string | null
+  abonado: number
+  proyeccion: number
+  planteado?: FinanzasActividadPartes
+}
+
+export interface FinanzasEventoParticipanteOption {
+  id: number
+  nombre: string
 }
 
 export interface FinanzasEventoOption {
@@ -830,6 +846,7 @@ export interface FinanzasEventoOption {
   capital_recogido?: number
   diezmo_recogido?: number
   ofrenda_recogido?: number
+  participantes?: FinanzasEventoParticipanteOption[]
 }
 
 export interface FinanzasCuentaBancariaOption {
@@ -837,6 +854,7 @@ export interface FinanzasCuentaBancariaOption {
   nombre: string
   banco?: string | null
   numero_cuenta?: string | null
+  saldo?: number
 }
 
 export interface FinanzasResumen {
