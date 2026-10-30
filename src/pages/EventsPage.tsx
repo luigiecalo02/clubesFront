@@ -622,12 +622,14 @@ export function EventsPage() {
     }, 220)
   }
 
+  const participantsForId = participantsFor?.id ?? null
+
   useEffect(() => {
-    if (!participantsFor) return undefined
+    if (!participantsForId) return undefined
     let cancelled = false
     setLoadingParticipants(true)
     serviciosApi
-      .participants(participantsFor.id)
+      .participants(participantsForId)
       .then((next) => {
         if (cancelled) return
         setParticipants(next.integrantes)
@@ -645,7 +647,7 @@ export function EventsPage() {
     return () => {
       cancelled = true
     }
-  }, [participantsFor, notices])
+  }, [participantsForId, notices])
 
   function setParticipa(personaId: number, participa: boolean | '') {
     const current = participantDraftRef.current[personaId] ?? { participa: '' as const, ventas: {} }

@@ -33,16 +33,30 @@ function initialDraft(value: number | string): string {
 export function NumberPadDialog({ title, value, maxDigits = 4, format, onConfirm, onClose }: NumberPadDialogProps) {
   const [draft, setDraft] = useState(() => initialDraft(value))
   const onCloseRef = useRef(onClose)
+  const onConfirmRef = useRef(onConfirm)
   onCloseRef.current = onClose
+  onConfirmRef.current = onConfirm
+  const amount = Number(draft) || 0
+  const amountRef = useRef(amount)
+  amountRef.current = amount
 
   useEffect(() => {
     lockBodyScroll()
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onCloseRef.current()
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onCloseRef.current()
+        return
+      }
+      if (event.key !== 'Enter') return
+      event.preventDefault()
+      event.stopPropagation()
+      tapHaptic(24)
+      onConfirmRef.current(amountRef.current)
     }
-    window.addEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
     return () => {
-      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keydown', onKey, true)
       unlockBodyScroll()
     }
   }, [])
@@ -55,8 +69,6 @@ export function NumberPadDialog({ title, value, maxDigits = 4, format, onConfirm
     tapHaptic(ms)
     action()
   }
-
-  const amount = Number(draft) || 0
 
   return createPortal(
     <div className="number-pad" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : 'Teclado numérico'}>

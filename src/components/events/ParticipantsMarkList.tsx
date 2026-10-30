@@ -5,6 +5,7 @@ import { AdminIcon } from '../../admin/AdminIcon'
 import { AppPanel } from '../../theme/AppPanel'
 import { formatDate } from '../../theme/dates'
 import { ImagePreviewDialog } from '../../theme/ImagePreviewDialog'
+import { NumberPadDialog } from '../../theme/NumberPad'
 import { memberInitials } from '../attendance/AttendanceMarkList'
 import {
   AbonoAmountControl,
@@ -538,6 +539,7 @@ export function ParticipantsMarkList({
   const [sort, setSort] = useState<ParticipantSort>('nombre')
   const [openIds, setOpenIds] = useState<number[]>([])
   const [pending, setPending] = useState<BulkParticipa | null>(null)
+  const [pad, setPad] = useState<{ personaId: number; serviceId: number } | null>(null)
 
   const markedCount = useMemo(
     () => members.filter((row) => rowHasData(row, draft)).length,
@@ -633,6 +635,9 @@ export function ParticipantsMarkList({
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.preventDefault()
+            }}
             placeholder="Nombre o documento"
           />
         </label>
@@ -789,7 +794,16 @@ export function ParticipantsMarkList({
                               >
                                 −
                               </button>
-                              <strong>{cantidad}</strong>
+                              <button
+                                type="button"
+                                className="attendance-mark__stepper-value"
+                                aria-label={`Editar cantidad de ${service.nombre}`}
+                                aria-expanded={pad?.personaId === row.persona_id && pad.serviceId === service.id}
+                                disabled={!canEdit}
+                                onClick={() => setPad({ personaId: row.persona_id, serviceId: service.id })}
+                              >
+                                {cantidad}
+                              </button>
                               <button
                                 type="button"
                                 aria-label={`Agregar una unidad de ${service.nombre}`}
@@ -888,6 +902,17 @@ export function ParticipantsMarkList({
         })}
       </div>
 
+      {pad && canEdit ? (
+        <NumberPadDialog
+          title={services.find((service) => service.id === pad.serviceId)?.nombre ?? 'Cantidad'}
+          value={draft[pad.personaId]?.ventas[pad.serviceId] ?? 0}
+          onClose={() => setPad(null)}
+          onConfirm={(cantidad) => {
+            onQty(pad.personaId, pad.serviceId, cantidad)
+            setPad(null)
+          }}
+        />
+      ) : null}
       {saving ? <p className="app-panel__muted">Guardando…</p> : null}
       {participationLocked ? (
         <p className="app-panel__hint">
