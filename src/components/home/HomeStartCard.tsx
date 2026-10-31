@@ -176,13 +176,14 @@ export function HomeStartCard() {
   }, [personaId])
 
   useEffect(() => {
-    if (!personaId) return undefined
+    if (personaId == null) return undefined
+    const id = personaId
     let cancelled = false
 
     function refresh() {
       if (cancelled || document.hidden) return
       attendanceApi
-        .memberHistory(personaId)
+        .memberHistory(id)
         .then((row) => {
           if (!cancelled) setHistory(row)
         })
