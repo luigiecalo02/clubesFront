@@ -66,7 +66,8 @@ import { EventGananciasPanel } from '../components/events/EventGananciasPanel'
 import { EventSubeventsPanel } from '../components/events/EventSubeventsPanel'
 import { EventTabs, type EventWorkspaceTab } from '../components/events/EventTabs'
 import { EventsFilters } from '../components/events/EventsFilters'
-import { EventsViewToggle } from '../components/events/EventsViewToggle'
+import { EventCarousel } from '../components/events/EventCarousel'
+import { EventsViewToggle, parseEventsView } from '../components/events/EventsViewToggle'
 import { useNow } from '../components/events/EventCountdown'
 import {
   AttendanceMarkList,
@@ -157,7 +158,7 @@ export function EventsPage() {
   const auth = useAuth()
   const ctx = auth.user?.contexto
   const [params, setParams] = useSearchParams()
-  const view = params.get('vista') === 'cronograma' ? 'cronograma' : 'cuadricula'
+  const view = parseEventsView(params.get('vista'))
   const dateRange = defaultEventDateRange()
   const estado = params.get('estado') ?? ''
   const tipo = params.get('tipo') ?? ''
@@ -165,7 +166,7 @@ export function EventsPage() {
   const hasta = params.get('hasta') ?? dateRange.hasta
   const eventQuery = view === 'cronograma' ? {} : buildEventListQuery({ estado, tipo, desde, hasta })
   const hasListFilters =
-    view === 'cuadricula' &&
+    view !== 'cronograma' &&
     (Boolean(estado || tipo) || desde !== dateRange.desde || hasta !== dateRange.hasta)
   const eventAccess = clubAccessFromUser(auth.user, auth.can)
   const canCreate = canCreateClubEvent(eventAccess)
@@ -215,7 +216,11 @@ export function EventsPage() {
   const [abonoForId, setAbonoForId] = useState<number | null>(null)
   const [abonoDraft, setAbonoDraft] = useState(emptyAbonoPayDraft)
   const [submitting, setSubmitting] = useState(false)
-  const [filtersOpen, setFiltersOpen] = useState(hasListFilters)
+  const [filtersOpen, setFiltersOpen] = useState(
+    () =>
+      hasListFilters &&
+      (typeof window === 'undefined' || !window.matchMedia(MOBILE_EVENTS).matches),
+  )
   const [form, setForm] = useState(emptyForm)
   const [eventTab, setEventTab] = useState<EventWorkspaceTab>('ficha')
   const [isMobile, setIsMobile] = useState(() =>
@@ -278,8 +283,8 @@ export function EventsPage() {
     setParams(nextParams, { replace: true })
   }
 
-  function setView(next: 'cuadricula' | 'cronograma') {
-    patchParams({ vista: next === 'cuadricula' ? null : 'cronograma' })
+  function setView(next: ReturnType<typeof parseEventsView>) {
+    patchParams({ vista: next === 'cuadricula' ? null : next })
   }
 
   function setFilter(key: 'estado' | 'tipo' | 'desde' | 'hasta', value: string) {
@@ -965,8 +970,8 @@ export function EventsPage() {
     const seq = ++saveSeq.current
     setSavingAttendance(true)
     try {
-      const { presentes, puntuales, justificados } = attendancePayloadFromDraft(members, nextDraft)
-      const next = await attendanceApi.save(id, presentes, justificados, puntuales)
+      const { presentes, puntuales, tardes, justificados } = attendancePayloadFromDraft(members, nextDraft)
+      const next = await attendanceApi.save(id, presentes, justificados, puntuales, tardes)
       if (seq !== saveSeq.current) return
       setMembers(next.integrantes)
       const saved = emptyAttendanceDraft(next.integrantes)
@@ -1517,6 +1522,7 @@ export function EventsPage() {
         filtersOpen={filtersOpen}
         onChange={setView}
         onToggleFilters={() => setFiltersOpen((open) => !open)}
+        onCloseFilters={() => setFiltersOpen(false)}
         filters={
           <EventsFilters
             estado={estado}
@@ -1538,7 +1544,7 @@ export function EventsPage() {
           <p className="app-panel__kicker">Agenda</p>
           <h2 className="app-panel__title">No hay eventos</h2>
           <p className="app-panel__subtitle">
-            {view === 'cuadricula' && hasListFilters
+            {view !== 'cronograma' && hasListFilters
               ? 'Prueba otro estado, tipo o rango de fechas.'
               : canCreate
                 ? 'Crea el primero para tu club.'
@@ -1564,6 +1570,21 @@ export function EventsPage() {
           onEdit={openEdit}
           canChangeEstado={canViewGanancias}
           onEstadoChange={changeEventEstado}
+        />
+      ) : null}
+
+      {view === 'carrusel' && events.length ? (
+        <EventCarousel
+          events={events}
+          canTakeAttendance={canTakeAttendance}
+          canJoin={canJoinEvent}
+          canManageInscriptions={canManageInscriptions}
+          canEdit={canEditEvents}
+          organizacionId={ctx?.organizacion_id}
+          onAttendance={openAttendance}
+          onJoin={openJoin}
+          onInscriptions={openInscriptions}
+          onEdit={openEdit}
         />
       ) : null}
 

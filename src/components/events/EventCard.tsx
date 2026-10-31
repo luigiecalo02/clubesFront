@@ -77,7 +77,7 @@ export function isEconomicEvent(
   return slug === ECONOMIC_EVENT_SLUG || name === 'actividad económica' || name === 'actividad economica'
 }
 
-function eventRosterFact(item: EventSummary): { total: number; label: string } {
+export function eventRosterFact(item: EventSummary): { total: number; label: string } {
   if (isInscribibleEvent(item)) {
     return { total: item.inscritos_count ?? 0, label: 'Inscritos' }
   }
@@ -102,6 +102,7 @@ type EventCardActionsProps = {
   canJoin?: boolean
   canManageInscriptions?: boolean
   canEdit: boolean
+  decorated?: boolean
   onAttendance: (item: EventSummary) => void
   onJoin?: (item: EventSummary) => void
   onInscriptions?: (item: EventSummary) => void
@@ -114,6 +115,7 @@ export function EventCardActions({
   canJoin = false,
   canManageInscriptions = false,
   canEdit,
+  decorated = false,
   onAttendance,
   onJoin,
   onInscriptions,
@@ -131,20 +133,27 @@ export function EventCardActions({
 
   const hasPrimary = showAttendance || showParticipants || showJoin || showInscriptions
 
+  const trailing = decorated ? <AdminIcon name="chevronRight" /> : null
+
   return (
     <>
       {showAttendance ? (
         <button type="button" className="app-panel__btn--primary" onClick={() => onAttendance(item)}>
+          {decorated ? <AdminIcon name="check" /> : null}
           Asistencia
+          {trailing}
         </button>
       ) : null}
       {showParticipants ? (
         <button type="button" className="app-panel__btn--primary" onClick={() => onAttendance(item)}>
+          {decorated ? <AdminIcon name="eye" /> : null}
           Ver evento
+          {trailing}
         </button>
       ) : null}
       {showJoin && onJoin ? (
         <button type="button" className="app-panel__btn--primary" onClick={() => onJoin(item)}>
+          {decorated ? <AdminIcon name="pencil" /> : null}
           {showJoinInscription
             ? item.inscrito
               ? 'Mi inscripción'
@@ -152,11 +161,14 @@ export function EventCardActions({
             : joinLocked
               ? 'Ver'
               : 'Participar'}
+          {trailing}
         </button>
       ) : null}
       {showInscriptions && onInscriptions ? (
         <button type="button" className="app-panel__btn--ghost" onClick={() => onInscriptions(item)}>
+          {decorated ? <AdminIcon name="users" /> : null}
           Inscritos
+          {trailing}
         </button>
       ) : null}
       {canEdit ? (
@@ -165,7 +177,9 @@ export function EventCardActions({
           className={hasPrimary ? 'app-panel__btn--ghost' : 'app-panel__btn--primary'}
           onClick={() => onEdit(item)}
         >
+          {decorated ? <AdminIcon name="pencil" /> : null}
           Editar
+          {trailing}
         </button>
       ) : null}
     </>

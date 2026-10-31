@@ -22,6 +22,7 @@ export type AdminIconName =
   | 'box'
   | 'map'
   | 'grid'
+  | 'carousel'
   | 'user'
   | 'sun'
   | 'moon'
@@ -131,7 +132,7 @@ export const ADMIN_MENU: AdminMenuItem[] = [
     label: 'Eventos',
     permission: 'events.view',
     icon: 'calendar',
-    description: 'Eventos del club en cuadrícula o cronograma.',
+    description: 'Eventos del club en cuadrícula, cronograma o carrusel.',
   },
   {
     path: '/asistencia',

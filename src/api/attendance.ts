@@ -41,10 +41,11 @@ export const attendanceApi = {
     personaIds: number[],
     justificados: number[] = [],
     puntuales: number[] = [],
+    tardes: number[] = [],
   ): Promise<AttendanceRoster> {
     const { data } = await api.put<ApiEnvelope<AttendanceRoster>>(
       `/api/v1/settings/clubes/asistencia/${eventoId}`,
-      { persona_ids: personaIds, justificados, puntuales },
+      { persona_ids: personaIds, justificados, puntuales, tardes },
     )
     notifyAttendanceChanged()
     return data.data

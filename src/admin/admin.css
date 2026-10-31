@@ -852,7 +852,7 @@
   .admin-shell,
   .admin-shell--collapsed {
     --admin-sidebar-width: 0px;
-    --admin-tabbar-height: calc(3.55rem + env(safe-area-inset-bottom, 0px));
+    --admin-tabbar-height: calc(4.25rem + env(safe-area-inset-bottom, 0px));
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -956,30 +956,52 @@
 
   .admin-tabbar {
     position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    right: 0.7rem;
+    bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
+    left: 0.7rem;
     z-index: 20;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    align-content: center;
-    gap: 0.15rem;
+    display: flex;
+    align-items: stretch;
+    gap: 0.1rem;
     box-sizing: border-box;
-    height: var(--admin-tabbar-height);
-    padding: 0.2rem 0.35rem calc(0.25rem + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid var(--panel-divider);
-    background: var(--panel-bg);
+    height: auto;
+    padding: 0.28rem;
+    overflow: hidden;
+    border: 1.5px solid var(--panel-input-border);
+    border-radius: 2rem;
+    background: color-mix(in srgb, var(--panel-bg) 86%, transparent);
     backdrop-filter: blur(var(--panel-blur, 10px)) saturate(var(--panel-saturate, 1.25));
+    touch-action: pan-x;
+    user-select: none;
+  }
+
+  .admin-tabbar__thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    border-radius: 1.6rem;
+    background: color-mix(in srgb, var(--panel-gold) 28%, var(--panel-input-bg));
+    pointer-events: none;
+    transition: transform 0.28s ease, width 0.28s ease, height 0.28s ease;
+  }
+
+  .admin-tabbar.is-swiping .admin-tabbar__thumb,
+  .admin-tabbar.is-static .admin-tabbar__thumb {
+    transition: none;
   }
 
   .admin-tabbar__link {
+    position: relative;
+    z-index: 1;
     display: grid;
+    flex: 1 1 0;
     justify-items: center;
     align-content: center;
     gap: 0.12rem;
     min-width: 0;
-    padding: 0.28rem 0.1rem 0.2rem;
-    border-radius: 0.7rem;
+    padding: 0.42rem 0.2rem 0.34rem;
+    border-radius: 1.6rem;
     color: var(--panel-muted);
     font-size: 0.68rem;
     line-height: 1.1;
@@ -1898,6 +1920,12 @@
   border: 0;
   border-radius: 0;
   background: transparent;
+  min-width: 0;
+}
+
+.app-tabs.admin-events__views:has(.event-carousel) {
+  width: 100%;
+  max-width: 100%;
 }
 
 .app-tabs.admin-events__views .app-tabs__tab.is-on,
@@ -2010,8 +2038,7 @@
   }
 
   .app-tabs.admin-events__views .app-tabs__bar .admin-events__filters {
-    flex: 1 1 100%;
-    width: 100%;
+    display: none;
   }
 }
 
@@ -2075,6 +2102,35 @@
   .admin-events__filters {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+}
+
+.create-drawer .admin-events__filters {
+  grid-template-columns: 1fr;
+  gap: 0.7rem;
+  justify-items: stretch;
+}
+
+.create-drawer .admin-events__filters label {
+  justify-items: start;
+  text-align: left;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.create-drawer .admin-events__filters .app-date-input,
+.create-drawer .admin-events__filters input,
+.create-drawer .admin-events__filters select {
+  min-height: 2.7rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.95rem;
+  text-align: left;
+  text-align-last: left;
+}
+
+.create-drawer .admin-events__filters .app-date-input__value {
+  left: 0.75rem;
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .admin-events__view {

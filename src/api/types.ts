@@ -352,7 +352,7 @@ export interface EventSummary {
   banner_url?: string | null
 }
 
-export type AttendanceEstado = 'presente' | 'ausente' | 'justificado' | 'puntual'
+export type AttendanceEstado = 'presente' | 'ausente' | 'justificado' | 'puntual' | 'tarde'
 
 export interface AttendanceEvent extends EventSummary {
   integrantes_count?: number
@@ -373,6 +373,7 @@ export interface AttendanceResumen {
   total: number
   presentes: number
   puntuales?: number
+  tardes?: number
   ausentes: number
   justificados: number
   sin_marcar: number
@@ -391,6 +392,7 @@ export interface AttendanceRankRow {
   foto_url?: string | null
   presentes: number
   puntuales?: number
+  tardes?: number
   ausentes: number
   justificados: number
   sin_marcar: number
@@ -417,6 +419,7 @@ export interface AttendanceMemberHistory {
   hasta?: string | null
   presentes: number
   puntuales: number
+  tardes?: number
   justificados: number
   ausentes: number
   sin_marcar: number

@@ -35,7 +35,7 @@
 
 .attendance-mark__stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.4rem;
 }
 
@@ -86,6 +86,10 @@
 
 .attendance-mark__stat--puntual strong {
   color: var(--panel-gold);
+}
+
+.attendance-mark__stat--tarde strong {
+  color: var(--panel-info);
 }
 
 .attendance-mark__toolbar-row {
@@ -256,6 +260,10 @@
 
 .attendance-mark__card.is-puntual {
   border-color: color-mix(in srgb, var(--panel-gold) 45%, var(--panel-ok-text));
+}
+
+.attendance-mark__card.is-tarde {
+  border-color: color-mix(in srgb, var(--panel-info) 55%, var(--panel-input-border));
 }
 
 .attendance-mark__card.is-justificado {
@@ -1175,6 +1183,12 @@
   background: color-mix(in srgb, var(--panel-gold) 18%, var(--panel-input-bg));
   border-color: var(--panel-gold);
   color: var(--panel-gold);
+}
+
+.attendance-mark__icon--tarde.is-on {
+  background: color-mix(in srgb, var(--panel-info) 18%, var(--panel-input-bg));
+  border-color: var(--panel-info);
+  color: var(--panel-info);
 }
 
 .attendance-mark__icon--justificado.is-on {

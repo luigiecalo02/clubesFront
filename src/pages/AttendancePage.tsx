@@ -254,8 +254,8 @@ export function AttendancePage() {
     const seq = ++saveSeq.current
     setSaving(true)
     try {
-      const { presentes, puntuales, justificados } = attendancePayloadFromDraft(members, nextDraft)
-      const next = await attendanceApi.save(id, presentes, justificados, puntuales)
+      const { presentes, puntuales, tardes, justificados } = attendancePayloadFromDraft(members, nextDraft)
+      const next = await attendanceApi.save(id, presentes, justificados, puntuales, tardes)
       if (seq !== saveSeq.current) return
       setMembers(next.integrantes)
       const saved = emptyAttendanceDraft(next.integrantes)

@@ -4,11 +4,13 @@ import type { AttendanceEstado, AttendanceMember } from '../../api/types'
 import { AppPanel } from '../../theme/AppPanel'
 import '../../theme/attendance-mark.css'
 
-type BulkEstado = 'presente' | 'puntual' | ''
+type AttendanceMark = 'presente' | 'puntual' | 'tarde' | 'justificado'
+type BulkEstado = 'presente' | 'puntual' | 'tarde' | ''
 
-const MARKS: { value: 'presente' | 'puntual' | 'justificado'; label: string }[] = [
+const MARKS: { value: AttendanceMark; label: string }[] = [
   { value: 'presente', label: 'Asistió' },
   { value: 'puntual', label: 'Puntual' },
+  { value: 'tarde', label: 'Tarde' },
   { value: 'justificado', label: 'Excusa' },
 ]
 
@@ -23,6 +25,11 @@ const BULK_COPY: Record<BulkEstado, { title: string; confirm: string; action: st
     confirm: 'Sí, marcar puntuales',
     action: 'puntuales',
   },
+  tarde: {
+    title: 'Marcar a todos como llegaron tarde',
+    confirm: 'Sí, marcar tarde',
+    action: 'llegadas tarde',
+  },
   '': {
     title: 'Limpiar asistencia',
     confirm: 'Sí, limpiar',
@@ -36,7 +43,12 @@ export function emptyAttendanceDraft(
   return Object.fromEntries(
     members.map((row) => [
       row.persona_id,
-      row.estado === 'presente' || row.estado === 'puntual' || row.estado === 'justificado' ? row.estado : '',
+      row.estado === 'presente' ||
+      row.estado === 'puntual' ||
+      row.estado === 'tarde' ||
+      row.estado === 'justificado'
+        ? row.estado
+        : '',
     ]),
   )
 }
@@ -44,22 +56,26 @@ export function emptyAttendanceDraft(
 export function attendancePayloadFromDraft(
   members: AttendanceMember[],
   draft: Record<number, AttendanceEstado | ''>,
-): { presentes: number[]; puntuales: number[]; justificados: number[] } {
+): { presentes: number[]; puntuales: number[]; tardes: number[]; justificados: number[] } {
   const presentes: number[] = []
   const puntuales: number[] = []
+  const tardes: number[] = []
   const justificados: number[] = []
   for (const row of members) {
     const estado = draft[row.persona_id]
     if (estado === 'puntual') {
       presentes.push(row.persona_id)
       puntuales.push(row.persona_id)
+    } else if (estado === 'tarde') {
+      presentes.push(row.persona_id)
+      tardes.push(row.persona_id)
     } else if (estado === 'presente') {
       presentes.push(row.persona_id)
     } else if (estado === 'justificado') {
       justificados.push(row.persona_id)
     }
   }
-  return { presentes, puntuales, justificados }
+  return { presentes, puntuales, tardes, justificados }
 }
 
 export function memberInitials(name: string): string {
@@ -72,7 +88,7 @@ export function memberInitials(name: string): string {
 }
 
 function isAttended(estado: AttendanceEstado | ''): boolean {
-  return estado === 'presente' || estado === 'puntual'
+  return estado === 'presente' || estado === 'puntual' || estado === 'tarde'
 }
 
 type AttendanceMarkListProps = {
@@ -86,7 +102,7 @@ type AttendanceMarkListProps = {
   showSave?: boolean
 }
 
-function MarkIcon({ kind }: { kind: 'presente' | 'puntual' | 'justificado' }) {
+function MarkIcon({ kind }: { kind: AttendanceMark }) {
   if (kind === 'presente') {
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -106,6 +122,20 @@ function MarkIcon({ kind }: { kind: 'presente' | 'puntual' | 'justificado' }) {
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="12" r="7.2" stroke="currentColor" strokeWidth="2" />
         <path d="M12 8.4v4.1l2.6 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  if (kind === 'tarde') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M7 4.6h10M7 19.4h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path
+          d="M7.4 4.6c0 4.4 4.2 5.3 4.6 7.4-.4 2.1-4.6 3-4.6 7.4M16.6 4.6c0 4.4-4.2 5.3-4.6 7.4.4 2.1 4.6 3 4.6 7.4"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinejoin="round"
+        />
       </svg>
     )
   }
@@ -146,17 +176,19 @@ export function AttendanceMarkList({
 
   const counts = useMemo(() => {
     const puntuales = members.filter((row) => draft[row.persona_id] === 'puntual').length
+    const tardes = members.filter((row) => draft[row.persona_id] === 'tarde').length
     const presentes = members.filter((row) => isAttended(draft[row.persona_id] ?? '')).length
     const justificados = members.filter((row) => draft[row.persona_id] === 'justificado').length
     return {
       presentes,
       puntuales,
+      tardes,
       justificados,
       ausentes: members.length - presentes - justificados,
     }
   }, [draft, members])
 
-  function toggle(personaId: number, estado: 'presente' | 'puntual' | 'justificado') {
+  function toggle(personaId: number, estado: AttendanceMark) {
     const current = draft[personaId] ?? ''
     if (estado === 'justificado') {
       onEstado(personaId, current === 'justificado' ? '' : 'justificado')
@@ -166,10 +198,14 @@ export function AttendanceMarkList({
       onEstado(personaId, isAttended(current) ? '' : 'presente')
       return
     }
-    onEstado(personaId, current === 'puntual' ? 'presente' : 'puntual')
+    if (estado === 'puntual') {
+      onEstado(personaId, current === 'puntual' ? 'presente' : 'puntual')
+      return
+    }
+    onEstado(personaId, current === 'tarde' ? 'presente' : 'tarde')
   }
 
-  function markPressed(selected: AttendanceEstado | '', mark: 'presente' | 'puntual' | 'justificado') {
+  function markPressed(selected: AttendanceEstado | '', mark: AttendanceMark) {
     if (mark === 'presente') return isAttended(selected)
     return selected === mark
   }
@@ -205,6 +241,10 @@ export function AttendanceMarkList({
             <strong>{counts.puntuales}</strong>
             <span>Puntual</span>
           </p>
+          <p className="attendance-mark__stat attendance-mark__stat--tarde">
+            <strong>{counts.tardes}</strong>
+            <span>Tarde</span>
+          </p>
           <p className="attendance-mark__stat attendance-mark__stat--justificado">
             <strong>{counts.justificados}</strong>
             <span>Excusa</span>
@@ -231,6 +271,9 @@ export function AttendanceMarkList({
           </button>
           <button type="button" className="app-panel__btn--ghost" onClick={() => requestBulk('puntual')}>
             Todos puntuales
+          </button>
+          <button type="button" className="app-panel__btn--ghost" onClick={() => requestBulk('tarde')}>
+            Todos tarde
           </button>
           <button type="button" className="app-panel__btn--ghost" onClick={() => requestBulk('')}>
             Limpiar

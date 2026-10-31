@@ -24,6 +24,7 @@ type MemberInsightDrawerProps = {
 const ESTADO_LABEL: Record<string, string> = {
   puntual: 'Puntual',
   presente: 'Asistió',
+  tarde: 'Tarde',
   justificado: 'Excusa',
   ausente: 'Ausente',
 }

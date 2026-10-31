@@ -25,6 +25,7 @@ type RangeMode = 'mes' | 'fechas'
 const ESTADO_LABEL: Record<string, string> = {
   puntual: 'Puntual',
   presente: 'Asistió',
+  tarde: 'Tarde',
   justificado: 'Excusa',
   ausente: 'Ausente',
 }
@@ -229,6 +230,7 @@ export function AttendanceRankList({
           {filtered.map(({ row, place }, index) => {
             const highlight = best.has(row.persona_id)
             const puntuales = row.puntuales ?? 0
+            const tardes = row.tardes ?? 0
             const puntos = row.puntos ?? row.presentes
             const photo = resolveFileUrl(row.foto_url)
             const shift = moves.get(row.persona_id) ?? 0
@@ -261,6 +263,7 @@ export function AttendanceRankList({
                     <small>
                       {puntos} pt{puntos === 1 ? '' : 's'} · {row.presentes}/{row.eventos} eventos
                       {` · ${puntuales} puntual${puntuales === 1 ? '' : 'es'}`}
+                      {tardes ? ` · ${tardes} tarde${tardes === 1 ? '' : 's'}` : ''}
                       {row.justificados ? ` · ${row.justificados} excusa${row.justificados === 1 ? '' : 's'}` : ''}
                     </small>
                     <span className="attendance-rank__bar" style={{ '--pct': `${row.porcentaje}%` } as CSSProperties}>

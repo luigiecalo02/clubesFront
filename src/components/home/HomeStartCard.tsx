@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { abonosApi } from '../../api/abonos'
 import { attendanceApi } from '../../api/attendance'
+import { subscribeAttendanceChanged } from '../../api/attendanceLive'
 import { resolveFileUrl } from '../../api/baseUrl'
 import { eventsApi } from '../../api/events'
 import type { AbonosBoard, AttendanceEstado, AttendanceMemberHistory, EventSummary } from '../../api/types'
@@ -16,7 +17,7 @@ import { formatDate } from '../../theme/dates'
 import '../../theme/home-start.css'
 
 type ActivityTab = 'recientes' | 'proximas' | 'realizadas'
-type ActivityBadge = 'proxima' | 'asistio' | 'puntual' | 'ausente' | 'excusa' | 'sin_marcar'
+type ActivityBadge = 'proxima' | 'asistio' | 'puntual' | 'tarde' | 'ausente' | 'excusa' | 'sin_marcar'
 
 type HomeActivity = {
   id: string
@@ -37,12 +38,13 @@ const BADGE_LABEL: Record<ActivityBadge, string> = {
   proxima: 'Próxima',
   asistio: 'Asistió',
   puntual: 'Puntual',
+  tarde: 'Tarde',
   ausente: 'No asistió',
   excusa: 'Excusa',
   sin_marcar: 'Sin marcar',
 }
 
-const DONE_BADGES: ActivityBadge[] = ['asistio', 'puntual', 'ausente', 'excusa']
+const DONE_BADGES: ActivityBadge[] = ['asistio', 'puntual', 'tarde', 'ausente', 'excusa']
 
 function attendancePercent(history: AttendanceMemberHistory | null): number {
   if (!history || history.eventos <= 0) return 0
@@ -52,6 +54,7 @@ function attendancePercent(history: AttendanceMemberHistory | null): number {
 
 function lateCount(history: AttendanceMemberHistory | null): number {
   if (!history) return 0
+  if (typeof history.tardes === 'number') return history.tardes
   return Math.max(0, history.presentes - history.puntuales)
 }
 
@@ -60,6 +63,7 @@ function badgeFor(
   inscrito?: boolean,
 ): ActivityBadge {
   if (estado === 'puntual') return 'puntual'
+  if (estado === 'tarde') return 'tarde'
   if (estado === 'presente') return 'asistio'
   if (estado === 'justificado') return 'excusa'
   if (estado === 'ausente' && inscrito !== false) return 'ausente'
@@ -168,6 +172,29 @@ export function HomeStartCard() {
     })
     return () => {
       cancelled = true
+    }
+  }, [personaId])
+
+  useEffect(() => {
+    if (!personaId) return undefined
+    let cancelled = false
+
+    function refresh() {
+      if (cancelled || document.hidden) return
+      attendanceApi
+        .memberHistory(personaId)
+        .then((row) => {
+          if (!cancelled) setHistory(row)
+        })
+        .catch(() => undefined)
+    }
+
+    const unsubscribe = subscribeAttendanceChanged(refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      cancelled = true
+      unsubscribe()
+      document.removeEventListener('visibilitychange', refresh)
     }
   }, [personaId])
 
@@ -366,6 +393,7 @@ export function HomeStartCard() {
                   </span>
                   <em data-badge={item.badge}>
                     {item.badge === 'puntual' ? <AdminIcon name="star" /> : null}
+                    {item.badge === 'tarde' ? <AdminIcon name="hourglass" /> : null}
                     {BADGE_LABEL[item.badge]}
                   </em>
                   <AdminIcon name="chevronRight" />
