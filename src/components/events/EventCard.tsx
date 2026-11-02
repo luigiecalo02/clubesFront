@@ -23,12 +23,6 @@ export function eventEstadoLabel(estado?: string | null): string {
   return ESTADO_LABELS[estado ?? ''] || estado || ''
 }
 
-const VISIBILIDAD_LABELS: Record<string, string> = {
-  publico: 'Libre',
-  organizacion: 'Organización',
-  privado: 'Privado',
-}
-
 export const ECONOMIC_EVENT_SLUG = 'actividad-economica'
 
 const INSCRIPCION_SLUGS = ['campamento', 'especialidad', 'clase', 'investidura']
@@ -294,12 +288,6 @@ export function EventCard({
           )}
           <span>Estado</span>
         </p>
-        {item.visibilidad ? (
-          <p className="admin-event-card__fact">
-            <strong>{VISIBILIDAD_LABELS[item.visibilidad] || item.visibilidad}</strong>
-            <span>Alcance</span>
-          </p>
-        ) : null}
       </div>
       <EventCountdown start={item.starts_at} end={item.ends_at} now={now} />
       {showActions ? (
