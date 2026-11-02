@@ -8,6 +8,7 @@ import { AdventureScene } from '../components/login/AdventureScene'
 import { clubBrandStyle } from '../theme/clubBrand'
 import { parseBackgroundStyle } from '../theme/backgroundStyle'
 import { useSceneTheme } from '../theme/sceneTheme'
+import { NotificationBell } from '../components/notifications/NotificationBell'
 import { AdminIcon } from './AdminIcon'
 import { AdminTabbar } from './AdminTabbar'
 import { UserMenu } from './UserMenu'
@@ -195,6 +196,7 @@ export function AdminLayout() {
           </div>
 
           <div className="admin-topbar__user">
+            <NotificationBell />
             <UserMenu options={contextOptions} />
           </div>
         </header>

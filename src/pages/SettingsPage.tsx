@@ -11,6 +11,7 @@ import { useNotice } from '../theme/NoticeProvider'
 import { CuentasBancariasSettingsPanel } from '../components/settings/CuentasBancariasSettingsPanel'
 import { EclesiasticaSettingsPanel } from '../components/settings/EclesiasticaSettingsPanel'
 import { GananciasSettingsPanel } from '../components/settings/GananciasSettingsPanel'
+import { NotificacionesSettingsPanel } from '../components/settings/NotificacionesSettingsPanel'
 import { useClubesSettings } from '../settings/ClubesSettingsProvider'
 import { AppTabs } from '../theme/AppTabs'
 import type { ClubesAppConfig, ClubesAssetKey, ClubesBackgroundStyle, MailSettings } from '../api/types'
@@ -80,7 +81,14 @@ const APP_BACKGROUNDS: ClubAssetItem[] = [
   { key: 'background_day', label: 'Fondo claro', hint: 'Panel en modo día. Si la cargas, se omiten las animaciones y la app arranca más ligera.' },
 ]
 
-type SettingsTab = 'apariencia' | 'imagenes' | 'correo' | 'ganancias' | 'cuentas' | 'eclesiastica'
+type SettingsTab =
+  | 'apariencia'
+  | 'imagenes'
+  | 'correo'
+  | 'ganancias'
+  | 'notificaciones'
+  | 'cuentas'
+  | 'eclesiastica'
 
 function assetVariant(key: ClubesAssetKey): ImageUploadVariant {
   return key === 'logo' ? 'logo' : 'banner'
@@ -308,6 +316,7 @@ export function SettingsPage() {
           { id: 'imagenes', label: 'Imágenes' },
           { id: 'correo', label: 'Correo' },
           { id: 'ganancias', label: 'Ganancias' },
+          { id: 'notificaciones', label: 'Notificaciones' },
           { id: 'eclesiastica', label: 'Distribución de ganancias' },
         ]}
       >
@@ -621,6 +630,8 @@ export function SettingsPage() {
       ) : null}
 
       {tab === 'ganancias' ? <GananciasSettingsPanel canUpdate={canUpdate} /> : null}
+
+      {tab === 'notificaciones' ? <NotificacionesSettingsPanel canUpdate={canUpdate} /> : null}
 
       {tab === 'cuentas' ? <CuentasBancariasSettingsPanel canUpdate={canUpdate} /> : null}
 

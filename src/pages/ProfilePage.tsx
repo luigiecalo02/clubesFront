@@ -7,6 +7,7 @@ import { getApiErrorMessage } from '../api/client'
 import type { PersonaIdType } from '../api/types'
 import { usersApi } from '../api/users'
 import { useAuth } from '../auth/AuthProvider'
+import { PushNotificationsCard } from '../components/notifications/PushNotificationsCard'
 import { AppPanel } from '../theme/AppPanel'
 import { DateInput } from '../theme/DateInput'
 import { ImageUpload } from '../theme/ImageUpload'
@@ -171,6 +172,8 @@ export function ProfilePage() {
 
   return (
     <section className="admin-page admin-profile">
+      <PushNotificationsCard />
+
       <AppPanel>
         <p className="app-panel__kicker">Cuenta</p>
         <h2 className="app-panel__title">Mis datos</h2>

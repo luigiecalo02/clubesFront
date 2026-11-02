@@ -286,6 +286,40 @@
   gap: 0.7rem;
 }
 
+.admin-settings-toggles {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.admin-settings-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 0.9rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+}
+
+.admin-settings-toggle strong {
+  display: block;
+  color: var(--panel-title);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.admin-settings-toggle .app-panel__muted {
+  margin: 0.2rem 0 0;
+}
+
+@media (max-width: 720px) {
+  .admin-settings-toggle {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .admin-user-menu {
   position: relative;
 }

@@ -51,6 +51,7 @@ export type AdminIconName =
   | 'chart'
   | 'pie'
   | 'alert'
+  | 'bell'
   | 'paperclip'
 
 export const SESSION_HOME = '/mi-actividad'

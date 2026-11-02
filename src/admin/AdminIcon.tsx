@@ -56,6 +56,7 @@ const PATHS: Record<AdminIconName, string> = {
   chart: 'M5 20V12M10 20V7M15 20v-5M20 20V4M3 20h18',
   pie: 'M12 3a9 9 0 1 0 9 9h-9zM15 3.5A8 8 0 0 1 20.5 9H15z',
   alert: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5v5.5M12 16.5h.01',
+  bell: 'M15.5 17.5H8.5M10 17.5v1a2 2 0 0 0 4 0v-1M6.8 17.5h10.4c.7 0 1.1-.8.7-1.3l-1.1-1.4a3.2 3.2 0 0 1-.5-1.7V10a4.3 4.3 0 1 0-8.6 0v2.9c0 .6-.18 1.2-.52 1.7l-1.08 1.4c-.4.5 0 1.3.7 1.3zM12 4.2V3',
   paperclip: 'M8 7.4v8.3a3.3 3.3 0 0 0 6.6 0V6.2A2.2 2.2 0 0 0 10.2 4 2.2 2.2 0 0 0 8 6.2v8.3',
 }
 
@@ -90,6 +91,7 @@ const PRIME_TO_NAME: Record<string, AdminIconName> = {
   star: 'star',
   eye: 'eye',
   wallet: 'wallet',
+  bell: 'bell',
 }
 
 const ROLE_TO_NAME: Record<string, AdminIconName> = {
