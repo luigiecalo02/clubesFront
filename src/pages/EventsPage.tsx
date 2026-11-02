@@ -23,6 +23,7 @@ import { AdminIcon } from '../admin/AdminIcon'
 import {
   canAccessClubAbonos,
   canAccessClubAttendance,
+  canChangeClubEventEstado,
   canCreateClubEvent,
   canJoinClubEconomicEvent,
   canChangeClubEventGanancia,
@@ -158,21 +159,27 @@ export function EventsPage() {
   const auth = useAuth()
   const ctx = auth.user?.contexto
   const [params, setParams] = useSearchParams()
-  const view = parseEventsView(params.get('vista'))
   const dateRange = defaultEventDateRange()
   const estado = params.get('estado') ?? ''
   const tipo = params.get('tipo') ?? ''
   const desde = params.get('desde') ?? dateRange.desde
   const hasta = params.get('hasta') ?? dateRange.hasta
+  const eventAccess = clubAccessFromUser(auth.user, auth.can)
+  const isMemberRole = eventAccess.rolName === 'miembro'
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(MOBILE_EVENTS).matches : false,
+  )
+  const memberMobileOnly = isMemberRole && isMobile
+  const view = memberMobileOnly ? 'carrusel' : parseEventsView(params.get('vista'))
   const eventQuery = view === 'cronograma' ? {} : buildEventListQuery({ estado, tipo, desde, hasta })
   const hasListFilters =
     view !== 'cronograma' &&
     (Boolean(estado || tipo) || desde !== dateRange.desde || hasta !== dateRange.hasta)
-  const eventAccess = clubAccessFromUser(auth.user, auth.can)
   const canCreate = canCreateClubEvent(eventAccess)
   const canEditEvents = canUpdateClubEvent(eventAccess)
   const canViewGanancias = canViewClubEventGanancias(eventAccess)
   const isSuper = Boolean(eventAccess.isSuper)
+  const canChangeEstado = canChangeClubEventEstado(eventAccess)
   const canChangeGanancia = canChangeClubEventGanancia(eventAccess)
   const canTakeAttendance =
     canAccessClubAttendance(eventAccess) || auth.can('asistencia.update')
@@ -223,9 +230,6 @@ export function EventsPage() {
   )
   const [form, setForm] = useState(emptyForm)
   const [eventTab, setEventTab] = useState<EventWorkspaceTab>('ficha')
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia(MOBILE_EVENTS).matches : false,
-  )
   const notices = useNotice()
   const drawerPlacement = isMobile ? 'bottom' : 'end'
   const now = useNow()
@@ -304,6 +308,13 @@ export function EventsPage() {
     media.addEventListener('change', sync)
     return () => media.removeEventListener('change', sync)
   }, [])
+
+  const vistaParam = params.get('vista')
+  useEffect(() => {
+    if (!memberMobileOnly) return
+    if (vistaParam !== 'carrusel') setView('carrusel')
+    if (filtersOpen) setFiltersOpen(false)
+  }, [filtersOpen, memberMobileOnly, vistaParam])
 
   useEffect(() => {
     let cancelled = false
@@ -1523,6 +1534,7 @@ export function EventsPage() {
         onChange={setView}
         onToggleFilters={() => setFiltersOpen((open) => !open)}
         onCloseFilters={() => setFiltersOpen(false)}
+        memberMobileOnly={memberMobileOnly}
         filters={
           <EventsFilters
             estado={estado}
@@ -1580,11 +1592,13 @@ export function EventsPage() {
           canJoin={canJoinEvent}
           canManageInscriptions={canManageInscriptions}
           canEdit={canEditEvents}
+          canChangeEstado={canChangeEstado}
           organizacionId={ctx?.organizacion_id}
           onAttendance={openAttendance}
           onJoin={openJoin}
           onInscriptions={openInscriptions}
           onEdit={openEdit}
+          onEstadoChange={changeEventEstado}
         />
       ) : null}
 

@@ -890,6 +890,54 @@
     grid-template-columns: 1fr;
   }
 
+  .abonos-status-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.55rem 0.65rem;
+    padding: 0.75rem 0.8rem;
+  }
+
+  .abonos-status-row .abonos-deal__who {
+    align-self: center;
+  }
+
+  .abonos-status-row .abonos-deal__who strong {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .abonos-status-row__figures {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: 0.45rem;
+  }
+
+  .abonos-status-row__money {
+    min-width: 0;
+    padding: 0.45rem 0.5rem;
+    border: 1.5px solid var(--panel-input-border);
+    border-radius: var(--panel-input-radius);
+    background: var(--panel-input-bg);
+    justify-items: start;
+  }
+
+  .abonos-status-row__money strong {
+    font-size: 0.92rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .abonos-status-row .abonos-deal__actions {
+    margin-top: 0.1rem;
+  }
+
+  .abonos-status-row .abonos-deal__actions .app-panel__btn--ghost,
+  .abonos-status-row .abonos-deal__actions .app-panel__btn--primary {
+    flex: 1 1 100%;
+  }
+
   .app-panel.abonos-board,
   .app-panel.abonos-detail {
     height: auto;

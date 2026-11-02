@@ -211,7 +211,7 @@ export function AttendanceRankList({
       {loading ? <p className="app-panel__muted">Cargando resumen…</p> : null}
 
       {!loading && eventos === 0 ? (
-        <p className="app-panel__muted">
+        <p className="app-panel__muted attendance-rank__empty-hint">
           No hay asistencia registrada en {formatDateRange(from, to)}. Cambia el periodo o marca un
           evento.
         </p>

@@ -242,6 +242,15 @@ export function isClubDirectivaRole(rolName: string | null | undefined, isSuper?
   return Boolean(isSuper) || CLUB_DIRECTIVA_ROLES.includes(rolName ?? '')
 }
 
+/** Director o subdirector (y super) pueden cambiar el estado del evento. */
+export function canChangeClubEventEstado(options?: ClubAccessOptions): boolean {
+  if (grantsSuperClubAccess(options)) return true
+  return (
+    Boolean(options?.organizacionId) &&
+    ['director', 'subdirector'].includes(options?.rolName ?? '')
+  )
+}
+
 function grantsSuperClubAccess(options?: ClubAccessOptions): boolean {
   return Boolean(options?.isSuper)
 }

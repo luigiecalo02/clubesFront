@@ -4,6 +4,8 @@ import { resolveFileUrl } from '../../api/baseUrl'
 import type { EventSummary } from '../../api/types'
 import { AppPanel } from '../../theme/AppPanel'
 import {
+  ESTADO_LABELS,
+  EVENT_ESTADO_OPTIONS,
   EventCardActions,
   eventEstadoLabel,
   eventRosterFact,
@@ -17,11 +19,13 @@ type EventCarouselProps = {
   canJoin?: boolean
   canManageInscriptions?: boolean
   canEdit: boolean
+  canChangeEstado?: boolean
   organizacionId?: number | null
   onAttendance: (item: EventSummary) => void
   onJoin?: (item: EventSummary) => void
   onInscriptions?: (item: EventSummary) => void
   onEdit: (item: EventSummary) => void
+  onEstadoChange?: (item: EventSummary, estado: string) => Promise<void> | void
 }
 
 function posterInitials(name: string): string {
@@ -53,18 +57,34 @@ export function EventCarousel({
   canJoin = false,
   canManageInscriptions = false,
   canEdit,
+  canChangeEstado = false,
   organizacionId,
   onAttendance,
   onJoin,
   onInscriptions,
   onEdit,
+  onEstadoChange,
 }: EventCarouselProps) {
   const trackRef = useRef<HTMLUListElement>(null)
   const dragRef = useRef({ pointer: -1, x: 0, scroll: 0, moved: false })
   const [activeIndex, setActiveIndex] = useState(0)
+  const [savingEstado, setSavingEstado] = useState(false)
   const selected = events[Math.min(activeIndex, Math.max(events.length - 1, 0))] ?? events[0]
   const roster = selected ? eventRosterFact(selected) : null
   const own = selected?.organizacion?.id === organizacionId
+  const showEstadoSelect = Boolean(canChangeEstado && onEstadoChange && own)
+  const estadoValue =
+    selected?.estado && selected.estado in ESTADO_LABELS ? selected.estado : 'publicado'
+
+  async function changeEstado(estado: string) {
+    if (!selected || !onEstadoChange || estado === selected.estado || savingEstado) return
+    setSavingEstado(true)
+    try {
+      await onEstadoChange(selected, estado)
+    } finally {
+      setSavingEstado(false)
+    }
+  }
 
   function goTo(index: number) {
     const track = trackRef.current
@@ -218,9 +238,28 @@ export function EventCarousel({
               <span>Lugar: {selected.lugar}</span>
             </p>
           ) : null}
-          <p>
+          <p className={`event-carousel__estado-row is-${selected.estado ?? ''}`}>
             <AdminIcon name="idCard" />
-            <span>Evento: {eventEstadoLabel(selected.estado) || '—'}</span>
+            {showEstadoSelect ? (
+              <label className="event-carousel__estado">
+                <span>Evento:</span>
+                <select
+                  className="event-carousel__estado-select"
+                  value={estadoValue}
+                  disabled={savingEstado}
+                  aria-label="Estado del evento"
+                  onChange={(event) => void changeEstado(event.target.value)}
+                >
+                  {EVENT_ESTADO_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <span>Evento: {eventEstadoLabel(selected.estado) || '—'}</span>
+            )}
           </p>
           {roster ? (
             <p>
