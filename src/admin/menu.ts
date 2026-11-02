@@ -17,6 +17,7 @@ export type AdminIconName =
   | 'idCard'
   | 'group'
   | 'calendar'
+  | 'clock'
   | 'check'
   | 'tags'
   | 'box'

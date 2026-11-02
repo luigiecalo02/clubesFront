@@ -10,6 +10,7 @@ import {
   eventEstadoLabel,
   eventRosterFact,
   formatEventRange,
+  formatEventStartTime,
 } from './EventCard'
 import '../../theme/event-carousel.css'
 
@@ -71,6 +72,7 @@ export function EventCarousel({
   const [savingEstado, setSavingEstado] = useState(false)
   const selected = events[Math.min(activeIndex, Math.max(events.length - 1, 0))] ?? events[0]
   const roster = selected ? eventRosterFact(selected) : null
+  const startTime = selected ? formatEventStartTime(selected.starts_at) : ''
   const own = selected?.organizacion?.id === organizacionId
   const showEstadoSelect = Boolean(canChangeEstado && onEstadoChange && own)
   const estadoValue =
@@ -232,6 +234,12 @@ export function EventCarousel({
             <AdminIcon name="calendar" />
             <span>{formatEventRange(selected.starts_at, selected.ends_at) || 'Sin fecha'}</span>
           </p>
+          {startTime ? (
+            <p>
+              <AdminIcon name="clock" />
+              <span>Inicia: {startTime}</span>
+            </p>
+          ) : null}
           {selected.lugar ? (
             <p>
               <AdminIcon name="map" />

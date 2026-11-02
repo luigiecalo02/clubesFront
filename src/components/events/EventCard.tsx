@@ -81,6 +81,17 @@ export function eventRosterFact(item: EventSummary): { total: number; label: str
   return { total: item.asistentes_count ?? 0, label: 'Asistentes' }
 }
 
+export function formatEventStartTime(value?: string | null): string {
+  if (!value) return ''
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return ''
+  const hours24 = parsed.getHours()
+  const minutes = String(parsed.getMinutes()).padStart(2, '0')
+  const period = hours24 >= 12 ? 'PM' : 'AM'
+  const hours12 = hours24 % 12 || 12
+  return `${hours12}:${minutes} ${period}`
+}
+
 export function formatEventRange(start?: string | null, end?: string | null): string {
   return formatDateRange(start, end)
 }
@@ -223,6 +234,7 @@ export function EventCard({
   const banner = showMedia ? resolveFileUrl(item.banner_url) : null
   const logo = showMedia ? resolveFileUrl(item.image_url) : null
   const roster = eventRosterFact(item)
+  const startTime = formatEventStartTime(item.starts_at)
   const body = (
     <>
       {banner || logo ? (
@@ -244,6 +256,12 @@ export function EventCard({
           <AdminIcon name="calendar" />
           <span>{formatEventRange(item.starts_at, item.ends_at)}</span>
         </p>
+        {startTime ? (
+          <p>
+            <AdminIcon name="clock" />
+            <span>Inicia: {startTime}</span>
+          </p>
+        ) : null}
         {item.lugar ? (
           <p>
             <AdminIcon name="map" />

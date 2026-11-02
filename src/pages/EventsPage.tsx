@@ -79,6 +79,7 @@ import {
 import { AppPanel } from '../theme/AppPanel'
 import { AppTabs } from '../theme/AppTabs'
 import { DateInput } from '../theme/DateInput'
+import { TimeInput } from '../theme/TimeInput'
 import { useNotice } from '../theme/NoticeProvider'
 import { CreateDrawer } from '../theme/CreateDrawer'
 import { ImageUpload } from '../theme/ImageUpload'
@@ -86,12 +87,17 @@ import { EventsCalendar } from './CalendarPage'
 
 const MOBILE_EVENTS = '(max-width: 900px)'
 
+const DEFAULT_START_TIME = '08:00'
+const DEFAULT_END_TIME = '18:00'
+
 const emptyForm = () => ({
   name: '',
   descripcion: '',
   lugar: '',
   starts_at: defaultStart(),
   ends_at: defaultStart(),
+  starts_time: DEFAULT_START_TIME,
+  ends_time: DEFAULT_END_TIME,
   tipo_evento_id: '',
   estado: 'publicado',
   ganancia_eclesiastica_id: '',
@@ -103,9 +109,16 @@ const emptyForm = () => ({
   removeBanner: false,
 })
 
+function padTimePart(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
 function toDateInput(value: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
+  return `${value.getFullYear()}-${padTimePart(value.getMonth() + 1)}-${padTimePart(value.getDate())}`
+}
+
+function toTimeInput(value: Date): string {
+  return `${padTimePart(value.getHours())}:${padTimePart(value.getMinutes())}`
 }
 
 function moneyInput(value?: number | string | null): string {
@@ -121,8 +134,13 @@ function defaultStart(): string {
   return toDateInput(next)
 }
 
-function toIsoFromDate(value: string, endOfDay = false): string {
-  return new Date(`${value}${endOfDay ? 'T23:59:00' : 'T00:00:00'}`).toISOString()
+function normalizeTime(value: string, fallback: string): string {
+  return /^\d{2}:\d{2}/.test(value) ? value.slice(0, 5) : fallback
+}
+
+function toIsoFromDateTime(date: string, time: string): string {
+  const hhmm = normalizeTime(time, '00:00')
+  return new Date(`${date}T${hhmm}:00`).toISOString()
 }
 
 function dateFromApi(value?: string | null): string {
@@ -130,6 +148,27 @@ function dateFromApi(value?: string | null): string {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return defaultStart()
   return toDateInput(parsed)
+}
+
+function timeFromApi(value?: string | null, fallback = DEFAULT_START_TIME): string {
+  if (!value) return fallback
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return fallback
+  return toTimeInput(parsed)
+}
+
+function ensureEndAfterStart(
+  startsAt: string,
+  startsTime: string,
+  endsAt: string,
+  endsTime: string,
+): { ends_at: string; ends_time: string } {
+  const startMs = new Date(`${startsAt}T${normalizeTime(startsTime, DEFAULT_START_TIME)}:00`).getTime()
+  const endMs = new Date(`${endsAt}T${normalizeTime(endsTime, DEFAULT_END_TIME)}:00`).getTime()
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs >= startMs) {
+    return { ends_at: endsAt, ends_time: endsTime }
+  }
+  return { ends_at: startsAt, ends_time: startsTime }
 }
 
 function hidesEconomicParticipantsTab(item?: EventSummary | null) {
@@ -143,6 +182,8 @@ function formFromEvent(item: EventSummary) {
     lugar: item.lugar ?? '',
     starts_at: dateFromApi(item.starts_at),
     ends_at: dateFromApi(item.ends_at),
+    starts_time: timeFromApi(item.starts_at, DEFAULT_START_TIME),
+    ends_time: timeFromApi(item.ends_at, DEFAULT_END_TIME),
     tipo_evento_id: item.tipo_evento?.id ? String(item.tipo_evento.id) : '',
     estado: item.estado && item.estado in ESTADO_LABELS ? item.estado : 'publicado',
     ganancia_eclesiastica_id: item.ganancia_eclesiastica_id ? String(item.ganancia_eclesiastica_id) : '',
@@ -1004,8 +1045,8 @@ export function EventsPage() {
       name: form.name.trim(),
       descripcion: form.descripcion.trim() || undefined,
       lugar: form.lugar.trim() || undefined,
-      starts_at: toIsoFromDate(form.starts_at),
-      ends_at: toIsoFromDate(form.ends_at, true),
+      starts_at: toIsoFromDateTime(form.starts_at, form.starts_time),
+      ends_at: toIsoFromDateTime(form.ends_at, form.ends_time),
       tipo_evento_id: form.tipo_evento_id ? Number(form.tipo_evento_id) : undefined,
       estado: form.estado,
       ...(formIsEconomic && canViewGanancias
@@ -1371,27 +1412,94 @@ export function EventsPage() {
             </h3>
             <div className="event-form__pair">
               <label>
-                Fecha de inicio
-                <DateInput
-                  required
-                  value={form.starts_at}
-                  onChange={(starts_at) =>
-                    setForm((current) => ({
-                      ...current,
-                      starts_at,
-                      ends_at: current.ends_at < starts_at ? starts_at : current.ends_at,
-                    }))
-                  }
-                />
+                Inicio
+                <div className="event-form__datetime">
+                  <DateInput
+                    required
+                    value={form.starts_at}
+                    onChange={(starts_at) =>
+                      setForm((current) => {
+                        const nextEnd = ensureEndAfterStart(
+                          starts_at,
+                          current.starts_time,
+                          current.ends_at < starts_at ? starts_at : current.ends_at,
+                          current.ends_time,
+                        )
+                        return {
+                          ...current,
+                          starts_at,
+                          ends_at: nextEnd.ends_at,
+                          ends_time: nextEnd.ends_time,
+                        }
+                      })
+                    }
+                  />
+                  <TimeInput
+                    required
+                    value={form.starts_time}
+                    onChange={(starts_time) =>
+                      setForm((current) => {
+                        const nextEnd = ensureEndAfterStart(
+                          current.starts_at,
+                          starts_time,
+                          current.ends_at,
+                          current.ends_time,
+                        )
+                        return {
+                          ...current,
+                          starts_time,
+                          ends_at: nextEnd.ends_at,
+                          ends_time: nextEnd.ends_time,
+                        }
+                      })
+                    }
+                  />
+                </div>
               </label>
               <label>
-                Fecha de fin
-                <DateInput
-                  required
-                  min={form.starts_at}
-                  value={form.ends_at}
-                  onChange={(ends_at) => setForm((current) => ({ ...current, ends_at }))}
-                />
+                Fin
+                <div className="event-form__datetime">
+                  <DateInput
+                    required
+                    min={form.starts_at}
+                    value={form.ends_at}
+                    onChange={(ends_at) =>
+                      setForm((current) => {
+                        const nextEnd = ensureEndAfterStart(
+                          current.starts_at,
+                          current.starts_time,
+                          ends_at,
+                          current.ends_time,
+                        )
+                        return {
+                          ...current,
+                          ends_at: nextEnd.ends_at,
+                          ends_time: nextEnd.ends_time,
+                        }
+                      })
+                    }
+                  />
+                  <TimeInput
+                    required
+                    min={form.ends_at === form.starts_at ? form.starts_time : undefined}
+                    value={form.ends_time}
+                    onChange={(ends_time) =>
+                      setForm((current) => {
+                        const nextEnd = ensureEndAfterStart(
+                          current.starts_at,
+                          current.starts_time,
+                          current.ends_at,
+                          ends_time,
+                        )
+                        return {
+                          ...current,
+                          ends_at: nextEnd.ends_at,
+                          ends_time: nextEnd.ends_time,
+                        }
+                      })
+                    }
+                  />
+                </div>
               </label>
             </div>
           </section>
