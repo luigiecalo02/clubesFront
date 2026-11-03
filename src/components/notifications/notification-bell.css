@@ -54,15 +54,24 @@
 .app-panel.notification-bell__panel {
   --panel-padding: 0.85rem 0.9rem;
   --panel-width: min(22rem, calc(100vw - 1.5rem));
-  --panel-max-width: 22rem;
+  --panel-max-width: min(22rem, calc(100vw - 1.5rem));
   --panel-bg: #081018;
   --panel-blur: 0;
   --panel-shadow: 0 16px 40px rgb(0 0 0 / 0.36), inset 0 1px 0 rgb(255 255 255 / 0.12);
   position: fixed;
   left: auto;
+  box-sizing: border-box;
   z-index: 50;
-  max-height: min(28rem, 70vh);
+  max-height: min(28rem, calc(100dvh - 4.5rem));
   overflow: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 900px) {
+  .app-panel.notification-bell__panel {
+    --panel-padding: 0.75rem 0.8rem;
+    --panel-radius: 1rem;
+  }
 }
 
 .app-panel.notification-bell__panel.is-day,
@@ -88,6 +97,38 @@
 .notification-bell__head strong {
   color: var(--panel-title);
   font-weight: 500;
+}
+
+.notification-bell__mark-all {
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgb(20 50 80 / 0.18);
+  border-radius: 999px;
+  background: rgb(12 35 64 / 0.06);
+  color: #4b5d74;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.notification-bell__mark-all:hover {
+  border-color: rgb(20 50 80 / 0.28);
+  background: rgb(12 35 64 / 0.1);
+  color: #0c2340;
+}
+
+.app-panel.notification-bell__panel:not(.is-day) .notification-bell__mark-all {
+  border-color: rgb(255 255 255 / 0.18);
+  background: rgb(255 255 255 / 0.08);
+  color: rgb(230 235 242 / 0.78);
+}
+
+.app-panel.notification-bell__panel:not(.is-day) .notification-bell__mark-all:hover {
+  border-color: rgb(255 255 255 / 0.28);
+  background: rgb(255 255 255 / 0.14);
+  color: #f6f3ea;
 }
 
 .notification-bell__empty {

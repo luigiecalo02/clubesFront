@@ -6,11 +6,15 @@ import { isSameResumen, subscribeFinanzasChanged } from '../api/finanzasLive'
 import type {
   FinanzasActividad,
   FinanzasCuenta,
+  FinanzasDistribucionDetalle,
+  FinanzasDistribucionParticipante,
   FinanzasMovimiento,
   FinanzasParte,
   FinanzasResumen,
 } from '../api/types'
+import { AdminIcon } from '../admin/AdminIcon'
 import { canAccessClubFinanzas, clubAccessFromUser, isSuperAdminUser, type AdminIconName } from '../admin/menu'
+import { memberInitials } from '../components/attendance/AttendanceMarkList'
 import { SummaryIcon, type SummaryTone } from '../components/events/SummaryCards'
 import { useAuth } from '../auth/AuthProvider'
 import { AppPanel } from '../theme/AppPanel'
@@ -21,6 +25,8 @@ import { formatDate } from '../theme/dates'
 import { useNotice } from '../theme/NoticeProvider'
 import { reduceMotion, useTweenNumber } from '../theme/useTweenNumber'
 import '../theme/finanzas.css'
+
+const MOBILE_FINANZAS = '(max-width: 900px)'
 
 type TabId = 'resumen' | 'actividades' | 'movimientos'
 
@@ -323,6 +329,12 @@ export function FinanzasPage() {
   const [data, setData] = useState<FinanzasResumen>(() => emptyResumen(bounds.desde, bounds.hasta))
   const [saving, setSaving] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [detailDestino, setDetailDestino] = useState<string | null>(null)
+  const [detailPersona, setDetailPersona] = useState<FinanzasDistribucionParticipante | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailData, setDetailData] = useState<FinanzasDistribucionDetalle | null>(null)
+  const [personaLoading, setPersonaLoading] = useState(false)
+  const [personaData, setPersonaData] = useState<FinanzasDistribucionDetalle | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [form, setForm] = useState<MovimientoFormState>({
     cuenta_bancaria_id: '',
@@ -335,6 +347,9 @@ export function FinanzasPage() {
     persona_id: '',
   })
   const [freshMoves, setFreshMoves] = useState<Set<number>>(new Set())
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(MOBILE_FINANZAS).matches : false,
+  )
   const seenMoves = useRef<Set<number> | null>(null)
   const rangeRef = useRef({ desde, hasta })
   const noticesRef = useRef(notices)
@@ -342,6 +357,15 @@ export function FinanzasPage() {
   noticesRef.current = notices
   const shownParts = useTweenParts(data.distribucion)
   const donutFlash = useFlash(partsSignature(data.distribucion))
+  const drawerPlacement = isMobile ? 'bottom' : 'end'
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_FINANZAS)
+    const sync = () => setIsMobile(media.matches)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
 
   useEffect(() => {
     if (!canView) return undefined
@@ -399,7 +423,9 @@ export function FinanzasPage() {
   }, [canView, desde, hasta])
 
   useEffect(() => {
-    const ids = data.movimientos.map((mov) => mov.id)
+    const ids = data.movimientos
+      .map((mov) => mov.id)
+      .filter((id): id is number => typeof id === 'number' && id > 0)
     if (!seenMoves.current) {
       seenMoves.current = new Set(ids)
       return undefined
@@ -426,8 +452,62 @@ export function FinanzasPage() {
     })
   }, [data.cuentas_bancarias, form.cuenta_bancaria_id])
 
+  async function openDistribucionDetalle(destino: string) {
+    setDetailDestino(destino)
+    setDetailPersona(null)
+    setPersonaData(null)
+    setDetailLoading(true)
+    setDetailData(null)
+    try {
+      const next = await finanzasApi.detalleDistribucion({
+        destino,
+        desde,
+        hasta,
+      })
+      setDetailData(next)
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo cargar el desglose'))
+      setDetailDestino(null)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  function closeDistribucionDetalle() {
+    setDetailDestino(null)
+    setDetailData(null)
+    setDetailPersona(null)
+    setPersonaData(null)
+  }
+
+  async function openParticipanteDetalle(persona: FinanzasDistribucionParticipante) {
+    if (!detailDestino) return
+    setDetailPersona(persona)
+    setPersonaLoading(true)
+    setPersonaData(null)
+    try {
+      const next = await finanzasApi.detalleDistribucion({
+        destino: detailDestino,
+        desde,
+        hasta,
+        personaId: persona.persona_id,
+      })
+      setPersonaData(next)
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo cargar el participante'))
+      setDetailPersona(null)
+    } finally {
+      setPersonaLoading(false)
+    }
+  }
+
+  function closeParticipanteDetalle() {
+    setDetailPersona(null)
+    setPersonaData(null)
+  }
+
   async function onDeleteMovimiento(mov: FinanzasMovimiento) {
-    if (!canDeleteMovimiento || deletingId) return
+    if (!canDeleteMovimiento || deletingId || !mov.id) return
     if (!window.confirm(`¿Eliminar el movimiento “${mov.concepto}”? Esta acción no se puede deshacer.`)) return
     setDeletingId(mov.id)
     try {
@@ -612,6 +692,7 @@ export function FinanzasPage() {
                           key={part.key}
                           part={part}
                           watch={data.distribucion.find((item) => item.key === part.key)?.amount ?? 0}
+                          onOpen={() => void openDistribucionDetalle(part.key)}
                         />
                       ))}
                       {data.distribucion.length === 0 ? (
@@ -682,9 +763,13 @@ export function FinanzasPage() {
                       />
                     ))}
                     {data.movimientos.length === 0 ? (
-                      <li>
-                        <span>Todavía no hay movimientos en el periodo.</span>
-                        <strong>{formatMoney(0)}</strong>
+                      <li className="finanzas__move is-empty">
+                        <span className="finanzas__move-body">
+                          <strong>Todavía no hay movimientos en el periodo.</strong>
+                        </span>
+                        <span className="finanzas__move-end">
+                          <strong>{formatMoney(0)}</strong>
+                        </span>
                       </li>
                     ) : null}
                   </ul>
@@ -725,9 +810,13 @@ export function FinanzasPage() {
                   />
                 ))}
                 {data.movimientos.length === 0 ? (
-                  <li>
-                    <span>Sin movimientos.</span>
-                    <strong>{formatMoney(0)}</strong>
+                  <li className="finanzas__move is-empty">
+                    <span className="finanzas__move-body">
+                      <strong>Sin movimientos.</strong>
+                    </span>
+                    <span className="finanzas__move-end">
+                      <strong>{formatMoney(0)}</strong>
+                    </span>
                   </li>
                 ) : null}
               </ul>
@@ -740,7 +829,7 @@ export function FinanzasPage() {
         open={drawerOpen && canUpdate}
         title="Movimiento de caja"
         subtitle="Ingreso, gasto o transferencia"
-        placement="bottom"
+        placement={drawerPlacement}
         onClose={() => setDrawerOpen(false)}
       >
         <MovimientoForm
@@ -752,6 +841,33 @@ export function FinanzasPage() {
           onChange={setForm}
           onSubmit={(event) => void onSubmitMovimiento(event)}
         />
+      </CreateDrawer>
+
+      <CreateDrawer
+        open={Boolean(detailDestino)}
+        title={detailData?.label || 'Desglose'}
+        subtitle={`Desde ${formatDate(desde)} · Hasta ${formatDate(hasta)}`}
+        placement={drawerPlacement}
+        size={isMobile ? 'half' : 'default'}
+        onClose={closeDistribucionDetalle}
+      >
+        <DistribucionDetallePanel
+          loading={detailLoading}
+          data={detailData}
+          onOpenPersona={(persona) => void openParticipanteDetalle(persona)}
+        />
+      </CreateDrawer>
+
+      <CreateDrawer
+        open={Boolean(detailPersona)}
+        stacked
+        title={detailPersona?.nombre || 'Participante'}
+        subtitle={detailData?.label || 'Participantes (ganancia)'}
+        placement={drawerPlacement}
+        size="half"
+        onClose={closeParticipanteDetalle}
+      >
+        <DistribucionDetallePanel loading={personaLoading} data={personaData} />
       </CreateDrawer>
     </section>
   )
@@ -831,17 +947,98 @@ function DistribucionKpi({ parts }: { parts: FinanzasParte[] }) {
   )
 }
 
-function LegendRow({ part, watch }: { part: FinanzasParte; watch: number }) {
+function LegendRow({
+  part,
+  watch,
+  onOpen,
+}: {
+  part: FinanzasParte
+  watch: number
+  onOpen: () => void
+}) {
   const flash = useFlash(watch)
   return (
     <li className={flash ? 'is-flash' : undefined}>
-      <span className={`finanzas__swatch is-${part.tone}`} aria-hidden="true" />
-      <span>
-        <strong>{part.label}</strong>
-        <small>{formatPercent(part.percent)}</small>
-      </span>
-      <em>{formatMoney(part.amount)}</em>
+      <button type="button" className="finanzas__legend-btn" onClick={onOpen}>
+        <span className={`finanzas__swatch is-${part.tone}`} aria-hidden="true" />
+        <span>
+          <strong>{part.label}</strong>
+          <small>{formatPercent(part.percent)}</small>
+        </span>
+        <em>{formatMoney(part.amount)}</em>
+      </button>
     </li>
+  )
+}
+
+function DistribucionDetallePanel({
+  loading,
+  data,
+  onOpenPersona,
+}: {
+  loading: boolean
+  data: FinanzasDistribucionDetalle | null
+  onOpenPersona?: (persona: FinanzasDistribucionParticipante) => void
+}) {
+  if (loading) return <p className="app-panel__muted">Cargando desglose…</p>
+  if (!data) return <p className="app-panel__hint">No hay datos para este periodo.</p>
+
+  return (
+    <div className="finanzas__detail">
+      <div className="finanzas__detail-kpis">
+        <span>
+          <strong>{formatMoney(data.total)}</strong>
+          <small>Neto</small>
+        </span>
+        <span>
+          <strong className="is-in">{formatMoney(data.ingresos)}</strong>
+          <small>Ingresos</small>
+        </span>
+        <span>
+          <strong className="is-out">{formatMoney(data.egresos)}</strong>
+          <small>Egresos</small>
+        </span>
+      </div>
+
+      {data.participantes.length > 0 ? (
+        <ul className="finanzas__detail-people">
+          {data.participantes.map((persona) => {
+            const photo = resolveFileUrl(persona.foto_url)
+            return (
+              <li key={persona.persona_id}>
+                <button
+                  type="button"
+                  className={onOpenPersona ? 'is-openable' : undefined}
+                  onClick={() => onOpenPersona?.(persona)}
+                  disabled={!onOpenPersona}
+                >
+                  <span className="finanzas__detail-avatar" aria-hidden="true">
+                    {photo ? <img src={photo} alt="" /> : memberInitials(persona.nombre || '?')}
+                  </span>
+                  <span>
+                    <strong>{persona.nombre}</strong>
+                  </span>
+                  <em>{formatMoney(persona.total)}</em>
+                  {onOpenPersona ? <AdminIcon name="chevronRight" /> : null}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+
+      {data.movimientos.length > 0 ? (
+        <ul className="finanzas__moves">
+          {data.movimientos.map((mov, index) => (
+            <MovimientoRow key={mov.id ?? `s-${index}`} mov={mov} />
+          ))}
+        </ul>
+      ) : null}
+
+      {!data.participantes.length && !data.movimientos.length ? (
+        <p className="app-panel__hint">No hay movimientos en el periodo seleccionado.</p>
+      ) : null}
+    </div>
   )
 }
 
@@ -902,12 +1099,37 @@ function ActividadRow({ act }: { act: FinanzasActividad }) {
   )
 }
 
-function movimientoLabel(mov: FinanzasMovimiento): string {
+function movimientoTitulo(mov: FinanzasMovimiento): string {
+  const destino = DESTINOS.find((item) => item.key === mov.destino)
+  if (destino) {
+    return destino.key === 'participantes' || destino.key === 'club'
+      ? destino.label.replace(' (ganancia)', '')
+      : destino.label
+  }
   const concepto = mov.concepto.trim()
+  if (!concepto) return mov.tipo === 'egreso' ? 'Egreso' : 'Ingreso'
+  const head = concepto.split(' · ')[0]?.trim()
+  return head || concepto
+}
+
+function movimientoMeta(mov: FinanzasMovimiento): string {
+  const parts: string[] = []
   const evento = mov.evento_nombre?.trim()
-  if (!evento) return concepto
-  if (concepto.toLowerCase().includes(evento.toLowerCase())) return concepto
-  return `${concepto} · ${evento}`
+  if (evento) parts.push(evento)
+  const persona = mov.persona_nombre?.trim()
+  if (persona) parts.push(persona)
+  const fecha = mov.occurred_at ? formatDate(mov.occurred_at) : ''
+  if (fecha) parts.push(fecha)
+  if (!parts.length && mov.cuenta_nombre) parts.push(mov.cuenta_nombre)
+  if (!parts.length) {
+    const rest = mov.concepto
+      .split(' · ')
+      .slice(1)
+      .map((part) => part.trim())
+      .filter(Boolean)
+    return rest.join(' · ')
+  }
+  return parts.join(' · ')
 }
 
 function MovimientoRow({
@@ -923,12 +1145,20 @@ function MovimientoRow({
   deleting?: boolean
   onDelete?: (mov: FinanzasMovimiento) => void
 }) {
+  const isOut = mov.tipo === 'egreso'
+  const meta = movimientoMeta(mov)
   return (
-    <li className={fresh ? 'is-new' : undefined}>
-      <span>{movimientoLabel(mov)}</span>
+    <li className={`finanzas__move${isOut ? ' is-out' : ' is-in'}${fresh ? ' is-new' : ''}`}>
+      <span className="finanzas__move-icon" aria-hidden="true">
+        <AdminIcon name={isOut ? 'wallet' : 'coins'} />
+      </span>
+      <span className="finanzas__move-body">
+        <strong>{movimientoTitulo(mov)}</strong>
+        {meta ? <small>{meta}</small> : null}
+      </span>
       <span className="finanzas__move-end">
-        <strong className={mov.tipo === 'egreso' ? 'is-out' : 'is-in'}>
-          {mov.tipo === 'egreso' ? '-' : '+'}
+        <strong className={isOut ? 'is-out' : 'is-in'}>
+          {isOut ? '−' : '+'}
           {formatMoney(mov.monto)}
         </strong>
         {canDelete ? (

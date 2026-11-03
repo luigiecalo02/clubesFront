@@ -12,14 +12,24 @@ import './notification-bell.css'
 type PanelAnchor = {
   top: number
   right: number
+  width: number
+  maxHeight: number
 }
 
 function readAnchor(trigger: HTMLElement | null): PanelAnchor | null {
   if (!trigger) return null
   const rect = trigger.getBoundingClientRect()
+  const gutter = 12
+  const width = Math.min(22 * 16, window.innerWidth - gutter * 2)
+  const idealRight = Math.max(gutter, window.innerWidth - rect.right)
+  // Evita que el panel se salga por la izquierda en pantallas angostas.
+  const maxRight = Math.max(gutter, window.innerWidth - width - gutter)
+  const top = rect.bottom + 8
   return {
-    top: rect.bottom + 8,
-    right: Math.max(12, window.innerWidth - rect.right),
+    top,
+    right: Math.min(idealRight, maxRight),
+    width,
+    maxHeight: Math.max(160, window.innerHeight - top - gutter),
   }
 }
 
@@ -130,14 +140,20 @@ export function NotificationBell() {
       ? createPortal(
           <AppPanel
             className={`notification-bell__panel${theme === 'day' ? ' is-day' : ''}`}
-            style={{ top: anchor.top, right: anchor.right }}
+            style={{
+              top: anchor.top,
+              right: anchor.right,
+              width: anchor.width,
+              maxWidth: anchor.width,
+              maxHeight: anchor.maxHeight,
+            }}
             role="dialog"
             aria-label="Historial de notificaciones"
           >
             <header className="notification-bell__head">
               <strong>Notificaciones</strong>
               {unread > 0 ? (
-                <button type="button" className="app-panel__link--accent" onClick={() => void onMarkAll()}>
+                <button type="button" className="notification-bell__mark-all" onClick={() => void onMarkAll()}>
                   Marcar todas
                 </button>
               ) : null}

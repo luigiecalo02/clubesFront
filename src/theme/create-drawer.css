@@ -23,6 +23,45 @@
   --panel-radius: 1.4rem 0 0 1.4rem;
 }
 
+/* Segundo drawer al 50%: se ve la lista detrás y al tocar a la izquierda se cierra. */
+@media (min-width: 901px) {
+  .create-drawer--stacked.create-drawer--half .create-drawer__backdrop {
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      transparent 48%,
+      rgb(4 8 14 / 0.22) 52%,
+      rgb(4 8 14 / 0.36) 100%
+    );
+  }
+
+  .admin-shell--day .create-drawer--stacked.create-drawer--half .create-drawer__backdrop {
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      transparent 48%,
+      rgb(15 23 42 / 0.12) 52%,
+      rgb(15 23 42 / 0.22) 100%
+    );
+  }
+
+  .create-drawer--stacked.create-drawer--half .app-panel.create-drawer__panel {
+    width: min(50%, 34rem);
+    --panel-width: min(50%, 34rem);
+    box-shadow:
+      -18px 0 40px -12px rgb(0 0 0 / 0.45),
+      -4px 0 12px rgb(0 0 0 / 0.18),
+      inset 1px 0 0 rgb(255 255 255 / 0.14);
+  }
+
+  .admin-shell--day .create-drawer--stacked.create-drawer--half .app-panel.create-drawer__panel {
+    box-shadow:
+      -18px 0 40px -12px rgb(15 23 42 / 0.28),
+      -4px 0 12px rgb(15 23 42 / 0.14),
+      inset 1px 0 0 rgb(255 255 255 / 0.5);
+  }
+}
+
 .create-drawer__backdrop {
   position: absolute;
   inset: 0;

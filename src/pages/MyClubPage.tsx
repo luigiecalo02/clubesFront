@@ -20,7 +20,8 @@ import {
   clubAccessFromUser,
   isClubDirectorRole,
 } from '../admin/menu'
-import { MemberNameCell, MemberRow } from '../components/members/MemberActions'
+import { MemberNameCell, MemberRow, memberHasUser, memberUserActive } from '../components/members/MemberActions'
+import { personasApi } from '../api/personas'
 import { MemberDrawer, type MemberDrawerMode } from '../components/members/MemberDrawer'
 import { MemberInsightDrawer, type MemberInsightKind } from '../components/members/MemberInsightDrawer'
 import { InviteLinkQr, inviteQrFileName } from '../components/club/InviteLinkQr'
@@ -218,6 +219,25 @@ export function MyClubPage() {
         personas_count: nextPersonas.length,
       }
     })
+  }
+
+  async function onToggleAccess(persona: ClubPerson) {
+    if (!memberHasUser(persona) || !memberUserActive(persona)) {
+      openMember('activate', persona)
+      return
+    }
+    if (persona.user_id === auth.user?.id) {
+      notices.warning('No puedes desactivar tu propio usuario.')
+      return
+    }
+    if (!window.confirm(`¿Desactivar el acceso de ${persona.full_name}?`)) return
+    try {
+      const next = await personasApi.setUserAccess(persona.id, { is_active: false })
+      applyMember(next)
+      notices.success(`Acceso desactivado para ${persona.full_name}.`)
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo desactivar el usuario'))
+    }
   }
 
   async function onCopyInvite() {
@@ -430,6 +450,7 @@ export function MyClubPage() {
                           onEdit={(row) => openMember('edit', row)}
                           onPassword={(row) => openMember('password', row)}
                           onImpersonate={(row) => openMember('impersonate', row)}
+                          onToggleAccess={onToggleAccess}
                           onInsight={openInsight}
                         >
                           <MemberNameCell persona={persona} />

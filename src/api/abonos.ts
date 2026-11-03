@@ -101,6 +101,24 @@ export const abonosApi = {
     return data.data
   },
 
+  async submitLibre(
+    monto: number,
+    comprobante: File,
+    detalle?: string | null,
+  ): Promise<AbonoRecaudo> {
+    const body = new FormData()
+    body.append('monto', String(monto))
+    if (detalle?.trim()) body.append('detalle', detalle.trim())
+    body.append('comprobante', comprobante)
+    const { data } = await api.post<ApiEnvelope<AbonoRecaudo>>(
+      '/api/v1/settings/clubes/abonos/libre',
+      body,
+      formDataRequest,
+    )
+    notifyFinanzasChanged()
+    return data.data
+  },
+
   async attachComprobante(
     abonoId: number,
     comprobante: File,

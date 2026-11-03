@@ -28,7 +28,7 @@ export function PushNotificationsCard() {
           ? 'En iPhone o iPad, agrega Clubes a la pantalla de inicio y ábrela desde ahí.'
           : state === 'denied'
             ? 'El permiso está bloqueado. Actívalo en la configuración del navegador.'
-            : 'Recibe avisos de asistencia y abonos aunque la app esté cerrada.'
+            : 'Recibe avisos de asistencia, abonos y comprobantes aunque la app esté cerrada.'
 
   return (
     <AppPanel>

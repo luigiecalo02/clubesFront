@@ -36,6 +36,18 @@ export const personasApi = {
     await api.put(`/api/v1/personas/${id}/password`, payload)
   },
 
+  async setUserAccess(
+    id: number,
+    payload: {
+      is_active: boolean
+      password?: string
+      password_confirmation?: string
+    },
+  ): Promise<ClubPerson> {
+    const { data } = await api.patch<ApiEnvelope<ClubPerson>>(`/api/v1/personas/${id}/user-access`, payload)
+    return data.data
+  },
+
   async uploadFoto(id: number, file: File): Promise<ClubPerson> {
     const body = new FormData()
     body.append('foto', file)

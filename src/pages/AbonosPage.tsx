@@ -22,12 +22,18 @@ import {
   type AbonoPayDraft,
 } from '../components/abonos/AbonoPayForm'
 import {
+  AbonoLibreForm,
+  emptyAbonoLibreDraft,
+  type AbonoLibreDraft,
+} from '../components/abonos/AbonoLibreForm'
+import {
   AbonoAmountControl,
   AbonoProofAttachButton,
   AbonoProofReview,
   AbonoShotButton,
   abonoEstadoLabel,
 } from '../components/abonos/AbonoProofReview'
+import { AbonoLibreReviewCard } from '../components/abonos/AbonoLibreReviewCard'
 import { AbonoActividadDistribucion } from '../components/abonos/AbonoActividadDistribucion'
 import { AbonoMoneyRow } from '../components/abonos/AbonoMoneyRow'
 import { EventMemberJoin } from '../components/events/EventMemberJoin'
@@ -43,7 +49,16 @@ import '../theme/abonos.css'
 const MOBILE_ABONOS = '(max-width: 900px)'
 
 type PayFilter = 'pendientes' | 'todos'
-type DealTab = 'abonar' | 'pagados'
+type DealTab = 'abonar' | 'pagados' | 'libres'
+type BoardTab = AbonosModo | 'libre'
+
+type LibrePersonaGroup = {
+  persona_id: number
+  nombre: string
+  foto_url?: string | null
+  abonos: AbonoMovimiento[]
+  total: number
+}
 
 function formatPrice(value: number | string): string {
   const amount = Number(value)
@@ -195,9 +210,11 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const canDeleteAbonoAmount = canEditAbonoAmount
   const canSendProof = auth.can(MY_ABONOS_REGISTER_PERMISSION)
   const notices = useNotice()
+  const [boardTab, setBoardTab] = useState<BoardTab>('integrante')
   const [modo, setModo] = useState<AbonosModo>('integrante')
   const [personaId, setPersonaId] = useState<number | null>(null)
   const [eventoId, setEventoId] = useState<number | null>(null)
+  const [librePersonaId, setLibrePersonaId] = useState<number | null>(null)
   const [list, setList] = useState<AbonosBoard>(emptyBoard)
   const [detail, setDetail] = useState<AbonosBoard>(emptyBoard)
   const [loadingList, setLoadingList] = useState(true)
@@ -209,7 +226,9 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const [detailsTab, setDetailsTab] = useState<'servicios' | 'abonos' | 'reparto'>('servicios')
   const [dealTab, setDealTab] = useState<DealTab>('abonar')
   const [payKey, setPayKey] = useState<string | null>(null)
+  const [libreOpen, setLibreOpen] = useState(false)
   const [draft, setDraft] = useState<AbonoPayDraft>(emptyDraft)
+  const [libreDraft, setLibreDraft] = useState<AbonoLibreDraft>(emptyAbonoLibreDraft)
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia(MOBILE_ABONOS).matches : false,
   )
@@ -230,6 +249,7 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const pendingHint =
     modo === 'integrante' ? 'Actividades con saldo pendiente' : 'Integrantes con saldo pendiente'
   const paidHint = modo === 'integrante' ? 'Actividades ya pagadas' : 'Integrantes que ya pagaron'
+  const libresHint = 'Sin actividad · van a tu ganancia'
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -247,6 +267,50 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   const payTitle = modo === 'integrante' ? payRow?.evento_name : payRow?.full_name
   const payPersonName = payRow?.full_name || selectedRow?.full_name
   const payPhoto = payRow?.foto_url || selectedRow?.foto_url
+  const abonosLibres = (mine
+    ? (selected ? detail.abonos_libres : list.abonos_libres)
+    : list.abonos_libres) ?? []
+  const libresTotal = abonosLibres.reduce((sum, abono) => sum + (Number(abono.monto) || 0), 0)
+  const libresAprobadosTotal = abonosLibres
+    .filter((abono) => !abono.estado || abono.estado === 'aprobado')
+    .reduce((sum, abono) => sum + (Number(abono.monto) || 0), 0)
+  const cuentaLibre = detail.cuenta_bancaria_libre ?? list.cuenta_bancaria_libre ?? null
+  const libreGroups = useMemo(() => {
+    const map = new Map<number, LibrePersonaGroup>()
+    abonosLibres.forEach((abono) => {
+      const id = Number(abono.persona_id) || 0
+      if (id <= 0) return
+      const current = map.get(id)
+      if (current) {
+        current.abonos.push(abono)
+        current.total += Number(abono.monto) || 0
+        return
+      }
+      map.set(id, {
+        persona_id: id,
+        nombre: abono.persona_nombre || 'Participante',
+        foto_url: abono.foto_url,
+        abonos: [abono],
+        total: Number(abono.monto) || 0,
+      })
+    })
+    return [...map.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+  }, [abonosLibres])
+  const filteredLibreGroups = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    if (!needle) return libreGroups
+    return libreGroups.filter((group) => group.nombre.toLowerCase().includes(needle))
+  }, [libreGroups, query])
+  const libreSelected = libreGroups.find((group) => group.persona_id === librePersonaId) ?? null
+  const libreSelectedAbonos = libreSelected?.abonos ?? []
+
+  useEffect(() => {
+    if (librePersonaId == null) return
+    if (libreGroups.some((group) => group.persona_id === librePersonaId)) return
+    setLibrePersonaId(null)
+    if (isMobile) setDrawerOpen(false)
+  }, [isMobile, libreGroups, librePersonaId])
+
   const payProducts = (payRow?.pedidos ?? []).map((pedido) => {
     const productoId = Number(pedido.producto_servicio_id ?? pedido.id)
     const abonado = (payRow?.abonos ?? []).reduce((sum, abono) => {
@@ -372,20 +436,30 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
     setDealTab('abonar')
   }, [modo, selected])
 
-  function changeModo(next: AbonosModo) {
-    if (next === modo) return
-    setModo(next)
+  function changeBoardTab(next: BoardTab) {
+    if (next === boardTab) return
+    setBoardTab(next)
     setPersonaId(null)
     setEventoId(null)
+    setLibrePersonaId(null)
     setQuery('')
     setDetailsKey(null)
     setPayKey(null)
     setDraft(emptyDraft())
+    setDrawerOpen(false)
+    if (next === 'integrante' || next === 'actividad') {
+      setModo(next)
+    }
   }
 
   function pickRow(row: AbonoFila) {
     if (modo === 'integrante' && row.persona_id) setPersonaId(row.persona_id)
     if (modo === 'actividad' && row.evento_id) setEventoId(row.evento_id)
+    if (isMobile) setDrawerOpen(true)
+  }
+
+  function pickLibrePersona(group: LibrePersonaGroup) {
+    setLibrePersonaId(group.persona_id)
     if (isMobile) setDrawerOpen(true)
   }
 
@@ -396,6 +470,7 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
     if (isMobile && !mine) {
       setPersonaId(null)
       setEventoId(null)
+      setLibrePersonaId(null)
     }
   }
 
@@ -421,6 +496,76 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
   function closePay() {
     setPayKey(null)
     setDraft(emptyDraft())
+  }
+
+  function openLibre() {
+    if (!canSendProof) return
+    setLibreDraft(emptyAbonoLibreDraft())
+    setLibreOpen(true)
+  }
+
+  function closeLibre() {
+    setLibreOpen(false)
+    setLibreDraft(emptyAbonoLibreDraft())
+  }
+
+  async function submitLibre(event?: FormEvent) {
+    event?.preventDefault()
+    if (!canSendProof) {
+      notices.error('No puedes enviar un abono libre.')
+      return
+    }
+    const monto = Math.round(Number(libreDraft.monto) || 0)
+    if (monto <= 0) {
+      notices.warning('Escribe un monto mayor a cero.')
+      return
+    }
+    if (!libreDraft.comprobante) {
+      notices.warning('Adjunta el pantallazo del comprobante.')
+      return
+    }
+    setSaving(true)
+    try {
+      const next = await abonosApi.submitLibre(monto, libreDraft.comprobante, libreDraft.detalle)
+      if (mine) {
+        await reloadMine()
+      } else {
+        await refreshAbonoBoards()
+      }
+      if (next.abonos) {
+        setDetail((current) => ({ ...current, abonos_libres: next.abonos }))
+      }
+      closeLibre()
+      notices.success('Abono libre enviado. Queda pendiente hasta que la directiva lo apruebe.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo enviar el abono libre'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function reviewLibre(
+    abono: AbonoMovimiento,
+    estado: 'aprobado' | 'rechazado',
+    monto?: number,
+  ) {
+    if (!canEdit) return
+    if (estado === 'aprobado' && (!monto || monto <= 0)) {
+      notices.warning('Escribe el valor que se ve en el pantallazo.')
+      return
+    }
+    setSaving(true)
+    try {
+      await abonosApi.review(abono.id, { estado, monto })
+      if (mine) await reloadMine()
+      else await refreshAbonoBoards()
+      notices.success(estado === 'aprobado' ? 'Abono libre aprobado.' : 'Abono libre rechazado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo revisar el abono libre'))
+      throw err
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function reloadMine() {
@@ -578,7 +723,181 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
 
   const listNoun = modo === 'integrante' ? 'integrantes' : 'actividades'
   const pendingNoun = modo === 'integrante' ? ['actividad pendiente', 'actividades pendientes'] : ['integrante pendiente', 'integrantes pendientes']
-  const detailContent = (
+  const dealTabItems = [
+    {
+      id: 'abonar' as const,
+      label: (
+        <>
+          <span className="abonos-status-board__icon" aria-hidden="true">
+            <AdminIcon name="hourglass" />
+          </span>
+          <span>
+            <strong>Por abonar ({pendingDeals.length})</strong>
+            <small>{pendingHint}</small>
+          </span>
+          {!mine || !isMobile ? (
+            <span className="abonos-status-board__total">
+              <strong>{formatPrice(pendingTotal)}</strong>
+              <small>Total pendiente</small>
+            </span>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      id: 'pagados' as const,
+      paid: true,
+      label: (
+        <>
+          <span className="abonos-status-board__icon" aria-hidden="true">
+            <AdminIcon name="check" />
+          </span>
+          <span>
+            <strong>Pagados ({paidDeals.length})</strong>
+            <small>{paidHint}</small>
+          </span>
+          {!mine || !isMobile ? (
+            <span className="abonos-status-board__total">
+              <strong>{formatPrice(paidTotal)}</strong>
+              <small>Total pagado</small>
+            </span>
+          ) : null}
+        </>
+      ),
+    },
+    ...(mine
+      ? [
+          {
+            id: 'libres' as const,
+            label: (
+              <>
+                <span className="abonos-status-board__icon" aria-hidden="true">
+                  <AdminIcon name="wallet" />
+                </span>
+                <span>
+                  <strong>Abonos libres ({abonosLibres.length})</strong>
+                  <small>{libresHint}</small>
+                </span>
+                {!isMobile ? (
+                  <span className="abonos-status-board__total">
+                    <strong>{formatPrice(libresAprobadosTotal || libresTotal)}</strong>
+                    <small>{libresAprobadosTotal > 0 ? 'Total abonado' : 'Total enviado'}</small>
+                  </span>
+                ) : null}
+              </>
+            ),
+          },
+        ]
+      : []),
+  ]
+  const mineLibresList =
+    abonosLibres.length > 0 ? (
+      <ul className="abonos-history">
+        {abonosLibres.map((abono) => (
+          <li key={abono.id}>
+            <span className="abonos-history__who">
+              <strong>{abono.producto_nombre || 'Abono libre'}</strong>
+              <small>
+                {abono.nota ? `${abono.nota} · ` : ''}
+                {abono.created_at ? formatDate(abono.created_at) : '—'}
+              </small>
+            </span>
+            <span className="abonos-history__end">
+              <AbonoShotButton abono={abono} />
+              <span className="abonos-history__amounts">
+                <strong>{formatPrice(abono.monto)}</strong>
+                <small>{abonoEstadoLabel(abono) || 'Aprobado'}</small>
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="app-panel__muted">Todavía no enviaste abonos libres. Usa + para registrar uno.</p>
+    )
+
+  const dealList =
+    dealTab === 'libres' ? (
+      <div className="abonos-status-board is-on abonos-libres-board">{mineLibresList}</div>
+    ) : (
+      <div className="abonos-status-board is-on">
+        {dealTab === 'abonar' ? (
+          pendingDeals.length ? (
+            pendingDeals.map((row, index) => (
+              <DealStatusRow
+                key={rowKey(row, index)}
+                row={row}
+                title={(modo === 'integrante' ? row.evento_name : row.full_name) || 'Sin nombre'}
+                photo={modo === 'integrante' ? row.image_url : row.foto_url}
+                square={modo === 'integrante'}
+                paid={false}
+                canPay={mine ? canSendProof && row.pendiente > 0 : canEdit}
+                onPay={() => (mine ? setPayKey(pickKey(row)) : startPay(row))}
+                onDetails={() => openDetails(row)}
+              />
+            ))
+          ) : (
+            <p className="app-panel__muted">No hay compromisos por abonar.</p>
+          )
+        ) : paidDeals.length ? (
+          paidDeals.map((row, index) => (
+            <DealStatusRow
+              key={rowKey(row, index)}
+              row={row}
+              title={(modo === 'integrante' ? row.evento_name : row.full_name) || 'Sin nombre'}
+              photo={modo === 'integrante' ? row.image_url : row.foto_url}
+              square={modo === 'integrante'}
+              paid
+              onDetails={() => openDetails(row)}
+            />
+          ))
+        ) : (
+          <p className="app-panel__muted">Todavía no hay compromisos pagados.</p>
+        )}
+      </div>
+    )
+
+  const libreDetailContent = (
+    <>
+      {!libreSelected ? (
+        <p className="app-panel__hint">Elige un integrante para revisar sus abonos libres pendientes.</p>
+      ) : (
+        <>
+          <header className="abonos-detail__head">
+            <AbonosAvatar name={libreSelected.nombre} photo={libreSelected.foto_url} />
+            <div>
+              <h3>{libreSelected.nombre}</h3>
+              <p>
+                {countLabel(libreSelected.abonos.length, 'abono libre pendiente', 'abonos libres pendientes')}
+              </p>
+            </div>
+            <p className="abonos-detail__total">
+              <strong>{formatPrice(libreSelected.total)}</strong>
+              <span>Total pendiente</span>
+            </p>
+          </header>
+          <section className="abonos-libres">
+            <ul className="abonos-libres__cards">
+              {libreSelectedAbonos.map((abono) => (
+                <AbonoLibreReviewCard
+                  key={abono.id}
+                  abono={abono}
+                  canReview={canEdit}
+                  formatDate={formatDate}
+                  formatPrice={formatPrice}
+                  onReview={reviewLibre}
+                />
+              ))}
+            </ul>
+          </section>
+        </>
+      )}
+    </>
+  )
+
+  const detailContent = boardTab === 'libre' && !mine ? (
+    libreDetailContent
+  ) : (
     <>
       {!selected && !mine ? (
         <p className="app-panel__hint">Elige un integrante o una actividad para registrar el recaudo.</p>
@@ -611,195 +930,240 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
 
       {loadingDetail ? <p className="app-panel__muted">Cargando compromisos…</p> : null}
 
-      {selected && !loadingDetail && detail.filas.length ? (
-        <>
-          <section className="abonos-deals">
-            <AppTabs
-              label="Estado de los compromisos"
-              value={dealTab}
-              onChange={setDealTab}
-              tabs={[
-                {
-                  id: 'abonar',
-                  label: (
-                    <>
-                      <span className="abonos-status-board__icon" aria-hidden="true">
-                        <AdminIcon name="hourglass" />
-                      </span>
-                      <span>
-                        <strong>Por abonar ({pendingDeals.length})</strong>
-                        <small>{pendingHint}</small>
-                      </span>
-                      <span className="abonos-status-board__total">
-                        <strong>{formatPrice(pendingTotal)}</strong>
-                        <small>Total pendiente</small>
-                      </span>
-                    </>
-                  ),
-                },
-                {
-                  id: 'pagados',
-                  paid: true,
-                  label: (
-                    <>
-                      <span className="abonos-status-board__icon" aria-hidden="true">
-                        <AdminIcon name="check" />
-                      </span>
-                      <span>
-                        <strong>Pagados ({paidDeals.length})</strong>
-                        <small>{paidHint}</small>
-                      </span>
-                      <span className="abonos-status-board__total">
-                        <strong>{formatPrice(paidTotal)}</strong>
-                        <small>Total pagado</small>
-                      </span>
-                    </>
-                  ),
-                },
-              ]}
-            >
-            <div className="abonos-status-board is-on">
-              {dealTab === 'abonar' ? (
-                pendingDeals.length ? (
-                  pendingDeals.map((row, index) => (
-                    <DealStatusRow
-                      key={rowKey(row, index)}
-                      row={row}
-                      title={(modo === 'integrante' ? row.evento_name : row.full_name) || 'Sin nombre'}
-                      photo={modo === 'integrante' ? row.image_url : row.foto_url}
-                      square={modo === 'integrante'}
-                      paid={false}
-                      canPay={mine ? canSendProof && row.pendiente > 0 : canEdit}
-                      onPay={() => (mine ? setPayKey(pickKey(row)) : startPay(row))}
-                      onDetails={() => openDetails(row)}
-                    />
-                  ))
-                ) : (
-                  <p className="app-panel__muted">No hay compromisos por abonar.</p>
-                )
-              ) : paidDeals.length ? (
-                paidDeals.map((row, index) => (
-                  <DealStatusRow
-                    key={rowKey(row, index)}
-                    row={row}
-                    title={(modo === 'integrante' ? row.evento_name : row.full_name) || 'Sin nombre'}
-                    photo={modo === 'integrante' ? row.image_url : row.foto_url}
-                    square={modo === 'integrante'}
-                    paid
-                    onDetails={() => openDetails(row)}
-                  />
-                ))
-              ) : (
-                <p className="app-panel__muted">Todavía no hay compromisos pagados.</p>
-              )}
-            </div>
-            </AppTabs>
-          </section>
+      {mine && !loadingDetail && (selected || abonosLibres.length > 0) ? (
+        <section className="abonos-deals">
+          <AppTabs
+            label="Estado de los compromisos"
+            value={dealTab}
+            onChange={setDealTab}
+            tabs={dealTabItems}
+          >
+            {isMobile ? (
+              <p
+                className={`abonos-mine-totals${
+                  dealTab === 'pagados' ? ' is-paid' : dealTab === 'libres' ? ' is-libre' : ''
+                }`}
+              >
+                <strong>
+                  {formatPrice(
+                    dealTab === 'abonar'
+                      ? pendingTotal
+                      : dealTab === 'pagados'
+                        ? paidTotal
+                        : libresAprobadosTotal || libresTotal,
+                  )}
+                </strong>
+                <span>
+                  {dealTab === 'abonar'
+                    ? 'Total pendiente'
+                    : dealTab === 'pagados'
+                      ? 'Total pagado'
+                      : libresAprobadosTotal > 0
+                        ? 'Total abonado'
+                        : 'Total enviado'}
+                </span>
+              </p>
+            ) : null}
+            {dealList}
+          </AppTabs>
+        </section>
+      ) : null}
 
-        </>
+      {!mine && selected && !loadingDetail && detail.filas.length ? (
+        <section className="abonos-deals">
+          <AppTabs
+            label="Estado de los compromisos"
+            value={dealTab}
+            onChange={setDealTab}
+            tabs={dealTabItems}
+          >
+            {dealList}
+          </AppTabs>
+        </section>
       ) : null}
     </>
   )
 
   return (
     <section className={`admin-page admin-page--abonos${mine ? ' admin-page--my-abonos' : ''}`}>
-      <AppPanel shine={false} className="abonos-workspace">
-        <p className="app-panel__kicker">Recaudo</p>
-        <h2 className="app-panel__title">{mine ? 'Mis abonos' : 'Registrar abono'}</h2>
-        <p className="app-panel__subtitle">
-          {mine
-            ? 'Estas son tus actividades económicas y lo que falta por abonar.'
-            : 'Busca primero a la persona o la actividad. Luego registra exactamente lo que recibió.'}
-        </p>
-      </AppPanel>
+      {mine && canSendProof ? (
+        <button
+          type="button"
+          className={`admin-fab${libreOpen ? ' is-open' : ''}`}
+          aria-label={libreOpen ? 'Cerrar abono libre' : 'Abono libre'}
+          title={libreOpen ? 'Cerrar' : 'Abono libre'}
+          onClick={() => (libreOpen ? closeLibre() : openLibre())}
+        >
+          <span aria-hidden="true">+</span>
+        </button>
+      ) : null}
 
-      {mine ? (
-        <AppPanel shine={false} className="abonos-detail">
-          {detailContent}
+      {!isMobile ? (
+        <AppPanel shine={false} className="abonos-workspace">
+          <p className="app-panel__kicker">Recaudo</p>
+          <h2 className="app-panel__title">{mine ? 'Mis abonos' : 'Registrar abono'}</h2>
+          <p className="app-panel__subtitle">
+            {mine
+              ? 'Estas son tus actividades económicas y lo que falta por abonar. Usa + para un abono libre.'
+              : 'Busca por integrante, actividad o abonos libres. Luego registra o aprueba exactamente lo que corresponde.'}
+          </p>
         </AppPanel>
-      ) : (
+      ) : null}
+
+      {mine && isMobile ? (
+        <div className="abonos-detail abonos-detail--bare abonos-mine-tabs">
+          {detailContent}
+        </div>
+      ) : null}
+
+      {mine && !isMobile ? (
+        <div className="abonos-detail abonos-detail--bare">{detailContent}</div>
+      ) : null}
+
+      {!mine ? (
       <div className="abonos-workspace__grid">
-        <AppPanel shine={false} className="abonos-board">
+        {(() => {
+          const isLibreTab = boardTab === 'libre'
+          const boardBody = (
             <AppTabs
               label="Vista de abonos"
-              value={modo}
-              onChange={changeModo}
+              value={boardTab}
+              onChange={changeBoardTab}
               tabs={[
                 { id: 'integrante', label: <><AdminIcon name="user" /> Por integrante</> },
                 { id: 'actividad', label: <><AdminIcon name="calendar" /> Por actividad</> },
+                { id: 'libre', label: <><AdminIcon name="wallet" /> Abonos libres</> },
               ]}
             >
-            <label className="abonos-search">
-              Buscar
-              <span className="app-panel__field">
-                <AdminIcon name="users" />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder={modo === 'integrante' ? 'Buscar integrante por nombre…' : 'Buscar actividad por nombre…'}
-                />
-                {query ? (
-                  <button type="button" className="abonos-search__clear" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">
-                    ×
-                  </button>
-                ) : null}
-              </span>
-            </label>
-
-            <div className="abonos-board__meta">
-              <p>
-                Se encontraron {filtered.length} {listNoun}
-              </p>
-              <label>
-                <span className="sr-only">Filtro</span>
-                <select value={filter} onChange={(event) => setFilter(event.target.value as PayFilter)}>
-                  <option value="pendientes">Pendientes</option>
-                  <option value="todos">Todos</option>
-                </select>
+              <label className="abonos-search">
+                Buscar
+                <span className="app-panel__field">
+                  <AdminIcon name="users" />
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder={
+                      isLibreTab
+                        ? 'Buscar integrante por nombre…'
+                        : modo === 'integrante'
+                          ? 'Buscar integrante por nombre…'
+                          : 'Buscar actividad por nombre…'
+                    }
+                  />
+                  {query ? (
+                    <button type="button" className="abonos-search__clear" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">
+                      ×
+                    </button>
+                  ) : null}
+                </span>
               </label>
-            </div>
 
-            {loadingList ? <p className="app-panel__muted">Cargando abonos…</p> : null}
-            {!loadingList && filtered.length === 0 ? (
-              <p className="app-panel__hint">
-                {list.filas.length === 0
-                  ? 'Todavía no hay participantes con cantidades en actividades económicas.'
-                  : 'Nadie coincide con esa búsqueda o filtro.'}
-              </p>
-            ) : null}
+              {isLibreTab ? (
+                <>
+                  <div className="abonos-board__meta">
+                    <p>
+                      Se encontraron {filteredLibreGroups.length}{' '}
+                      {filteredLibreGroups.length === 1 ? 'integrante' : 'integrantes'}
+                    </p>
+                  </div>
 
-            <div className="abonos-picks">
-              {filtered.map((row, index) => {
-                const title = modo === 'integrante' ? row.full_name : row.evento_name
-                const pending = row.pendientes ?? (row.pendiente > 0 ? 1 : 0)
-                const on = modo === 'integrante' ? row.persona_id === personaId : row.evento_id === eventoId
-                return (
-                  <button
-                    key={rowKey(row, index)}
-                    type="button"
-                    className={`abonos-pick${on ? ' is-on' : ''}`}
-                    onClick={() => pickRow(row)}
-                  >
-                    <AbonosAvatar
-                      name={title || '?'}
-                      photo={modo === 'integrante' ? row.foto_url : row.image_url}
-                      square={modo === 'actividad'}
-                    />
-                    <span className="abonos-pick__who">
-                      <strong>{title || 'Sin nombre'}</strong>
-                      <small>{countLabel(pending, pendingNoun[0], pendingNoun[1])}</small>
-                    </span>
-                    <span className="abonos-pick__money">
-                      <strong>{formatPrice(row.pendiente)}</strong>
-                      <small>Total pendiente</small>
-                    </span>
-                    <AdminIcon name="chevronRight" />
-                  </button>
-                )
-              })}
-            </div>
+                  {loadingList ? <p className="app-panel__muted">Cargando abonos libres…</p> : null}
+                  {!loadingList && filteredLibreGroups.length === 0 ? (
+                    <p className="app-panel__hint">
+                      {libreGroups.length === 0
+                        ? 'No hay abonos libres pendientes de aprobación.'
+                        : 'Nadie coincide con esa búsqueda.'}
+                    </p>
+                  ) : null}
+
+                  <div className="abonos-picks">
+                    {filteredLibreGroups.map((group) => {
+                      const on = group.persona_id === librePersonaId
+                      return (
+                        <button
+                          key={group.persona_id}
+                          type="button"
+                          className={`abonos-pick${on ? ' is-on' : ''}`}
+                          onClick={() => pickLibrePersona(group)}
+                        >
+                          <AbonosAvatar name={group.nombre} photo={group.foto_url} />
+                          <span className="abonos-pick__who">
+                            <strong>{group.nombre}</strong>
+                            <small>
+                              {countLabel(group.abonos.length, 'abono libre pendiente', 'abonos libres pendientes')}
+                            </small>
+                          </span>
+                          <span className="abonos-pick__money">
+                            <strong>{formatPrice(group.total)}</strong>
+                            <small>Total pendiente</small>
+                          </span>
+                          <AdminIcon name="chevronRight" />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="abonos-board__meta">
+                    <p>
+                      Se encontraron {filtered.length} {listNoun}
+                    </p>
+                    <label>
+                      <span className="sr-only">Filtro</span>
+                      <select value={filter} onChange={(event) => setFilter(event.target.value as PayFilter)}>
+                        <option value="pendientes">Pendientes</option>
+                        <option value="todos">Todos</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  {loadingList ? <p className="app-panel__muted">Cargando abonos…</p> : null}
+                  {!loadingList && filtered.length === 0 ? (
+                    <p className="app-panel__hint">
+                      {list.filas.length === 0
+                        ? 'Todavía no hay participantes con cantidades en actividades económicas.'
+                        : 'Nadie coincide con esa búsqueda o filtro.'}
+                    </p>
+                  ) : null}
+
+                  <div className="abonos-picks">
+                    {filtered.map((row, index) => {
+                      const title = modo === 'integrante' ? row.full_name : row.evento_name
+                      const pending = row.pendientes ?? (row.pendiente > 0 ? 1 : 0)
+                      const on = modo === 'integrante' ? row.persona_id === personaId : row.evento_id === eventoId
+                      return (
+                        <button
+                          key={rowKey(row, index)}
+                          type="button"
+                          className={`abonos-pick${on ? ' is-on' : ''}`}
+                          onClick={() => pickRow(row)}
+                        >
+                          <AbonosAvatar
+                            name={title || '?'}
+                            photo={modo === 'integrante' ? row.foto_url : row.image_url}
+                            square={modo === 'actividad'}
+                          />
+                          <span className="abonos-pick__who">
+                            <strong>{title || 'Sin nombre'}</strong>
+                            <small>{countLabel(pending, pendingNoun[0], pendingNoun[1])}</small>
+                          </span>
+                          <span className="abonos-pick__money">
+                            <strong>{formatPrice(row.pendiente)}</strong>
+                            <small>Total pendiente</small>
+                          </span>
+                          <AdminIcon name="chevronRight" />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
             </AppTabs>
-        </AppPanel>
+          )
+
+          return <div className="abonos-board abonos-board--bare">{boardBody}</div>
+        })()}
 
         {!isMobile ? (
           <AppPanel shine={false} className="abonos-detail">
@@ -807,13 +1171,17 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
           </AppPanel>
         ) : null}
       </div>
-      )}
+      ) : null}
 
       {!mine && isMobile ? (
         <CreateDrawer
-          open={drawerOpen && Boolean(selected)}
-          title={selectedName || 'Registrar abono'}
-          subtitle="Recaudo"
+          open={drawerOpen && (boardTab === 'libre' ? Boolean(libreSelected) : Boolean(selected))}
+          title={
+            boardTab === 'libre'
+              ? libreSelected?.nombre || 'Abonos libres'
+              : selectedName || 'Registrar abono'
+          }
+          subtitle={boardTab === 'libre' ? 'Revisión' : 'Recaudo'}
           placement="bottom"
           onClose={closeDetail}
         >
@@ -1022,6 +1390,47 @@ export function AbonosPage({ mine = false }: { mine?: boolean }) {
             />
           </div>
         ) : null}
+      </CreateDrawer>
+
+      <CreateDrawer
+        open={mine && libreOpen}
+        stacked
+        size="half"
+        placement={drawerPlacement}
+        title="Abono libre"
+        subtitle="Ingreso directo a tu ganancia"
+        onClose={closeLibre}
+        footer={
+          <>
+            <button type="button" className="app-panel__btn--ghost" onClick={closeLibre}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="app-panel__btn--primary"
+              disabled={
+                saving ||
+                Math.round(Number(libreDraft.monto) || 0) <= 0 ||
+                !libreDraft.comprobante
+              }
+              onClick={() => void submitLibre()}
+            >
+              <AdminIcon name="wallet" />
+              Enviar abono libre
+            </button>
+          </>
+        }
+      >
+        <div className="abonos-detail">
+          <AbonoLibreForm
+            draft={libreDraft}
+            cuenta={cuentaLibre}
+            saving={saving}
+            showSubmit={false}
+            onChange={setLibreDraft}
+            onSubmit={(event) => void submitLibre(event)}
+          />
+        </div>
       </CreateDrawer>
     </section>
   )

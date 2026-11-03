@@ -292,6 +292,7 @@ export function EventMemberJoin({ event, onClose, onChanged }: EventMemberJoinPr
   return (
     <CreateDrawer
       open
+      stacked
       title={locked ? (already ? 'Tu venta' : 'Actividad') : already ? 'Tu venta' : 'Participar'}
       subtitle={event.name}
       cover={resolveFileUrl(event.banner_url)}

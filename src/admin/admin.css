@@ -1830,6 +1830,36 @@
   min-width: 0;
 }
 
+.admin-club__who-copy {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.admin-club__who-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.admin-club__who-copy small {
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.admin-club__who-copy small.is-ok {
+  color: var(--panel-ok-text);
+}
+
+.admin-club__who-copy small.is-off {
+  color: var(--panel-alert-text);
+}
+
+.admin-club__who-copy small.is-muted {
+  color: var(--panel-muted);
+}
+
 .admin-club__who-photo {
   flex: 0 0 auto;
   width: 2rem;
@@ -1856,11 +1886,25 @@
 }
 
 .admin-club__actions {
+  position: relative;
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 0.3rem;
+}
+
+.admin-club__actions-inline {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+}
+
+.admin-club__actions-menu {
+  display: none;
+  position: relative;
 }
 
 .admin-club__action {
@@ -1883,7 +1927,8 @@
   height: 1.15rem;
 }
 
-.admin-club__action:hover {
+.admin-club__action:hover,
+.admin-club__action.is-on {
   color: var(--panel-btn-text);
   background: var(--panel-btn-bg);
   border-color: transparent;
@@ -1895,6 +1940,75 @@
 
 .admin-club__action--accent:hover {
   color: var(--panel-btn-text);
+}
+
+.admin-club__action--danger {
+  color: var(--panel-alert-text);
+}
+
+.admin-club__actions-panel {
+  position: fixed;
+  z-index: 80;
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+  min-width: 13.5rem;
+  max-width: calc(100vw - 1.5rem);
+  padding: 0.4rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 0.85rem;
+  background: #081018;
+  color: #f6f3ea;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.36);
+  backdrop-filter: none;
+}
+
+.admin-shell--day .admin-club__actions-panel {
+  border-color: rgb(20 50 80 / 0.16);
+  background: #ffffff;
+  color: #0c2340;
+  box-shadow: 0 16px 40px rgb(30 70 110 / 0.18);
+}
+
+.admin-shell--day .admin-club__actions-item:hover {
+  background: rgb(12 35 64 / 0.08);
+}
+
+.admin-club__actions-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.6rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--panel-title);
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-club__actions-item svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+}
+
+.admin-club__actions-item:hover {
+  background: var(--panel-ghost-bg);
+}
+
+.admin-club__actions-item.is-accent {
+  color: var(--panel-gold);
+}
+
+.admin-club__actions-item.is-danger {
+  color: var(--panel-alert-text);
 }
 
 @media (max-width: 900px) {
@@ -1911,6 +2025,14 @@
   .admin-club__table td:first-child {
     width: auto;
     min-width: 0;
+  }
+
+  .admin-club__actions-inline {
+    display: none;
+  }
+
+  .admin-club__actions-menu {
+    display: block;
   }
 }
 
@@ -2039,10 +2161,6 @@
 
   .app-tabs.admin-events__views.is-compact-mobile .app-tabs__body {
     padding-top: 0.55rem;
-  }
-
-  .app-tabs.admin-events__views.is-member-mobile .app-tabs__body {
-    padding-top: 0;
   }
 
   .admin-events__view-compact {

@@ -35,7 +35,7 @@ type EventsViewToggleProps = {
   onToggleFilters: () => void
   onCloseFilters?: () => void
   filters?: ReactNode
-  /** Solo Carrusel, sin controles de vista (miembro en móvil). */
+  /** Oculta filtros en móvil (miembro); la vista con el ojo sigue disponible. */
   memberMobileOnly?: boolean
   children?: ReactNode
 }
@@ -96,67 +96,59 @@ export function EventsViewToggle({
   if (isMobile) {
     return (
       <>
-        <div
-          className={`app-tabs has-sheet admin-events__views is-compact-mobile${
-            memberMobileOnly ? ' is-member-mobile' : ''
-          }`}
-        >
-          {memberMobileOnly ? null : (
-            <div className="admin-events__view-compact">
+        <div className="app-tabs has-sheet admin-events__views is-compact-mobile">
+          <div className="admin-events__view-compact">
+            <button
+              type="button"
+              className={`app-panel__btn--ghost admin-events__view-eye${viewsOpen ? ' is-on' : ''}`}
+              aria-label={`Cambiar vista. Actual: ${currentView.label}`}
+              aria-expanded={viewsOpen}
+              aria-haspopup="dialog"
+              onClick={() => setViewsOpen(true)}
+            >
+              <AdminIcon name="eye" />
+            </button>
+            {showFilters ? (
               <button
                 type="button"
-                className={`app-panel__btn--ghost admin-events__view-eye${viewsOpen ? ' is-on' : ''}`}
-                aria-label={`Cambiar vista. Actual: ${currentView.label}`}
-                aria-expanded={viewsOpen}
-                aria-haspopup="dialog"
-                onClick={() => setViewsOpen(true)}
+                className={`app-panel__btn--ghost admin-events__view-eye${filtersOpen ? ' is-on' : ''}`}
+                aria-label="Filtros"
+                aria-pressed={filtersOpen}
+                aria-expanded={filtersOpen}
+                onClick={onToggleFilters}
               >
-                <AdminIcon name="eye" />
+                <AdminIcon name="filter" />
               </button>
-              {showFilters ? (
-                <button
-                  type="button"
-                  className={`app-panel__btn--ghost admin-events__view-eye${filtersOpen ? ' is-on' : ''}`}
-                  aria-label="Filtros"
-                  aria-pressed={filtersOpen}
-                  aria-expanded={filtersOpen}
-                  onClick={onToggleFilters}
-                >
-                  <AdminIcon name="filter" />
-                </button>
-              ) : null}
-            </div>
-          )}
+            ) : null}
+          </div>
           <div className="app-tabs__body">{children}</div>
         </div>
 
-        {memberMobileOnly ? null : (
-          <CreateDrawer
-            open={viewsOpen}
-            title="Vista"
-            subtitle="Elige cómo ver los eventos"
-            placement="bottom"
-            onClose={() => setViewsOpen(false)}
-          >
-            <div className="admin-events__view-picker" role="listbox" aria-label="Vista de eventos">
-              {VIEW_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="option"
-                  aria-selected={option.id === view}
-                  className={`app-panel__btn--ghost admin-events__view-option${
-                    option.id === view ? ' is-on' : ''
-                  }`}
-                  onClick={() => pickView(option.id)}
-                >
-                  <AdminIcon name={option.icon} />
-                  <span>{option.label}</span>
-                </button>
-              ))}
-            </div>
-          </CreateDrawer>
-        )}
+        <CreateDrawer
+          open={viewsOpen}
+          title="Vista"
+          subtitle="Elige cómo ver los eventos"
+          placement="bottom"
+          onClose={() => setViewsOpen(false)}
+        >
+          <div className="admin-events__view-picker" role="listbox" aria-label="Vista de eventos">
+            {VIEW_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="option"
+                aria-selected={option.id === view}
+                className={`app-panel__btn--ghost admin-events__view-option${
+                  option.id === view ? ' is-on' : ''
+                }`}
+                onClick={() => pickView(option.id)}
+              >
+                <AdminIcon name={option.icon} />
+                <span>{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </CreateDrawer>
 
         {filtersDrawer}
       </>

@@ -45,6 +45,10 @@ export function AttendancePage() {
     canAccessClubAttendance(clubAccessFromUser(auth.user, auth.can)) || auth.can('asistencia.update')
 
   const [tab, setTab] = useState<AttendanceTab>('resultados')
+
+  useEffect(() => {
+    if (!canEdit && tab === 'tomar') setTab('resultados')
+  }, [canEdit, tab])
   const [events, setEvents] = useState<AttendanceEvent[]>([])
   const [eventoId, setEventoId] = useState<number | null>(null)
   const [members, setMembers] = useState<AttendanceMember[]>([])
@@ -337,7 +341,9 @@ export function AttendancePage() {
         onChange={setTab}
         tabs={[
           { id: 'resultados', label: <><AdminIcon name="users" /> Resultados</> },
-          { id: 'tomar', label: <><AdminIcon name="check" /> Tomar asistencia</> },
+          ...(canEdit
+            ? [{ id: 'tomar' as const, label: <><AdminIcon name="check" /> Tomar asistencia</> }]
+            : []),
         ]}
       >
       {tab === 'resultados' ? (

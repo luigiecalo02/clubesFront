@@ -95,6 +95,7 @@ type AbonoProofReviewProps = {
   abonos?: AbonoMovimiento[]
   canReview?: boolean
   hideShot?: boolean
+  amountLabel?: string
   onReview?: (abono: AbonoMovimiento, estado: 'aprobado' | 'rechazado', monto?: number) => Promise<void>
 }
 
@@ -107,6 +108,7 @@ export function AbonoProofReview({
   abonos,
   canReview = false,
   hideShot = false,
+  amountLabel,
   onReview,
 }: AbonoProofReviewProps) {
   const items = abonos?.length ? abonos : abono ? [abono] : []
@@ -176,23 +178,24 @@ export function AbonoProofReview({
               ? `Una captura · ${pendingItems.length} abonos`
               : 'Valor del pantallazo'}
           </p>
-          {pendingItems.map((item) => (
-            <label key={item.id} className="abono-proof__batch-line">
-              <span>
-                {item.producto_nombre || 'Abono'}
-              </span>
-              <NumberPadInput
-                title={item.producto_nombre || 'Valor del abono'}
-                min={1}
-                maxDigits={9}
-                format={formatAbonoMoney}
-                ariaLabel={`Valor de ${item.producto_nombre || 'abono'}`}
-                value={montos[item.id] ?? ''}
-                disabled={saving}
-                onChange={(monto) => setMontos((current) => ({ ...current, [item.id]: monto }))}
-              />
-            </label>
-          ))}
+          {pendingItems.map((item) => {
+            const lineLabel = amountLabel || item.producto_nombre || 'Abono'
+            return (
+              <label key={item.id} className="abono-proof__batch-line">
+                <span>{lineLabel}</span>
+                <NumberPadInput
+                  title={lineLabel}
+                  min={1}
+                  maxDigits={9}
+                  format={formatAbonoMoney}
+                  ariaLabel={lineLabel}
+                  value={montos[item.id] ?? ''}
+                  disabled={saving}
+                  onChange={(monto) => setMontos((current) => ({ ...current, [item.id]: monto }))}
+                />
+              </label>
+            )
+          })}
           {pendingItems.length > 1 ? (
             <p className="abono-proof__batch-total">
               <span>Total</span>

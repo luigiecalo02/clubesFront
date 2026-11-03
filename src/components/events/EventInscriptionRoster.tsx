@@ -143,6 +143,7 @@ export function EventInscriptionRoster({ event, canEdit, onClose, onChanged }: E
     <>
       <CreateDrawer
         open
+        stacked
         title={event.name}
         subtitle="Inscritos del club"
         cover={resolveFileUrl(event.banner_url)}

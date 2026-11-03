@@ -1,6 +1,11 @@
 import { api } from './client'
 import { notifyFinanzasChanged } from './finanzasLive'
-import type { ApiEnvelope, FinanzasResumen, FinanzasMovimiento } from './types'
+import type {
+  ApiEnvelope,
+  FinanzasDistribucionDetalle,
+  FinanzasResumen,
+  FinanzasMovimiento,
+} from './types'
 
 export const finanzasApi = {
   async resumen(params?: {
@@ -15,6 +20,27 @@ export const finanzasApi = {
         cuenta_bancaria_id: params?.cuentaBancariaId || undefined,
       },
     })
+    return data.data
+  },
+
+  async detalleDistribucion(params: {
+    destino: string
+    desde?: string | null
+    hasta?: string | null
+    cuentaBancariaId?: number | null
+    personaId?: number | null
+  }): Promise<FinanzasDistribucionDetalle> {
+    const { data } = await api.get<ApiEnvelope<FinanzasDistribucionDetalle>>(
+      `/api/v1/settings/clubes/finanzas/distribucion/${params.destino}`,
+      {
+        params: {
+          desde: params.desde || undefined,
+          hasta: params.hasta || undefined,
+          cuenta_bancaria_id: params.cuentaBancariaId || undefined,
+          persona_id: params.personaId || undefined,
+        },
+      },
+    )
     return data.data
   },
 

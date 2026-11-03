@@ -9,7 +9,7 @@ import {
   canUpdateClubMember,
   clubAccessFromUser,
 } from '../admin/menu'
-import { MemberNameCell, MemberRow } from '../components/members/MemberActions'
+import { MemberNameCell, MemberRow, memberHasUser, memberUserActive } from '../components/members/MemberActions'
 import { MemberDrawer, type MemberDrawerMode } from '../components/members/MemberDrawer'
 import { MemberInsightDrawer, type MemberInsightKind } from '../components/members/MemberInsightDrawer'
 import { useAuth } from '../auth/AuthProvider'
@@ -95,6 +95,34 @@ export function MembersPage() {
     setInsightKind(kind)
   }
 
+  function applyMember(next: ClubPerson) {
+    setMembers((current) => {
+      const exists = current.some((row) => row.id === next.id)
+      return exists
+        ? current.map((row) => (row.id === next.id ? { ...row, ...next } : row))
+        : [...current, next]
+    })
+  }
+
+  async function onToggleAccess(persona: ClubPerson) {
+    if (!memberHasUser(persona) || !memberUserActive(persona)) {
+      openMode('activate', persona)
+      return
+    }
+    if (persona.user_id === auth.user?.id) {
+      notices.warning('No puedes desactivar tu propio usuario.')
+      return
+    }
+    if (!window.confirm(`¿Desactivar el acceso de ${persona.full_name}?`)) return
+    try {
+      const next = await personasApi.setUserAccess(persona.id, { is_active: false })
+      applyMember(next)
+      notices.success(`Acceso desactivado para ${persona.full_name}.`)
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo desactivar el usuario'))
+    }
+  }
+
   return (
     <section className="admin-page">
       {canCreate ? (
@@ -114,8 +142,14 @@ export function MembersPage() {
         persona={selected}
         organizacionId={ctx?.organizacion_id}
         onClose={closeDrawer}
-        onCreated={() => void loadMembers()}
-        onUpdated={() => void loadMembers()}
+        onCreated={(next) => {
+          applyMember(next)
+          void loadMembers()
+        }}
+        onUpdated={(next) => {
+          applyMember(next)
+          void loadMembers()
+        }}
       />
 
       <MemberInsightDrawer persona={insightPersona} kind={insightKind} onClose={closeInsight} />
@@ -175,6 +209,7 @@ export function MembersPage() {
                       onEdit={(row) => openMode('edit', row)}
                       onPassword={(row) => openMode('password', row)}
                       onImpersonate={(row) => openMode('impersonate', row)}
+                      onToggleAccess={onToggleAccess}
                       onInsight={openInsight}
                     >
                       <MemberNameCell persona={persona} />

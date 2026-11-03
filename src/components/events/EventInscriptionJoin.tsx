@@ -56,6 +56,7 @@ export function EventInscriptionJoin({ event, onClose, onChanged }: EventInscrip
   return (
     <CreateDrawer
       open
+      stacked
       title={event.name}
       subtitle="Inscripción"
       cover={resolveFileUrl(event.banner_url)}

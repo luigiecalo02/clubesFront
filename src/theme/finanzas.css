@@ -241,9 +241,152 @@
 
 .finanzas__legend li {
   display: grid;
+  gap: 0;
+}
+
+.finanzas__legend-btn {
+  display: grid;
   grid-template-columns: 0.7rem minmax(0, 1fr) auto;
   gap: 0.45rem;
   align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 0.35rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: var(--panel-input-radius, 0.7rem);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.finanzas__legend-btn:hover {
+  border-color: var(--panel-input-border);
+  background: var(--panel-input-bg);
+}
+
+.finanzas__detail {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.finanzas__detail-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.finanzas__detail-kpis span {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.65rem 0.7rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+}
+
+.finanzas__detail-kpis strong {
+  color: var(--panel-title);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.finanzas__detail-kpis strong.is-in {
+  color: var(--panel-ok-text);
+}
+
+.finanzas__detail-kpis strong.is-out {
+  color: var(--panel-danger);
+}
+
+.finanzas__detail-kpis small {
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+}
+
+.finanzas__detail-people {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finanzas__detail-people button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 0.7rem 0.75rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.finanzas__detail-people button.is-openable {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  cursor: pointer;
+}
+
+.finanzas__detail-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-gold) 16%, var(--panel-input-bg));
+  color: var(--panel-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.finanzas__detail-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.finanzas__detail-people button.is-openable:hover {
+  border-color: color-mix(in srgb, var(--panel-gold) 40%, var(--panel-input-border));
+}
+
+.finanzas__detail-people button .admin-icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--panel-muted);
+}
+
+.finanzas__detail-people button:disabled {
+  opacity: 1;
+}
+
+.finanzas__detail-people strong {
+  display: block;
+  color: var(--panel-title);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.finanzas__detail-people small {
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+}
+
+.finanzas__detail-people em {
+  color: var(--panel-title);
+  font-style: normal;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .finanzas__swatch {
@@ -343,14 +486,13 @@
 .finanzas__accounts,
 .finanzas__moves {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.5rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.finanzas__accounts li,
-.finanzas__moves li {
+.finanzas__accounts li {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
@@ -359,25 +501,97 @@
   border-bottom: 1px solid var(--panel-input-border);
 }
 
-.finanzas__moves li.is-new {
-  animation: finanzas-move-in 0.45s ease;
-}
-
-.finanzas__accounts li:last-child,
-.finanzas__moves li:last-child {
+.finanzas__accounts li:last-child {
   border-bottom: 0;
 }
 
-.finanzas__accounts strong,
-.finanzas__moves strong {
+.finanzas__accounts strong {
   color: var(--panel-title);
   font-weight: var(--panel-weight-strong);
 }
 
-.finanzas__accounts span,
-.finanzas__moves span {
+.finanzas__accounts span {
   color: var(--panel-muted);
   font-size: 0.82rem;
+}
+
+.finanzas__move {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  min-width: 0;
+  padding: 0.7rem 0.75rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+}
+
+.finanzas__move.is-empty {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.finanzas__move.is-new {
+  animation: finanzas-move-in 0.45s ease;
+}
+
+.finanzas__move-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--panel-ok-text) 14%, var(--panel-input-bg));
+  color: var(--panel-ok-text);
+}
+
+.finanzas__move.is-out .finanzas__move-icon {
+  background: color-mix(in srgb, var(--panel-danger) 14%, var(--panel-input-bg));
+  color: var(--panel-danger);
+}
+
+.finanzas__move-icon .admin-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.finanzas__move-body {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.finanzas__move-body strong {
+  overflow: hidden;
+  color: var(--panel-title);
+  font-size: 0.9rem;
+  font-weight: var(--panel-weight-strong, 600);
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finanzas__move-body small {
+  overflow: hidden;
+  color: var(--panel-muted);
+  font-size: 0.72rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finanzas__move-end {
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.finanzas__move-end > strong {
+  font-size: 0.95rem;
+  font-weight: var(--panel-weight-strong, 700);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .finanzas__acts {
@@ -516,19 +730,14 @@
   font-weight: var(--panel-weight);
 }
 
+.finanzas__move-end .is-in,
 .finanzas__moves .is-in {
   color: var(--panel-ok-text);
 }
 
+.finanzas__move-end .is-out,
 .finanzas__moves .is-out {
   color: var(--panel-danger);
-}
-
-.finanzas__move-end {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  flex-shrink: 0;
 }
 
 .finanzas__move-del {
@@ -699,7 +908,7 @@
   .finanzas__legend li.is-flash em,
   .finanzas__accounts li.is-flash strong,
   .finanzas__act.is-flash header em,
-  .finanzas__moves li.is-new {
+  .finanzas__move.is-new {
     animation: none;
   }
 

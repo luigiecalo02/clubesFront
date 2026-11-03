@@ -241,6 +241,8 @@ export type PersonaIdType = 'CC' | 'TI' | 'CE' | 'PA'
 export interface ClubPerson {
   id: number
   user_id?: number | null
+  /** null = sin usuario; true/false = estado del login */
+  user_is_active?: boolean | null
   tipo_identificacion?: string | null
   identificacion?: string | null
   nombre1?: string | null
@@ -581,17 +583,21 @@ export interface AbonoMovimiento {
   id: number
   monto: number
   nota?: string | null
+  tipo?: 'actividad' | 'libre' | string | null
   estado?: 'pendiente' | 'aprobado' | 'rechazado' | 'eliminado' | string | null
   producto_servicio_id?: number | null
   producto_nombre?: string | null
   comprobante_url?: string | null
   created_at?: string | null
+  persona_id?: number | null
+  persona_nombre?: string | null
+  foto_url?: string | null
 }
 
 export interface AbonoRevision {
   abono: AbonoMovimiento
   persona_id: number
-  evento_id: number
+  evento_id?: number | null
   abonado: number
   abonos?: AbonoMovimiento[]
 }
@@ -685,6 +691,8 @@ export interface AbonosBoard {
   opciones_integrantes: AbonoOption[]
   opciones_actividades: AbonoOption[]
   filas: AbonoFila[]
+  cuenta_bancaria_libre?: CuentaBancariaClub | null
+  abonos_libres?: AbonoMovimiento[]
 }
 
 export interface AbonoReparto {
@@ -799,12 +807,12 @@ export interface FinanzasCuenta {
 }
 
 export interface FinanzasMovimiento {
-  id: number
+  id?: number | null
   tipo: 'ingreso' | 'egreso' | string
   origen: string
   monto: number
   concepto: string
-  cuenta_id: number
+  cuenta_id?: number
   cuenta_bancaria_id?: number | null
   cuenta_nombre?: string | null
   evento_id?: number | null
@@ -813,6 +821,29 @@ export interface FinanzasMovimiento {
   persona_id?: number | null
   persona_nombre?: string | null
   occurred_at?: string | null
+  sintetico?: boolean
+}
+
+export interface FinanzasDistribucionParticipante {
+  persona_id: number
+  nombre: string
+  foto_url?: string | null
+  total: number
+  ingresos: number
+  egresos: number
+}
+
+export interface FinanzasDistribucionDetalle {
+  destino: string
+  label: string
+  desde: string
+  hasta: string
+  persona_id?: number | null
+  total: number
+  ingresos: number
+  egresos: number
+  movimientos: FinanzasMovimiento[]
+  participantes: FinanzasDistribucionParticipante[]
 }
 
 export interface FinanzasActividadPartes {

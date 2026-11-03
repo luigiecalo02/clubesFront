@@ -277,30 +277,10 @@ export function EventsCalendar({
               canJoin={canJoin}
               canManageInscriptions={canManageInscriptions}
               canEdit={canEditSelected}
-              onAttendance={(item) => {
-                closeEvent()
-                onAttendance(item)
-              }}
-              onJoin={
-                onJoin
-                  ? (item) => {
-                      closeEvent()
-                      onJoin(item)
-                    }
-                  : undefined
-              }
-              onInscriptions={
-                onInscriptions
-                  ? (item) => {
-                      closeEvent()
-                      onInscriptions(item)
-                    }
-                  : undefined
-              }
-              onEdit={(item) => {
-                closeEvent()
-                onEdit(item)
-              }}
+              onAttendance={onAttendance}
+              onJoin={onJoin}
+              onInscriptions={onInscriptions}
+              onEdit={onEdit}
             />
           ) : null
         }

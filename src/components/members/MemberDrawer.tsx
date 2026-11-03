@@ -18,9 +18,9 @@ import { CreateDrawer } from '../../theme/CreateDrawer'
 import { DateInput } from '../../theme/DateInput'
 import { ImageUpload } from '../../theme/ImageUpload'
 import { useNotice } from '../../theme/NoticeProvider'
-import { memberUserId } from './MemberActions'
+import { memberHasUser, memberUserId } from './MemberActions'
 
-export type MemberDrawerMode = 'create' | 'edit' | 'password' | 'impersonate'
+export type MemberDrawerMode = 'create' | 'edit' | 'password' | 'activate' | 'impersonate'
 
 type MemberDrawerProps = {
   mode: MemberDrawerMode | null
@@ -147,14 +147,23 @@ export function MemberDrawer({
       setRemovePhoto(false)
       return
     }
-    if ((mode === 'edit' || mode === 'password' || mode === 'impersonate') && persona) {
+    if ((mode === 'edit' || mode === 'password' || mode === 'activate' || mode === 'impersonate') && persona) {
       setForm(formFromPersona(persona))
       setPhotoFile(null)
       setPhotoPreview(resolveFileUrl(persona.foto_url))
       setRemovePhoto(false)
+      if (mode === 'activate' && !memberHasUser(persona) && persona.identificacion) {
+        const suggested = `${persona.identificacion}Aa1!`
+        setPassword(suggested)
+        setPasswordConfirmation(suggested)
+      } else {
+        setPassword('')
+        setPasswordConfirmation('')
+      }
+    } else {
+      setPassword('')
+      setPasswordConfirmation('')
     }
-    setPassword('')
-    setPasswordConfirmation('')
     setFieldErrors({})
   }, [mode, persona])
 
@@ -181,9 +190,13 @@ export function MemberDrawer({
       ? 'Editar integrante'
       : mode === 'password'
         ? 'Cambiar contraseña'
-        : mode === 'impersonate'
-          ? 'Entrar como usuario'
-          : 'Crear integrante'
+        : mode === 'activate'
+          ? memberHasUser(persona)
+            ? 'Activar usuario'
+            : 'Crear y activar usuario'
+          : mode === 'impersonate'
+            ? 'Entrar como usuario'
+            : 'Crear integrante'
 
   function closeAndReset() {
     setForm(emptyForm())
@@ -277,6 +290,57 @@ export function MemberDrawer({
     }
   }
 
+  async function onActivateAccess(event: FormEvent) {
+    event.preventDefault()
+    if (!persona || !canUpdate) return
+    const creating = !memberHasUser(persona)
+    if (creating || password || passwordConfirmation) {
+      if (password !== passwordConfirmation) {
+        notices.warning('Las contraseñas no coinciden.')
+        onError?.('Las contraseñas no coinciden.')
+        return
+      }
+      if (creating && !password) {
+        notices.warning('Define una contraseña para crear el acceso.')
+        onError?.('Define una contraseña para crear el acceso.')
+        return
+      }
+    }
+    if (creating && !persona.correo?.trim()) {
+      notices.warning('El integrante necesita un correo. Edítalo antes de activar el usuario.')
+      onError?.('El integrante necesita un correo.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const next = await personasApi.setUserAccess(persona.id, {
+        is_active: true,
+        ...(password
+          ? { password, password_confirmation: passwordConfirmation }
+          : {}),
+      })
+      notices.success(
+        creating
+          ? `Usuario creado y activado para ${persona.full_name}.`
+          : `Acceso activado para ${persona.full_name}.`,
+      )
+      onNotice?.(
+        creating
+          ? `Usuario creado y activado para ${persona.full_name}.`
+          : `Acceso activado para ${persona.full_name}.`,
+      )
+      onUpdated?.(next)
+      closeAndReset()
+    } catch (err) {
+      setFieldErrors(fieldErrorsFromApi(err))
+      const message = getApiErrorMessage(err, 'No se pudo activar el usuario')
+      notices.error(message)
+      onError?.(message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   async function onImpersonate() {
     const userId = persona ? memberUserId(persona) : null
     if (!userId || !canImpersonate) return
@@ -311,6 +375,14 @@ export function MemberDrawer({
           <button type="submit" form="member-password-form" className="app-panel__btn--primary" disabled={submitting}>
             {submitting ? 'Guardando…' : 'Guardar contraseña'}
           </button>
+        ) : mode === 'activate' ? (
+          <button type="submit" form="member-activate-form" className="app-panel__btn--primary" disabled={submitting}>
+            {submitting
+              ? 'Guardando…'
+              : memberHasUser(persona)
+                ? 'Activar acceso'
+                : 'Crear y activar'}
+          </button>
         ) : (
           <button type="submit" form="member-form" className="app-panel__btn--primary" disabled={submitting}>
             {submitting ? 'Guardando…' : mode === 'edit' ? 'Guardar cambios' : 'Guardar integrante'}
@@ -333,6 +405,45 @@ export function MemberDrawer({
             barra superior.
           </p>
         </div>
+      ) : null}
+
+      {mode === 'activate' && persona ? (
+        <form
+          id="member-activate-form"
+          className="admin-form admin-form--compact"
+          onSubmit={(event) => void onActivateAccess(event)}
+        >
+          <p className="app-panel__subtitle">
+            {memberHasUser(persona)
+              ? `Se reactivará el acceso de ${persona.full_name}${persona.correo ? ` (${persona.correo})` : ''}. Puedes dejar una contraseña nueva o vaciar los campos para conservar la actual.`
+              : `Se creará el usuario con los datos de ${persona.full_name}${persona.correo ? ` (${persona.correo})` : ''}. Define una contraseña inicial (sugerida: identificación + Aa1!).`}
+          </p>
+          <label>
+            Contraseña {memberHasUser(persona) ? '(opcional)' : ''}
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              required={!memberHasUser(persona)}
+              minLength={6}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            {fieldErrors.password ? <small>{fieldErrors.password}</small> : null}
+            {fieldErrors.correo ? <small>{fieldErrors.correo}</small> : null}
+          </label>
+          <label>
+            Confirmar contraseña
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={passwordConfirmation}
+              required={!memberHasUser(persona) || Boolean(password)}
+              minLength={6}
+              onChange={(event) => setPasswordConfirmation(event.target.value)}
+            />
+            {fieldErrors.password_confirmation ? <small>{fieldErrors.password_confirmation}</small> : null}
+          </label>
+        </form>
       ) : null}
 
       {mode === 'password' && persona ? (

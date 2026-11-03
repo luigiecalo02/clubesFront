@@ -211,7 +211,7 @@ export function EventsPage() {
     typeof window !== 'undefined' ? window.matchMedia(MOBILE_EVENTS).matches : false,
   )
   const memberMobileOnly = isMemberRole && isMobile
-  const view = memberMobileOnly ? 'carrusel' : parseEventsView(params.get('vista'))
+  const view = parseEventsView(params.get('vista'))
   const eventQuery = view === 'cronograma' ? {} : buildEventListQuery({ estado, tipo, desde, hasta })
   const hasListFilters =
     view !== 'cronograma' &&
@@ -350,12 +350,10 @@ export function EventsPage() {
     return () => media.removeEventListener('change', sync)
   }, [])
 
-  const vistaParam = params.get('vista')
   useEffect(() => {
-    if (!memberMobileOnly) return
-    if (vistaParam !== 'carrusel') setView('carrusel')
-    if (filtersOpen) setFiltersOpen(false)
-  }, [filtersOpen, memberMobileOnly, vistaParam])
+    if (!memberMobileOnly || !filtersOpen) return
+    setFiltersOpen(false)
+  }, [filtersOpen, memberMobileOnly])
 
   useEffect(() => {
     let cancelled = false
@@ -1176,6 +1174,7 @@ export function EventsPage() {
 
       <CreateDrawer
         open={showForm}
+        stacked={Boolean(editing)}
         title={editing ? 'Editar evento' : 'Crear evento'}
         subtitle={
           editing
@@ -1513,6 +1512,7 @@ export function EventsPage() {
 
       <CreateDrawer
         open={Boolean(participantsFor)}
+        stacked
         placement={drawerPlacement}
         title={participantsFor?.name || 'Ver evento'}
         subtitle="Ver evento"
@@ -1604,6 +1604,8 @@ export function EventsPage() {
 
       <CreateDrawer
         open={Boolean(attendanceFor)}
+        stacked
+        placement={drawerPlacement}
         title={attendanceFor?.name || 'Tomar asistencia'}
         onClose={closeAttendance}
       >
