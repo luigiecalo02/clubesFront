@@ -752,11 +752,11 @@ export function FinanzasPage() {
                 <section className="finanzas__card">
                   <h3>Últimos movimientos</h3>
                   <ul className="finanzas__moves">
-                    {data.movimientos.slice(0, 8).map((mov) => (
+                    {data.movimientos.slice(0, 8).map((mov, index) => (
                       <MovimientoRow
-                        key={mov.id}
+                        key={mov.id ?? `m-${index}`}
                         mov={mov}
-                        fresh={freshMoves.has(mov.id)}
+                        fresh={mov.id != null && freshMoves.has(mov.id)}
                         canDelete={canDeleteMovimiento}
                         deleting={deletingId === mov.id}
                         onDelete={(item) => void onDeleteMovimiento(item)}
@@ -799,11 +799,11 @@ export function FinanzasPage() {
             <section className="finanzas__card">
               <h3>Movimientos de caja</h3>
               <ul className="finanzas__moves">
-                {data.movimientos.map((mov) => (
+                {data.movimientos.map((mov, index) => (
                   <MovimientoRow
-                    key={mov.id}
+                    key={mov.id ?? `m-${index}`}
                     mov={mov}
-                    fresh={freshMoves.has(mov.id)}
+                    fresh={mov.id != null && freshMoves.has(mov.id)}
                     canDelete={canDeleteMovimiento}
                     deleting={deletingId === mov.id}
                     onDelete={(item) => void onDeleteMovimiento(item)}
