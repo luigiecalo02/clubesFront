@@ -10,7 +10,9 @@ import { InformeCharts } from '../components/informe/InformeCharts'
 import { InformePersonaDetalle } from '../components/informe/InformePersonaDetalle'
 import { AppPanel } from '../theme/AppPanel'
 import { AppTabs } from '../theme/AppTabs'
+import { clubBrandStyle } from '../theme/clubBrand'
 import { formatDate } from '../theme/dates'
+import '../theme/app-panel.css'
 import '../theme/informe-participantes.css'
 
 type TabId = 'listado' | 'graficas'
@@ -103,8 +105,14 @@ export function InformeParticipantesPublicPage() {
     return out
   }
 
+  const theme = data?.organizacion.scene_theme === 'day' ? 'day' : 'night'
+  const brandStyle = clubBrandStyle(data?.organizacion.color_principal)
+
   return (
-    <div className="informe-public">
+    <div
+      className={`informe-public informe-public--${theme}${theme === 'day' ? ' admin-shell--day' : ''}`}
+      style={brandStyle}
+    >
       {loading ? (
         <AppPanel className="informe-public__panel">
           <p className="app-panel__muted">Cargando participantes…</p>

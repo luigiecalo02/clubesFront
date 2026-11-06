@@ -72,6 +72,14 @@ export const finanzasApi = {
     notifyFinanzasChanged()
   },
 
+  async listInformes(origin?: string): Promise<FinanzasInformeLink[]> {
+    const { data } = await api.get<ApiEnvelope<FinanzasInformeLink[]>>(
+      '/api/v1/settings/clubes/finanzas/informes-participantes',
+      { params: { origin: origin || window.location.origin } },
+    )
+    return data.data
+  },
+
   async publishInforme(payload: {
     desde: string
     hasta: string
@@ -94,6 +102,10 @@ export const finanzasApi = {
       { activo },
     )
     return data.data
+  },
+
+  async deleteInforme(id: number): Promise<void> {
+    await api.delete(`/api/v1/settings/clubes/finanzas/informes-participantes/${id}`)
   },
 
   async informePublico(token: string): Promise<InformeParticipantesPublico> {

@@ -907,11 +907,12 @@ export interface FinanzasResumen {
 
 export interface FinanzasInformeLink {
   id: number
-  url: string
+  url?: string | null
   desde: string
   hasta: string
   expires_at?: string | null
   activo: boolean
+  created_at?: string | null
 }
 
 export interface InformeParticipanteResumen {
@@ -948,6 +949,9 @@ export interface InformeParticipantesPublico {
     logo_url?: string | null
     banner_url?: string | null
     background_url?: string | null
+    scene_theme?: 'night' | 'day' | null
+    color_principal?: string | null
+    color_secundario?: string | null
   }
   desde: string
   hasta: string

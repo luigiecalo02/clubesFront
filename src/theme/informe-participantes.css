@@ -1,14 +1,34 @@
 .informe-public {
   --informe-bg: #070b12;
+  --informe-hero-from: #0b1220;
+  --informe-hero-to: #070b12;
   --informe-card: color-mix(in srgb, #101826 92%, transparent);
   --informe-line: color-mix(in srgb, #ffffff 12%, transparent);
+  --informe-text: #f4f7fb;
+  --informe-title: #ffffff;
+  --informe-muted: color-mix(in srgb, #ffffff 68%, transparent);
+  --informe-ok: var(--panel-ok-text, #86efac);
   min-height: 100dvh;
   padding: 0 0 2rem;
   display: grid;
   gap: 1rem;
   justify-items: center;
   background: var(--informe-bg);
-  color: #f4f7fb;
+  color: var(--informe-text);
+  color-scheme: dark;
+}
+
+.informe-public--day {
+  --informe-bg: #eef3f9;
+  --informe-hero-from: #f7fafc;
+  --informe-hero-to: #e8eef6;
+  --informe-card: rgb(255 255 255 / 0.92);
+  --informe-line: rgb(20 50 80 / 0.14);
+  --informe-text: #1a2a3c;
+  --informe-title: #0c2340;
+  --informe-muted: #4b5d74;
+  --informe-ok: #157347;
+  color-scheme: light;
 }
 
 .informe-public__panel,
@@ -23,7 +43,7 @@
   border-bottom: 1px solid var(--informe-line);
   background:
     radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--panel-gold, #f5c542) 18%, transparent), transparent 55%),
-    linear-gradient(180deg, #0b1220 0%, #070b12 100%);
+    linear-gradient(180deg, var(--informe-hero-from) 0%, var(--informe-hero-to) 100%);
 }
 
 .informe-public__hero-media {
@@ -41,12 +61,16 @@
   mask-image: linear-gradient(90deg, transparent 0%, #000 28%, #000 100%);
 }
 
+.informe-public--day .informe-public__hero-media img {
+  opacity: 0.35;
+}
+
 .informe-public__hero-shade {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, #070b12 0%, color-mix(in srgb, #070b12 82%, transparent) 42%, transparent 78%),
-    linear-gradient(180deg, transparent 55%, #070b12 100%);
+    linear-gradient(90deg, var(--informe-hero-to) 0%, color-mix(in srgb, var(--informe-hero-to) 82%, transparent) 42%, transparent 78%),
+    linear-gradient(180deg, transparent 55%, var(--informe-hero-to) 100%);
   pointer-events: none;
 }
 
@@ -72,7 +96,7 @@
   height: 3.4rem;
   object-fit: contain;
   border-radius: 999px;
-  background: #0a101a;
+  background: color-mix(in srgb, var(--informe-card) 80%, transparent);
   border: 2px solid color-mix(in srgb, var(--panel-gold, #f5c542) 75%, white);
   padding: 0.15rem;
   flex-shrink: 0;
@@ -81,14 +105,14 @@
 .informe-public__logo--fallback {
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--informe-title);
   font-size: 0.78rem;
   font-weight: 700;
-  background: color-mix(in srgb, var(--panel-gold, #f5c542) 22%, #0a101a);
+  background: color-mix(in srgb, var(--panel-gold, #f5c542) 22%, var(--informe-card));
 }
 
 .informe-public__club {
-  color: #fff;
+  color: var(--informe-title);
   font-size: 0.95rem;
   line-height: 1.2;
   max-width: 14rem;
@@ -111,7 +135,7 @@
   color: var(--panel-gold, #f5c542);
   font-size: 0.78rem;
   font-weight: 600;
-  background: color-mix(in srgb, #070b12 70%, transparent);
+  background: color-mix(in srgb, var(--informe-card) 70%, transparent);
 }
 
 .informe-public__badge .admin-icon {
@@ -121,7 +145,7 @@
 
 .informe-public__title {
   margin: 0;
-  color: #fff;
+  color: var(--informe-title);
   font-size: clamp(1.55rem, 3.2vw, 2.15rem);
   line-height: 1.15;
   font-weight: 750;
@@ -129,7 +153,7 @@
 
 .informe-public__subtitle {
   margin: 0;
-  color: color-mix(in srgb, #fff 68%, transparent);
+  color: var(--informe-muted);
   font-size: 0.92rem;
 }
 
@@ -147,7 +171,7 @@
   padding: 0.85rem 0.95rem;
   border-radius: 0.95rem;
   border: 1.5px solid var(--informe-line);
-  background: color-mix(in srgb, #101826 88%, transparent);
+  background: var(--informe-card);
   backdrop-filter: blur(8px);
 }
 
@@ -181,7 +205,7 @@
 
 .informe-public__stat.is-ok .informe-public__stat-icon {
   color: #052e16;
-  background: #4ade80;
+  background: var(--informe-ok);
 }
 
 .informe-public__stat.is-info .informe-public__stat-icon {
@@ -198,14 +222,14 @@
 
 .informe-public__stat > div > span {
   display: block;
-  color: color-mix(in srgb, #fff 62%, transparent);
+  color: var(--informe-muted);
   font-size: 0.75rem;
 }
 
 .informe-public__stat strong {
   display: block;
   margin-top: 0.15rem;
-  color: #fff;
+  color: var(--informe-title);
   font-size: clamp(1.05rem, 2.2vw, 1.35rem);
   font-weight: 750;
   font-variant-numeric: tabular-nums;
@@ -257,8 +281,8 @@
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--panel-gold, #f5c542) 18%, #101826);
-  color: #fff;
+  background: color-mix(in srgb, var(--panel-gold, #f5c542) 18%, var(--informe-card));
+  color: var(--informe-title);
   font-size: 0.72rem;
   font-weight: 700;
   flex-shrink: 0;
@@ -272,7 +296,7 @@
 }
 
 .informe-public__person-name {
-  color: #fff;
+  color: var(--informe-title);
   font-size: 1rem;
   line-height: 1.25;
   min-width: 0;
@@ -289,7 +313,7 @@
 }
 
 .informe-public__person-total > span {
-  color: color-mix(in srgb, #fff 62%, transparent);
+  color: var(--informe-muted);
   font-size: 0.78rem;
   white-space: nowrap;
 }
@@ -300,15 +324,15 @@
   min-height: 2rem;
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
-  border: 1.5px solid color-mix(in srgb, #4ade80 70%, white);
-  color: #4ade80;
+  border: 1.5px solid color-mix(in srgb, var(--informe-ok) 70%, white);
+  color: var(--informe-ok);
   font-size: 0.92rem;
   font-variant-numeric: tabular-nums;
-  background: color-mix(in srgb, #4ade80 12%, transparent);
+  background: color-mix(in srgb, var(--informe-ok) 12%, transparent);
 }
 
 .informe-public__chevron {
-  color: color-mix(in srgb, #fff 55%, transparent);
+  color: var(--informe-muted);
   font-size: 0.9rem;
 }
 
@@ -334,12 +358,12 @@
   padding: 0.85rem;
   border: 1.5px solid var(--informe-line);
   border-radius: 0.9rem;
-  background: color-mix(in srgb, #0a1220 70%, transparent);
+  background: var(--informe-card);
 }
 
 .informe-detalle__title {
   margin: 0;
-  color: #fff;
+  color: var(--informe-title);
   font-size: 0.95rem;
   font-weight: 700;
 }
@@ -359,7 +383,7 @@
 
 .informe-detalle__head {
   padding: 0.35rem 0.45rem;
-  color: color-mix(in srgb, #fff 55%, transparent);
+  color: var(--informe-muted);
   font-size: 0.72rem;
   border-bottom: 1px solid var(--informe-line);
 }
@@ -378,7 +402,7 @@
 }
 
 .informe-detalle__group.is-open {
-  background: color-mix(in srgb, #fff 3%, transparent);
+  background: color-mix(in srgb, var(--panel-gold, #f5c542) 6%, transparent);
 }
 
 .informe-detalle__row {
@@ -400,7 +424,7 @@ button.informe-detalle__row {
   align-items: center;
   gap: 0.45rem;
   min-width: 0;
-  color: #fff;
+  color: var(--informe-title);
 }
 
 .informe-detalle__cell.is-name strong,
@@ -413,7 +437,7 @@ button.informe-detalle__row {
 
 .informe-detalle__caret,
 .informe-detalle__row-chevron {
-  color: color-mix(in srgb, #fff 55%, transparent);
+  color: var(--informe-muted);
   font-size: 0.78rem;
   flex-shrink: 0;
 }
@@ -427,7 +451,7 @@ button.informe-detalle__row {
 
 .informe-detalle__cell.is-qty,
 .informe-detalle__cell.is-pct {
-  color: color-mix(in srgb, #fff 72%, transparent);
+  color: var(--informe-muted);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
 }
@@ -437,12 +461,12 @@ button.informe-detalle__row {
   align-items: center;
   justify-content: flex-end;
   gap: 0.35rem;
-  color: #fff;
+  color: var(--informe-title);
   font-variant-numeric: tabular-nums;
 }
 
 .informe-detalle__cell.is-product-gain {
-  color: #4ade80;
+  color: var(--informe-ok);
   font-weight: 700;
 }
 
@@ -457,8 +481,8 @@ button.informe-detalle__row {
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, #fff 8%, transparent);
-  color: color-mix(in srgb, #fff 75%, transparent);
+  background: color-mix(in srgb, var(--panel-gold, #f5c542) 10%, transparent);
+  color: var(--informe-muted);
   flex-shrink: 0;
 }
 
@@ -488,13 +512,13 @@ button.informe-detalle__row {
 }
 
 .informe-detalle__donut-total {
-  fill: #fff;
+  fill: var(--informe-title);
   font-size: 12px;
   font-weight: 750;
 }
 
 .informe-detalle__donut-caption {
-  fill: color-mix(in srgb, #fff 62%, transparent);
+  fill: var(--informe-muted);
   font-size: 10px;
 }
 
@@ -525,17 +549,17 @@ button.informe-detalle__row {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #fff;
+  color: var(--informe-title);
 }
 
 .informe-detalle__legend strong {
-  color: #fff;
+  color: var(--informe-title);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .informe-detalle__legend-pct {
-  color: color-mix(in srgb, #fff 62%, transparent);
+  color: var(--informe-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -591,7 +615,7 @@ button.informe-detalle__row {
 
 .informe-charts__title {
   margin: 0;
-  color: #fff;
+  color: var(--informe-title);
   font-size: 1rem;
   font-weight: 700;
 }
@@ -610,19 +634,19 @@ button.informe-detalle__row {
 }
 
 .informe-charts__donut-pct {
-  fill: #fff;
+  fill: var(--informe-title);
   font-size: 11px;
   font-weight: 700;
 }
 
 .informe-charts__donut-total {
-  fill: #fff;
+  fill: var(--informe-title);
   font-size: 16px;
   font-weight: 750;
 }
 
 .informe-charts__donut-caption {
-  fill: color-mix(in srgb, #fff 65%, transparent);
+  fill: var(--informe-muted);
   font-size: 11px;
 }
 
@@ -653,16 +677,16 @@ button.informe-detalle__row {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #fff;
+  color: var(--informe-title);
 }
 
 .informe-charts__legend-pct {
-  color: color-mix(in srgb, #fff 62%, transparent);
+  color: var(--informe-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .informe-charts__legend strong {
-  color: #fff;
+  color: var(--informe-title);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -673,18 +697,18 @@ button.informe-detalle__row {
 }
 
 .informe-charts__grid {
-  stroke: color-mix(in srgb, #fff 12%, transparent);
+  stroke: var(--informe-line);
   stroke-dasharray: 3 5;
 }
 
 .informe-charts__axis,
 .informe-charts__bar-name {
-  fill: color-mix(in srgb, #fff 62%, transparent);
+  fill: var(--informe-muted);
   font-size: 10px;
 }
 
 .informe-charts__bar-value {
-  fill: #fff;
+  fill: var(--informe-title);
   font-size: 10px;
   font-weight: 700;
 }

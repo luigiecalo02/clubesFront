@@ -333,8 +333,11 @@ export function FinanzasPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [informeOpen, setInformeOpen] = useState(false)
   const [informePublishing, setInformePublishing] = useState(false)
-  const [informeToggling, setInformeToggling] = useState(false)
-  const [informeLink, setInformeLink] = useState<FinanzasInformeLink | null>(null)
+  const [informeLoadingList, setInformeLoadingList] = useState(false)
+  const [informeTogglingId, setInformeTogglingId] = useState<number | null>(null)
+  const [informeDeletingId, setInformeDeletingId] = useState<number | null>(null)
+  const [informeLinks, setInformeLinks] = useState<FinanzasInformeLink[]>([])
+  const [informeSelectedId, setInformeSelectedId] = useState<number | null>(null)
   const [detailDestino, setDetailDestino] = useState<string | null>(null)
   const [detailPersona, setDetailPersona] = useState<FinanzasDistribucionParticipante | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -512,13 +515,38 @@ export function FinanzasPage() {
     setPersonaData(null)
   }
 
+  const informeSelected = informeLinks.find((row) => row.id === informeSelectedId) ?? null
+
+  async function loadInformes(selectId?: number | null) {
+    setInformeLoadingList(true)
+    try {
+      const rows = await finanzasApi.listInformes()
+      setInformeLinks(rows)
+      setInformeSelectedId((current) => {
+        if (selectId != null) return selectId
+        if (current && rows.some((row) => row.id === current)) return current
+        return rows[0]?.id ?? null
+      })
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudieron cargar los informes'))
+    } finally {
+      setInformeLoadingList(false)
+    }
+  }
+
+  async function openInformeDrawer() {
+    if (!canView) return
+    setInformeOpen(true)
+    await loadInformes()
+  }
+
   async function onPublishInforme() {
     if (!canView || informePublishing) return
     setInformePublishing(true)
     try {
       const link = await finanzasApi.publishInforme({ desde, hasta })
-      setInformeLink(link)
       setInformeOpen(true)
+      await loadInformes(link.id)
       notices.success('Informe publicado. Ya puedes compartir el enlace.')
     } catch (err) {
       notices.error(getApiErrorMessage(err, 'No se pudo publicar el informe'))
@@ -527,28 +555,58 @@ export function FinanzasPage() {
     }
   }
 
-  async function copyInformeLink() {
-    if (!informeLink?.url || !informeLink.activo) return
+  async function copyInformeLink(url?: string | null) {
+    if (!url) return
     try {
-      await navigator.clipboard.writeText(informeLink.url)
+      await navigator.clipboard.writeText(url)
       notices.success('Enlace copiado.')
     } catch {
       notices.warning('Copia el enlace manualmente.')
     }
   }
 
-  async function onToggleInformeActivo() {
-    if (!informeLink || informeToggling) return
-    const nextActivo = !informeLink.activo
-    setInformeToggling(true)
+  async function onToggleInformeActivo(informe: FinanzasInformeLink) {
+    if (informeTogglingId != null || informeDeletingId != null) return
+    const nextActivo = !informe.activo
+    setInformeTogglingId(informe.id)
     try {
-      const result = await finanzasApi.setInformeActivo(informeLink.id, nextActivo)
-      setInformeLink((prev) => (prev ? { ...prev, activo: result.activo } : prev))
+      const result = await finanzasApi.setInformeActivo(informe.id, nextActivo)
+      setInformeLinks((prev) =>
+        prev.map((row) => (row.id === result.id ? { ...row, activo: result.activo } : row)),
+      )
       notices.success(result.activo ? 'Enlace activado.' : 'Enlace desactivado.')
     } catch (err) {
       notices.error(getApiErrorMessage(err, 'No se pudo cambiar el estado del enlace'))
     } finally {
-      setInformeToggling(false)
+      setInformeTogglingId(null)
+    }
+  }
+
+  async function onDeleteInforme(informe: FinanzasInformeLink) {
+    if (informeDeletingId != null || informeTogglingId != null) return
+    if (
+      !window.confirm(
+        `¿Eliminar el informe del ${formatDate(informe.desde)} al ${formatDate(informe.hasta)}? El enlace dejará de funcionar.`,
+      )
+    ) {
+      return
+    }
+    setInformeDeletingId(informe.id)
+    try {
+      await finanzasApi.deleteInforme(informe.id)
+      setInformeLinks((prev) => {
+        const next = prev.filter((row) => row.id !== informe.id)
+        setInformeSelectedId((current) => {
+          if (current !== informe.id) return current
+          return next[0]?.id ?? null
+        })
+        return next
+      })
+      notices.success('Informe eliminado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo eliminar el informe'))
+    } finally {
+      setInformeDeletingId(null)
     }
   }
 
@@ -685,10 +743,10 @@ export function FinanzasPage() {
                 <button
                   type="button"
                   className="app-panel__btn--ghost"
-                  disabled={informePublishing}
-                  onClick={() => void onPublishInforme()}
+                  disabled={informePublishing || informeLoadingList}
+                  onClick={() => void openInformeDrawer()}
                 >
-                  {informePublishing ? 'Publicando…' : 'Publicar informe'}
+                  Informes públicos
                 </button>
               ) : null}
             </div>
@@ -929,67 +987,138 @@ export function FinanzasPage() {
       </CreateDrawer>
 
       <CreateDrawer
-        open={informeOpen && Boolean(informeLink)}
-        title="Informe de participantes"
-        subtitle={`Desde ${formatDate(desde)} · Hasta ${formatDate(hasta)}`}
+        open={informeOpen}
+        title="Informes públicos"
+        subtitle={`Periodo actual: ${formatDate(desde)} · ${formatDate(hasta)}`}
         placement={drawerPlacement}
         onClose={() => setInformeOpen(false)}
       >
-        {informeLink ? (
-          <div className="finanzas__informe-link">
-            <p className="app-panel__subtitle">
-              Enlace público con foto, nombre y ganancia del periodo. Al abrir cada persona se cargan sus
-              actividades y productos.
-            </p>
-            <p className={`finanzas__informe-status${informeLink.activo ? ' is-on' : ' is-off'}`}>
-              {informeLink.activo ? 'Enlace activo' : 'Enlace desactivado'}
-            </p>
-            <label>
-              Enlace
-              <input type="text" readOnly value={informeLink.url} onFocus={(event) => event.currentTarget.select()} />
-            </label>
-            <div className="finanzas__informe-actions">
-              <button
-                type="button"
-                className="app-panel__btn--primary"
-                disabled={!informeLink.activo}
-                onClick={() => void copyInformeLink()}
-              >
-                Copiar enlace
-              </button>
-              {informeLink.activo ? (
-                <a className="app-panel__btn--ghost" href={informeLink.url} target="_blank" rel="noreferrer">
-                  Abrir informe
-                </a>
-              ) : (
-                <button type="button" className="app-panel__btn--ghost" disabled>
-                  Abrir informe
-                </button>
-              )}
-              <button
-                type="button"
-                className="app-panel__btn--ghost"
-                disabled={informeToggling}
-                onClick={() => void onToggleInformeActivo()}
-              >
-                {informeToggling
-                  ? 'Guardando…'
-                  : informeLink.activo
-                    ? 'Desactivar enlace'
-                    : 'Activar enlace'}
-              </button>
-            </div>
-            {informeLink.activo ? (
-              <InviteLinkQr
-                url={informeLink.url}
-                fileName="informe-participantes.png"
-                caption="Escanea para abrir el informe de participantes."
-              />
-            ) : (
-              <p className="app-panel__hint">Activa el enlace para compartir el informe otra vez.</p>
-            )}
+        <div className="finanzas__informe-link">
+          <p className="app-panel__subtitle">
+            Publica un enlace del periodo seleccionado o administra los que ya existen: actívalos o
+            desactívalos cuando quieras.
+          </p>
+          <div className="finanzas__informe-actions">
+            <button
+              type="button"
+              className="app-panel__btn--primary"
+              disabled={informePublishing}
+              onClick={() => void onPublishInforme()}
+            >
+              {informePublishing ? 'Publicando…' : 'Publicar periodo actual'}
+            </button>
           </div>
-        ) : null}
+
+          {informeLoadingList ? <p className="app-panel__muted">Cargando informes…</p> : null}
+
+          {!informeLoadingList && informeLinks.length === 0 ? (
+            <p className="app-panel__hint">Todavía no hay informes publicados.</p>
+          ) : null}
+
+          {informeLinks.length > 0 ? (
+            <ul className="finanzas__informe-list">
+              {informeLinks.map((row) => {
+                const selected = row.id === informeSelectedId
+                const toggling = informeTogglingId === row.id
+                return (
+                  <li key={row.id} className={`finanzas__informe-item${selected ? ' is-selected' : ''}${row.activo ? ' is-on' : ' is-off'}`}>
+                    <button
+                      type="button"
+                      className="finanzas__informe-item-main"
+                      onClick={() => setInformeSelectedId(row.id)}
+                    >
+                      <strong>
+                        {formatDate(row.desde)} – {formatDate(row.hasta)}
+                      </strong>
+                      <span className={`finanzas__informe-pill${row.activo ? ' is-on' : ' is-off'}`}>
+                        {row.activo ? 'Activo' : 'Desactivado'}
+                      </span>
+                    </button>
+                    <div className="finanzas__informe-item-actions">
+                      <button
+                        type="button"
+                        className="app-panel__btn--ghost"
+                        disabled={toggling || informeDeletingId === row.id}
+                        onClick={() => void onToggleInformeActivo(row)}
+                      >
+                        {toggling ? 'Guardando…' : row.activo ? 'Desactivar' : 'Activar'}
+                      </button>
+                      <button
+                        type="button"
+                        className="app-panel__btn--ghost"
+                        disabled={informeDeletingId != null || informeTogglingId != null}
+                        onClick={() => void onDeleteInforme(row)}
+                      >
+                        {informeDeletingId === row.id ? 'Eliminando…' : 'Eliminar'}
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
+
+          {informeSelected ? (
+            <div className="finanzas__informe-selected">
+              <p className={`finanzas__informe-status${informeSelected.activo ? ' is-on' : ' is-off'}`}>
+                {informeSelected.activo ? 'Enlace activo' : 'Enlace desactivado'}
+                {' · '}
+                {formatDate(informeSelected.desde)} – {formatDate(informeSelected.hasta)}
+              </p>
+              {informeSelected.url ? (
+                <>
+                  <label>
+                    Enlace
+                    <input
+                      type="text"
+                      readOnly
+                      value={informeSelected.url}
+                      onFocus={(event) => event.currentTarget.select()}
+                    />
+                  </label>
+                  <div className="finanzas__informe-actions">
+                    <button
+                      type="button"
+                      className="app-panel__btn--primary"
+                      disabled={!informeSelected.activo}
+                      onClick={() => void copyInformeLink(informeSelected.url)}
+                    >
+                      Copiar enlace
+                    </button>
+                    {informeSelected.activo ? (
+                      <a
+                        className="app-panel__btn--ghost"
+                        href={informeSelected.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Abrir informe
+                      </a>
+                    ) : (
+                      <button type="button" className="app-panel__btn--ghost" disabled>
+                        Abrir informe
+                      </button>
+                    )}
+                  </div>
+                  {informeSelected.activo ? (
+                    <InviteLinkQr
+                      url={informeSelected.url}
+                      fileName="informe-participantes.png"
+                      caption="Escanea para abrir el informe de participantes."
+                    />
+                  ) : (
+                    <p className="app-panel__hint">Activa el enlace para compartirlo otra vez.</p>
+                  )}
+                </>
+              ) : (
+                <p className="app-panel__hint">
+                  Este informe se publicó antes de guardar el enlace. Desactívalo y publica uno nuevo
+                  para obtener URL.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
       </CreateDrawer>
     </section>
   )
