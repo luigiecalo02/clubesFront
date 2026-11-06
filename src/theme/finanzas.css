@@ -148,6 +148,61 @@
   font-size: 0.82rem;
 }
 
+.finanzas__period-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.finanzas__informe-link {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.finanzas__informe-link label {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--panel-muted);
+  font-size: 0.78rem;
+}
+
+.finanzas__informe-link input {
+  width: 100%;
+  min-height: 2.45rem;
+  padding: 0.4rem 0.65rem;
+  border: 1.5px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  background: var(--panel-input-bg);
+  color: var(--panel-title);
+  font: inherit;
+}
+
+.finanzas__informe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.finanzas__informe-status {
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--panel-input-radius);
+  font-size: 0.82rem;
+  font-weight: var(--panel-weight-strong);
+}
+
+.finanzas__informe-status.is-on {
+  color: var(--panel-ok-text);
+  background: color-mix(in srgb, var(--panel-ok-text) 10%, var(--panel-input-bg));
+  border: 1.5px solid color-mix(in srgb, var(--panel-ok-text) 30%, var(--panel-input-border));
+}
+
+.finanzas__informe-status.is-off {
+  color: var(--panel-danger);
+  background: color-mix(in srgb, var(--panel-danger) 10%, var(--panel-input-bg));
+  border: 1.5px solid color-mix(in srgb, var(--panel-danger) 30%, var(--panel-input-border));
+}
+
 .finanzas__grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(16rem, 0.75fr);

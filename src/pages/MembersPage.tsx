@@ -9,7 +9,13 @@ import {
   canUpdateClubMember,
   clubAccessFromUser,
 } from '../admin/menu'
-import { MemberNameCell, MemberRow, memberHasUser, memberUserActive } from '../components/members/MemberActions'
+import {
+  MemberNameCell,
+  MemberRow,
+  memberClubActive,
+  memberHasUser,
+  memberUserActive,
+} from '../components/members/MemberActions'
 import { MemberDrawer, type MemberDrawerMode } from '../components/members/MemberDrawer'
 import { MemberInsightDrawer, type MemberInsightKind } from '../components/members/MemberInsightDrawer'
 import { useAuth } from '../auth/AuthProvider'
@@ -27,25 +33,39 @@ export function MembersPage() {
   const canViewAttendance = canAccessClubAttendance(access) || auth.can('asistencia.view')
   const [members, setMembers] = useState<ClubPerson[]>([])
   const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'activos' | 'inactivos' | 'todos'>('activos')
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<MemberDrawerMode | null>(null)
   const [selected, setSelected] = useState<ClubPerson | null>(null)
   const [insightKind, setInsightKind] = useState<MemberInsightKind | null>(null)
   const [insightPersona, setInsightPersona] = useState<ClubPerson | null>(null)
   const notices = useNotice()
+  const orgId = ctx?.organizacion_id ?? null
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return members
-    return members.filter((persona) =>
-      [persona.full_name, persona.identificacion, persona.correo, persona.telefono]
+    return members.filter((persona) => {
+      const active = memberClubActive(persona, orgId)
+      if (statusFilter === 'activos' && !active) return false
+      if (statusFilter === 'inactivos' && active) return false
+      if (!q) return true
+      return [persona.full_name, persona.identificacion, persona.correo, persona.telefono]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(q)),
-    )
-  }, [members, query])
+        .some((value) => String(value).toLowerCase().includes(q))
+    })
+  }, [members, orgId, query, statusFilter])
+
+  const activeCount = useMemo(
+    () => members.filter((persona) => memberClubActive(persona, orgId)).length,
+    [members, orgId],
+  )
+  const inactiveCount = members.length - activeCount
 
   async function loadMembers() {
-    const next = await personasApi.list({ organizacionId: ctx?.organizacion_id })
+    const next = await personasApi.list({
+      organizacionId: orgId,
+      includeInactive: true,
+    })
     setMembers(next)
   }
 
@@ -53,7 +73,7 @@ export function MembersPage() {
     let cancelled = false
     setLoading(true)
     personasApi
-      .list({ organizacionId: ctx?.organizacion_id })
+      .list({ organizacionId: orgId, includeInactive: true })
       .then((next) => {
         if (!cancelled) setMembers(next)
       })
@@ -66,7 +86,7 @@ export function MembersPage() {
     return () => {
       cancelled = true
     }
-  }, [ctx?.organizacion_id, notices])
+  }, [orgId, notices])
 
   function closeDrawer() {
     setMode(null)
@@ -123,6 +143,28 @@ export function MembersPage() {
     }
   }
 
+  async function onToggleMembership(persona: ClubPerson) {
+    const active = memberClubActive(persona, orgId)
+    const message = active
+      ? `¿Marcar a ${persona.full_name} como no activo? Dejará de aparecer en las listas y, si tiene usuario, también se desactivará su acceso.`
+      : `¿Volver a marcar a ${persona.full_name} como activo? Si tiene usuario, también se reactivará su acceso.`
+    if (!window.confirm(message)) return
+    try {
+      const next = await personasApi.setMembership(persona.id, {
+        estado: !active,
+        organizacion_id: orgId,
+      })
+      applyMember(next)
+      notices.success(
+        active
+          ? `${persona.full_name} quedó como no activo.`
+          : `${persona.full_name} volvió a quedar activo.`,
+      )
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo actualizar el estado del integrante'))
+    }
+  }
+
   return (
     <section className="admin-page">
       {canCreate ? (
@@ -140,7 +182,7 @@ export function MembersPage() {
       <MemberDrawer
         mode={mode}
         persona={selected}
-        organizacionId={ctx?.organizacion_id}
+        organizacionId={orgId}
         onClose={closeDrawer}
         onCreated={(next) => {
           applyMember(next)
@@ -173,17 +215,32 @@ export function MembersPage() {
           <p className="app-panel__kicker">Directorio</p>
           <h2 className="app-panel__title">Integrantes del club</h2>
           <p className="app-panel__subtitle">
-            {members.length} persona{members.length === 1 ? '' : 's'} asociada
-            {members.length === 1 ? '' : 's'} a este club.
+            {activeCount} activo{activeCount === 1 ? '' : 's'}
+            {inactiveCount > 0 ? ` · ${inactiveCount} no activo${inactiveCount === 1 ? '' : 's'}` : ''}
+            {' · '}
+            Solo los activos entran en asistencia, participantes e inscripciones.
           </p>
-          <label className="admin-field">
-            Buscar
-            <input
-              value={query}
-              placeholder="Nombre, identificación o correo"
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
+          <div className="admin-club__filters">
+            <label className="admin-field">
+              Buscar
+              <input
+                value={query}
+                placeholder="Nombre, identificación o correo"
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <label className="admin-field">
+              Estado en el club
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as 'activos' | 'inactivos' | 'todos')}
+              >
+                <option value="activos">Activos ({activeCount})</option>
+                <option value="inactivos">No activos ({inactiveCount})</option>
+                <option value="todos">Todos ({members.length})</option>
+              </select>
+            </label>
+          </div>
           {filtered.length ? (
             <div className="admin-club__table-wrap">
               <table className="admin-club__table">
@@ -206,13 +263,15 @@ export function MembersPage() {
                       canViewSaldos={canViewSaldos}
                       canViewAttendance={canViewAttendance}
                       currentUserId={auth.user?.id}
+                      organizacionId={orgId}
                       onEdit={(row) => openMode('edit', row)}
                       onPassword={(row) => openMode('password', row)}
                       onImpersonate={(row) => openMode('impersonate', row)}
                       onToggleAccess={onToggleAccess}
+                      onToggleMembership={onToggleMembership}
                       onInsight={openInsight}
                     >
-                      <MemberNameCell persona={persona} />
+                      <MemberNameCell persona={persona} organizacionId={orgId} />
                       <td>
                         {[persona.tipo_identificacion, persona.identificacion].filter(Boolean).join(' ') ||
                           '—'}
@@ -225,7 +284,7 @@ export function MembersPage() {
               </table>
             </div>
           ) : (
-            <p className="app-panel__muted">Ningún integrante coincide con la búsqueda.</p>
+            <p className="app-panel__muted">Ningún integrante coincide con la búsqueda o el filtro.</p>
           )}
         </AppPanel>
       ) : null}

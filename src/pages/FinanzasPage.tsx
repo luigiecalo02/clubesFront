@@ -8,10 +8,12 @@ import type {
   FinanzasCuenta,
   FinanzasDistribucionDetalle,
   FinanzasDistribucionParticipante,
+  FinanzasInformeLink,
   FinanzasMovimiento,
   FinanzasParte,
   FinanzasResumen,
 } from '../api/types'
+import { InviteLinkQr } from '../components/club/InviteLinkQr'
 import { AdminIcon } from '../admin/AdminIcon'
 import { canAccessClubFinanzas, clubAccessFromUser, isSuperAdminUser, type AdminIconName } from '../admin/menu'
 import { memberInitials } from '../components/attendance/AttendanceMarkList'
@@ -329,6 +331,10 @@ export function FinanzasPage() {
   const [data, setData] = useState<FinanzasResumen>(() => emptyResumen(bounds.desde, bounds.hasta))
   const [saving, setSaving] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [informeOpen, setInformeOpen] = useState(false)
+  const [informePublishing, setInformePublishing] = useState(false)
+  const [informeToggling, setInformeToggling] = useState(false)
+  const [informeLink, setInformeLink] = useState<FinanzasInformeLink | null>(null)
   const [detailDestino, setDetailDestino] = useState<string | null>(null)
   const [detailPersona, setDetailPersona] = useState<FinanzasDistribucionParticipante | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -506,6 +512,46 @@ export function FinanzasPage() {
     setPersonaData(null)
   }
 
+  async function onPublishInforme() {
+    if (!canView || informePublishing) return
+    setInformePublishing(true)
+    try {
+      const link = await finanzasApi.publishInforme({ desde, hasta })
+      setInformeLink(link)
+      setInformeOpen(true)
+      notices.success('Informe publicado. Ya puedes compartir el enlace.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo publicar el informe'))
+    } finally {
+      setInformePublishing(false)
+    }
+  }
+
+  async function copyInformeLink() {
+    if (!informeLink?.url || !informeLink.activo) return
+    try {
+      await navigator.clipboard.writeText(informeLink.url)
+      notices.success('Enlace copiado.')
+    } catch {
+      notices.warning('Copia el enlace manualmente.')
+    }
+  }
+
+  async function onToggleInformeActivo() {
+    if (!informeLink || informeToggling) return
+    const nextActivo = !informeLink.activo
+    setInformeToggling(true)
+    try {
+      const result = await finanzasApi.setInformeActivo(informeLink.id, nextActivo)
+      setInformeLink((prev) => (prev ? { ...prev, activo: result.activo } : prev))
+      notices.success(result.activo ? 'Enlace activado.' : 'Enlace desactivado.')
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo cambiar el estado del enlace'))
+    } finally {
+      setInformeToggling(false)
+    }
+  }
+
   async function onDeleteMovimiento(mov: FinanzasMovimiento) {
     if (!canDeleteMovimiento || deletingId || !mov.id) return
     if (!window.confirm(`¿Eliminar el movimiento “${mov.concepto}”? Esta acción no se puede deshacer.`)) return
@@ -629,11 +675,23 @@ export function FinanzasPage() {
                 <input type="date" value={hasta} onChange={(event) => setHasta(event.target.value)} />
               </label>
             </div>
-            {canUpdate ? (
-              <button type="button" className="app-panel__btn--ghost" onClick={() => setDrawerOpen(true)}>
-                Registrar movimiento
-              </button>
-            ) : null}
+            <div className="finanzas__period-actions">
+              {canUpdate ? (
+                <button type="button" className="app-panel__btn--ghost" onClick={() => setDrawerOpen(true)}>
+                  Registrar movimiento
+                </button>
+              ) : null}
+              {canView ? (
+                <button
+                  type="button"
+                  className="app-panel__btn--ghost"
+                  disabled={informePublishing}
+                  onClick={() => void onPublishInforme()}
+                >
+                  {informePublishing ? 'Publicando…' : 'Publicar informe'}
+                </button>
+              ) : null}
+            </div>
           </article>
           <KpiCard
             tone="gold"
@@ -868,6 +926,70 @@ export function FinanzasPage() {
         onClose={closeParticipanteDetalle}
       >
         <DistribucionDetallePanel loading={personaLoading} data={personaData} />
+      </CreateDrawer>
+
+      <CreateDrawer
+        open={informeOpen && Boolean(informeLink)}
+        title="Informe de participantes"
+        subtitle={`Desde ${formatDate(desde)} · Hasta ${formatDate(hasta)}`}
+        placement={drawerPlacement}
+        onClose={() => setInformeOpen(false)}
+      >
+        {informeLink ? (
+          <div className="finanzas__informe-link">
+            <p className="app-panel__subtitle">
+              Enlace público con foto, nombre y ganancia del periodo. Al abrir cada persona se cargan sus
+              actividades y productos.
+            </p>
+            <p className={`finanzas__informe-status${informeLink.activo ? ' is-on' : ' is-off'}`}>
+              {informeLink.activo ? 'Enlace activo' : 'Enlace desactivado'}
+            </p>
+            <label>
+              Enlace
+              <input type="text" readOnly value={informeLink.url} onFocus={(event) => event.currentTarget.select()} />
+            </label>
+            <div className="finanzas__informe-actions">
+              <button
+                type="button"
+                className="app-panel__btn--primary"
+                disabled={!informeLink.activo}
+                onClick={() => void copyInformeLink()}
+              >
+                Copiar enlace
+              </button>
+              {informeLink.activo ? (
+                <a className="app-panel__btn--ghost" href={informeLink.url} target="_blank" rel="noreferrer">
+                  Abrir informe
+                </a>
+              ) : (
+                <button type="button" className="app-panel__btn--ghost" disabled>
+                  Abrir informe
+                </button>
+              )}
+              <button
+                type="button"
+                className="app-panel__btn--ghost"
+                disabled={informeToggling}
+                onClick={() => void onToggleInformeActivo()}
+              >
+                {informeToggling
+                  ? 'Guardando…'
+                  : informeLink.activo
+                    ? 'Desactivar enlace'
+                    : 'Activar enlace'}
+              </button>
+            </div>
+            {informeLink.activo ? (
+              <InviteLinkQr
+                url={informeLink.url}
+                fileName="informe-participantes.png"
+                caption="Escanea para abrir el informe de participantes."
+              />
+            ) : (
+              <p className="app-panel__hint">Activa el enlace para compartir el informe otra vez.</p>
+            )}
+          </div>
+        ) : null}
       </CreateDrawer>
     </section>
   )

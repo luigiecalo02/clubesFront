@@ -36,10 +36,12 @@ type MemberActionsProps = {
   canViewSaldos?: boolean
   canViewAttendance?: boolean
   currentUserId?: number | null
+  organizacionId?: number | null
   onEdit: (persona: ClubPerson) => void
   onPassword: (persona: ClubPerson) => void
   onImpersonate: (persona: ClubPerson) => void
   onToggleAccess?: (persona: ClubPerson) => void
+  onToggleMembership?: (persona: ClubPerson) => void
   onInsight?: (persona: ClubPerson, kind: MemberInsightKind) => void
 }
 
@@ -53,6 +55,17 @@ export function memberHasUser(persona: ClubPerson | null | undefined): boolean {
 
 export function memberUserActive(persona: ClubPerson): boolean {
   return Boolean(persona.user_id) && persona.user_is_active !== false
+}
+
+export function memberClubActive(persona: ClubPerson, organizacionId?: number | null): boolean {
+  if (!organizacionId) {
+    const rows = persona.organizaciones ?? []
+    if (!rows.length) return true
+    return rows.some((row) => row.estado !== false)
+  }
+  const row = persona.organizaciones?.find((item) => Number(item.organizacion_id) === Number(organizacionId))
+  if (!row) return true
+  return row.estado !== false
 }
 
 function ActionIcon({ d }: { d: string }) {
@@ -70,10 +83,17 @@ function ActionIcon({ d }: { d: string }) {
   )
 }
 
-export function MemberNameCell({ persona }: { persona: ClubPerson }) {
+export function MemberNameCell({
+  persona,
+  organizacionId,
+}: {
+  persona: ClubPerson
+  organizacionId?: number | null
+}) {
   const photo = resolveFileUrl(persona.foto_url)
   const hasUser = memberHasUser(persona)
-  const active = memberUserActive(persona)
+  const userActive = memberUserActive(persona)
+  const clubActive = memberClubActive(persona, organizacionId)
   return (
     <td>
       <span className="admin-club__who">
@@ -82,8 +102,10 @@ export function MemberNameCell({ persona }: { persona: ClubPerson }) {
         </span>
         <span className="admin-club__who-copy">
           <strong>{persona.full_name}</strong>
-          <small className={!hasUser ? 'is-muted' : active ? 'is-ok' : 'is-off'}>
-            {!hasUser ? 'Sin usuario' : active ? 'Usuario activo' : 'Usuario inactivo'}
+          <small className={clubActive ? 'is-ok' : 'is-off'}>
+            {clubActive ? 'Integrante activo' : 'Integrante no activo'}
+            {' · '}
+            {!hasUser ? 'Sin usuario' : userActive ? 'Usuario activo' : 'Usuario inactivo'}
           </small>
         </span>
       </span>
@@ -108,10 +130,12 @@ export function MemberActions({
   canViewSaldos = false,
   canViewAttendance = false,
   currentUserId,
+  organizacionId,
   onEdit,
   onPassword,
   onImpersonate,
   onToggleAccess,
+  onToggleMembership,
   onInsight,
 }: MemberActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -121,10 +145,12 @@ export function MemberActions({
   const userId = memberUserId(persona)
   const hasUser = userId !== null
   const userActive = memberUserActive(persona)
-  const canLoginAs = canImpersonate && hasUser && userActive && userId !== currentUserId
+  const clubActive = memberClubActive(persona, organizacionId)
+  const canLoginAs = canImpersonate && hasUser && userActive && clubActive && userId !== currentUserId
   const canSeeSaldos = Boolean(canViewSaldos && onInsight)
   const canSeeAttendance = Boolean(canViewAttendance && onInsight)
   const canManageAccess = Boolean(canUpdate && onToggleAccess)
+  const canManageMembership = Boolean(canUpdate && onToggleMembership)
 
   useLayoutEffect(() => {
     if (!menuOpen) return undefined
@@ -185,6 +211,21 @@ export function MemberActions({
       title: `Editar a ${persona.full_name}`,
       icon: 'M4 20h4l11-11-4-4L4 16v4zM14 6l4 4',
       onClick: () => onEdit(persona),
+    })
+  }
+  if (canManageMembership) {
+    items.push({
+      key: 'membership',
+      label: clubActive ? 'Marcar no activo' : 'Marcar activo',
+      title: clubActive
+        ? `Sacar a ${persona.full_name} de las listas del club`
+        : `Volver a incluir a ${persona.full_name} en las listas del club`,
+      accent: !clubActive,
+      danger: clubActive,
+      icon: clubActive
+        ? 'M18.4 5.6 5.6 18.4M9 12a3 3 0 0 0 3 3'
+        : 'M9 11l3 3 8-8M5 19V5a1 1 0 0 1 1-1h8',
+      onClick: () => onToggleMembership?.(persona),
     })
   }
   if (canManageAccess) {

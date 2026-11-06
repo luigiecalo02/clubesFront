@@ -904,3 +904,55 @@ export interface FinanzasResumen {
   eventos: FinanzasEventoOption[]
   cuentas_bancarias: FinanzasCuentaBancariaOption[]
 }
+
+export interface FinanzasInformeLink {
+  id: number
+  url: string
+  desde: string
+  hasta: string
+  expires_at?: string | null
+  activo: boolean
+}
+
+export interface InformeParticipanteResumen {
+  persona_id: number
+  nombre: string
+  foto_url?: string | null
+  total: number
+}
+
+export interface InformeProductoLinea {
+  producto_servicio_id?: number | null
+  nombre: string
+  image_url?: string | null
+  cantidad?: number | null
+  ganancia: number
+}
+
+export interface InformeActividadLinea {
+  evento_id?: number | null
+  nombre: string
+  banner_url?: string | null
+  total: number
+  productos: InformeProductoLinea[]
+}
+
+export interface InformeParticipanteDetalle extends InformeParticipanteResumen {
+  actividades: InformeActividadLinea[]
+}
+
+export interface InformeParticipantesPublico {
+  organizacion: {
+    id: number
+    nombre: string
+    logo_url?: string | null
+    banner_url?: string | null
+    background_url?: string | null
+  }
+  desde: string
+  hasta: string
+  expires_at?: string | null
+  total: number
+  participantes_count?: number
+  participantes: InformeParticipanteResumen[]
+}

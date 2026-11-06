@@ -5,6 +5,7 @@ import { AdminIcon } from '../../admin/AdminIcon'
 type InviteLinkQrProps = {
   url: string
   fileName?: string
+  caption?: string
 }
 
 export function inviteQrFileName(clubName?: string | null): string {
@@ -19,7 +20,11 @@ export function inviteQrFileName(clubName?: string | null): string {
   return `inscripcion-${slug}.png`
 }
 
-export function InviteLinkQr({ url, fileName = 'enlace-inscripcion.png' }: InviteLinkQrProps) {
+export function InviteLinkQr({
+  url,
+  fileName = 'enlace-inscripcion.png',
+  caption = 'Escanea para abrir el formulario de crear cuenta.',
+}: InviteLinkQrProps) {
   const [src, setSrc] = useState<string | null>(null)
 
   useEffect(() => {
@@ -55,7 +60,7 @@ export function InviteLinkQr({ url, fileName = 'enlace-inscripcion.png' }: Invit
   return (
     <div className="admin-club__invite-qr">
       <img src={src} alt="Código QR del enlace de inscripción" />
-      <p className="app-panel__muted">Escanea para abrir el formulario de crear cuenta.</p>
+      <p className="app-panel__muted">{caption}</p>
       <button type="button" className="app-panel__btn--ghost" onClick={download}>
         <AdminIcon name="download" />
         Descargar QR

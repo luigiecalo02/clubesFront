@@ -20,7 +20,13 @@ import {
   clubAccessFromUser,
   isClubDirectorRole,
 } from '../admin/menu'
-import { MemberNameCell, MemberRow, memberHasUser, memberUserActive } from '../components/members/MemberActions'
+import {
+  MemberNameCell,
+  MemberRow,
+  memberClubActive,
+  memberHasUser,
+  memberUserActive,
+} from '../components/members/MemberActions'
 import { personasApi } from '../api/personas'
 import { MemberDrawer, type MemberDrawerMode } from '../components/members/MemberDrawer'
 import { MemberInsightDrawer, type MemberInsightKind } from '../components/members/MemberInsightDrawer'
@@ -240,6 +246,37 @@ export function MyClubPage() {
     }
   }
 
+  async function onToggleMembership(persona: ClubPerson) {
+    const orgId = club?.organizacion_id ?? ctx?.organizacion_id ?? null
+    const active = memberClubActive(persona, orgId)
+    const message = active
+      ? `¿Marcar a ${persona.full_name} como no activo? Dejará de aparecer en las listas y, si tiene usuario, también se desactivará su acceso.`
+      : `¿Volver a marcar a ${persona.full_name} como activo? Si tiene usuario, también se reactivará su acceso.`
+    if (!window.confirm(message)) return
+    try {
+      const next = await personasApi.setMembership(persona.id, {
+        estado: !active,
+        organizacion_id: orgId,
+      })
+      if (active) {
+        setClub((current) => {
+          if (!current) return current
+          const personas = (current.personas ?? []).filter((row) => row.id !== persona.id)
+          return { ...current, personas, personas_count: personas.length }
+        })
+      } else {
+        applyMember(next)
+      }
+      notices.success(
+        active
+          ? `${persona.full_name} quedó como no activo.`
+          : `${persona.full_name} volvió a quedar activo.`,
+      )
+    } catch (err) {
+      notices.error(getApiErrorMessage(err, 'No se pudo actualizar el estado del integrante'))
+    }
+  }
+
   async function onCopyInvite() {
     if (!invite?.url) return
     try {
@@ -447,13 +484,18 @@ export function MyClubPage() {
                           canViewSaldos={canViewSaldos}
                           canViewAttendance={canViewAttendance}
                           currentUserId={auth.user?.id}
+                          organizacionId={club?.organizacion_id ?? ctx?.organizacion_id}
                           onEdit={(row) => openMember('edit', row)}
                           onPassword={(row) => openMember('password', row)}
                           onImpersonate={(row) => openMember('impersonate', row)}
                           onToggleAccess={onToggleAccess}
+                          onToggleMembership={onToggleMembership}
                           onInsight={openInsight}
                         >
-                          <MemberNameCell persona={persona} />
+                          <MemberNameCell
+                            persona={persona}
+                            organizacionId={club?.organizacion_id ?? ctx?.organizacion_id}
+                          />
                           <td>{persona.identificacion || '—'}</td>
                           <td>{persona.correo || '—'}</td>
                           <td>{persona.telefono || '—'}</td>

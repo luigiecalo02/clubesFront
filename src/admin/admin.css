@@ -1789,6 +1789,20 @@
   color: var(--panel-muted);
 }
 
+.admin-club__filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(10rem, 0.7fr);
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin-top: 0.55rem;
+}
+
+@media (max-width: 720px) {
+  .admin-club__filters {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-club__table-wrap {
   overflow-x: auto;
   margin-top: 0.85rem;

@@ -17,6 +17,7 @@ import { AbonosPage } from './pages/AbonosPage'
 import { MyAbonosPage } from './pages/MyAbonosPage'
 import { AttendancePage } from './pages/AttendancePage'
 import { FinanzasPage } from './pages/FinanzasPage'
+import { InformeParticipantesPublicPage } from './pages/InformeParticipantesPublicPage'
 import { PresupuestoPage } from './pages/PresupuestoPage'
 import { EventsPage } from './pages/EventsPage'
 import { MembersPage } from './pages/MembersPage'
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/restablecer-contrasena" element={<ResetPasswordPage />} />
             <Route path="/confirmar-cuenta" element={<ConfirmAccountPage />} />
             <Route path="/activar" element={<ActivateAccountPage />} />
+            <Route path="/informe-participantes/:token" element={<InformeParticipantesPublicPage />} />
             <Route path="/entrar" element={<HandoffPage />} />
             <Route
               path="/contexto"

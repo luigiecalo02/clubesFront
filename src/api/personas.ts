@@ -2,13 +2,16 @@ import { api } from './client'
 import type { ApiEnvelope, ClubPerson, CreatePersonaPayload } from './types'
 
 export const personasApi = {
-  async list(params: { q?: string; organizacionId?: number | null } = {}): Promise<ClubPerson[]> {
+  async list(
+    params: { q?: string; organizacionId?: number | null; includeInactive?: boolean } = {},
+  ): Promise<ClubPerson[]> {
     const { data } = await api.get<ApiEnvelope<ClubPerson[]>>('/api/v1/personas', {
       params: {
         solo_tipo_club: 1,
         per_page: 200,
         q: params.q || undefined,
         organizacion_id: params.organizacionId || undefined,
+        include_inactive: params.includeInactive ? 1 : undefined,
       },
     })
     return data.data ?? []
@@ -34,6 +37,14 @@ export const personasApi = {
     payload: { password: string; password_confirmation: string },
   ): Promise<void> {
     await api.put(`/api/v1/personas/${id}/password`, payload)
+  },
+
+  async setMembership(
+    id: number,
+    payload: { estado: boolean; organizacion_id?: number | null },
+  ): Promise<ClubPerson> {
+    const { data } = await api.patch<ApiEnvelope<ClubPerson>>(`/api/v1/personas/${id}/membership`, payload)
+    return data.data
   },
 
   async setUserAccess(
